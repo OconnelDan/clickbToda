@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const categorySelector = document.getElementById('categorySelector');
     const subcategorySelector = document.getElementById('subcategorySelector');
     
-    // Load all events initially
+    // Load all events initially without date filter
     showAllCategories();
     
     // Initialize the category selector
@@ -27,13 +27,29 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger alert-dismissible fade show';
+    errorDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.querySelector('.container').insertBefore(errorDiv, document.querySelector('.container').firstChild);
+}
+
 function fetchSubcategories(categoryId) {
     fetch(`/api/subcategories?category_id=${categoryId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch subcategories');
+            return response.json();
+        })
         .then(data => {
             updateSubcategorySelector(data);
         })
-        .catch(error => console.error('Error fetching subcategories:', error));
+        .catch(error => {
+            console.error('Error fetching subcategories:', error);
+            showError('Failed to load subcategories. Please try again.');
+        });
 }
 
 function updateSubcategorySelector(subcategories) {
@@ -56,60 +72,78 @@ function resetSubcategorySelector() {
 }
 
 function showAllCategories() {
-    const date = document.getElementById('dateSelector').value;
-    let url = '/api/articles';
-    if (date) url += `?date=${date}`;
-    
-    fetch(url)
-        .then(response => response.json())
+    fetch('/api/articles')
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch articles');
+            return response.json();
+        })
         .then(data => {
+            if (!data.categories) throw new Error('Invalid response format');
+            
             document.querySelectorAll('.category-section').forEach(section => {
                 const categoryId = section.dataset.categoryId;
-                section.style.display = 'block';
-                const eventsContainer = section.querySelector('.events-container');
-                const categoryEvents = data.events.filter(event => {
-                    return true; // Show all events in each category section
-                });
-                updateEventsDisplay({ events: categoryEvents }, categoryId);
+                const categoryData = data.categories.find(c => c.categoria_id.toString() === categoryId);
+                
+                if (categoryData) {
+                    section.style.display = 'block';
+                    updateEventsDisplay(categoryData, categoryId);
+                } else {
+                    section.style.display = 'none';
+                }
             });
         })
-        .catch(error => console.error('Error loading events:', error));
+        .catch(error => {
+            console.error('Error loading events:', error);
+            showError('Failed to load articles. Please try refreshing the page.');
+        });
 }
 
 function loadEventsByCategory(categoryId) {
-    const date = document.getElementById('dateSelector').value;
-    let url = `/api/articles?category_id=${categoryId}`;
-    if (date) url += `&date=${date}`;
-    
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            updateEventsDisplay(data, categoryId);
+    fetch(`/api/articles?category_id=${categoryId}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch articles');
+            return response.json();
         })
-        .catch(error => console.error('Error loading events:', error));
+        .then(data => {
+            if (!data.categories || !data.categories.length) {
+                throw new Error('No articles found for this category');
+            }
+            const categoryData = data.categories[0];
+            updateEventsDisplay(categoryData, categoryId);
+        })
+        .catch(error => {
+            console.error('Error loading events:', error);
+            showError('Failed to load articles. Please try again.');
+        });
 }
 
 function loadEventsBySubcategory(categoryId, subcategoryId) {
-    const date = document.getElementById('dateSelector').value;
-    let url = `/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`;
-    if (date) url += `&date=${date}`;
-    
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            updateEventsDisplay(data, categoryId);
+    fetch(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch articles');
+            return response.json();
         })
-        .catch(error => console.error('Error loading events:', error));
+        .then(data => {
+            if (!data.categories || !data.categories.length) {
+                throw new Error('No articles found for this subcategory');
+            }
+            const categoryData = data.categories[0];
+            updateEventsDisplay(categoryData, categoryId);
+        })
+        .catch(error => {
+            console.error('Error loading events:', error);
+            showError('Failed to load articles. Please try again.');
+        });
 }
 
-function updateEventsDisplay(data, categoryId) {
+function updateEventsDisplay(categoryData, categoryId) {
     const categorySection = document.querySelector(`.category-section[data-category-id="${categoryId}"]`);
     if (!categorySection) return;
     
     const eventsContainer = categorySection.querySelector('.events-container');
     
-    if (data.events && data.events.length > 0) {
-        eventsContainer.innerHTML = data.events.map(event => `
+    if (categoryData.events && categoryData.events.length > 0) {
+        eventsContainer.innerHTML = categoryData.events.map(event => `
             <div class="event-articles mb-4">
                 <div class="row">
                     <div class="col-md-3">

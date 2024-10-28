@@ -59,15 +59,8 @@ def init_db():
             logger.error(f"Error during database initialization: {str(e)}")
             return False
 
-# Initialize database on startup
-if not init_db():
-    logger.error("Failed to initialize database")
-
 @app.route('/')
 def index():
-    # Get latest date from articles
-    latest_date = db.session.query(func.max(Articulo.fecha_publicacion)).scalar()
-    
     # Get categories with their event counts
     categories = db.session.query(
         Categoria,
@@ -84,7 +77,7 @@ def index():
     
     return render_template('index.html', 
                          categories=categories,
-                         selected_date=latest_date or datetime.now().date())
+                         selected_date=datetime.now().date())
 
 @app.route('/api/subcategories')
 def get_subcategories():
@@ -103,66 +96,74 @@ def get_subcategories():
 
 @app.route('/api/articles')
 def get_articles():
-    date_str = request.args.get('date')
     category_id = request.args.get('category_id')
     subcategory_id = request.args.get('subcategory_id')
     search_query = request.args.get('q')
     
-    # Query events first
-    events_query = db.session.query(Evento).order_by(Evento.fecha_evento.desc())
-    
-    # Apply filters if provided
-    if category_id:
-        events_query = events_query.filter(Evento.categoria_id == category_id)
+    try:
+        # Query all categories first
+        categories_query = db.session.query(Categoria)
+        if category_id:
+            categories_query = categories_query.filter(Categoria.categoria_id == category_id)
         
-    if subcategory_id:
-        events_query = events_query.join(Categoria).filter(
-            Categoria.categoria_id == subcategory_id
-        )
-    
-    events = events_query.all()
-    
-    # For each event, get its articles
-    result = {'events': []}
-    
-    for event in events:
-        articles_query = db.session.query(Articulo).join(
-            articulo_evento,
-            Articulo.articulo_id == articulo_evento.c.articulo_id
-        ).filter(
-            articulo_evento.c.evento_id == event.evento_id
-        ).join(
-            Periodico
-        ).order_by(Articulo.fecha_publicacion.desc())
+        categories = categories_query.all()
         
-        if date_str:
-            try:
-                date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                articles_query = articles_query.filter(Articulo.fecha_publicacion == date)
-            except ValueError:
-                pass
+        result = {'categories': []}
+        
+        for category in categories:
+            # Get events for this category
+            events_query = db.session.query(Evento).filter(
+                Evento.categoria_id == category.categoria_id
+            ).order_by(Evento.fecha_evento.desc())
             
-        if search_query:
-            articles_query = articles_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
+            events = events_query.all()
+            category_data = {
+                'categoria_id': category.categoria_id,
+                'nombre': category.nombre,
+                'subnombre': category.subnombre,
+                'events': []
+            }
+            
+            for event in events:
+                # Get articles for this event
+                articles_query = db.session.query(Articulo).join(
+                    articulo_evento,
+                    Articulo.articulo_id == articulo_evento.c.articulo_id
+                ).filter(
+                    articulo_evento.c.evento_id == event.evento_id
+                ).join(
+                    Periodico
+                ).order_by(Articulo.fecha_publicacion.desc())
+                
+                if search_query:
+                    articles_query = articles_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
+                
+                articles = articles_query.all()
+                
+                if articles:  # Only include events that have articles
+                    event_data = {
+                        'evento_id': event.evento_id,
+                        'titulo': event.titulo,
+                        'descripcion': event.descripcion,
+                        'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
+                        'articles': [{
+                            'id': a.articulo_id,
+                            'titular': a.titular,
+                            'paywall': a.paywall,
+                            'periodico_logo': a.periodico.logo_url if a.periodico else None,
+                            'url': a.url
+                        } for a in articles]
+                    }
+                    category_data['events'].append(event_data)
+            
+            if category_data['events']:  # Only include categories that have events with articles
+                result['categories'].append(category_data)
         
-        articles = articles_query.all()
+        return jsonify(result)
         
-        if articles:  # Only include events that have articles
-            result['events'].append({
-                'evento_id': event.evento_id,
-                'titulo': event.titulo,
-                'descripcion': event.descripcion,
-                'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
-                'articles': [{
-                    'id': a.articulo_id,
-                    'titular': a.titular,
-                    'paywall': a.paywall,
-                    'periodico_logo': a.periodico.logo_url if a.periodico else None,
-                    'url': a.url
-                } for a in articles]
-            })
-    
-    return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error fetching articles: {str(e)}")
+        return jsonify({'error': 'An error occurred while fetching articles'}), 500
 
 # Authentication routes
 @app.route('/login', methods=['GET', 'POST'])
