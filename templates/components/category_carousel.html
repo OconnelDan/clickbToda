@@ -1,7 +1,9 @@
 <div class="articles-carousel">
     <div class="carousel-container" data-category="{{ category.Categoria.categoria_id }}">
         <div class="carousel-wrapper">
-            <!-- Articles will be loaded here dynamically -->
+            {% if not category.articles %}
+            <div class="loading-placeholder">Loading articles...</div>
+            {% endif %}
         </div>
     </div>
 </div>

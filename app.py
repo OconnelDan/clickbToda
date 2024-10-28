@@ -3,7 +3,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import func, text
 from datetime import datetime
+import logging
 from config import Config
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -19,46 +24,67 @@ from models import User, Articulo, Evento, Categoria, Periodico
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Initialize database
 def init_db():
     with app.app_context():
-        # Create schema first
         try:
-            db.session.execute(text('CREATE SCHEMA IF NOT EXISTS app'))
+            # Drop schema if exists
+            logger.info("Dropping schema if exists...")
+            db.session.execute(text('DROP SCHEMA IF EXISTS app CASCADE'))
             db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error creating schema: {e}")
-            return False
             
-        # Then create all tables
-        try:
-            db.create_all()
+            # Create schema
+            logger.info("Creating schema 'app'...")
+            db.session.execute(text('CREATE SCHEMA app'))
             db.session.commit()
+            
+            # Create enum types
+            logger.info("Creating custom enum types...")
+            db.session.execute(text("""
+                CREATE TYPE app.agencia_enum AS ENUM ('Reuters', 'EFE', 'Otro')
+            """))
+            db.session.execute(text("""
+                CREATE TYPE app.sentimiento_enum AS ENUM ('positivo', 'negativo', 'neutral')
+            """))
+            db.session.commit()
+
+            # Create tables using SQLAlchemy models
+            logger.info("Creating tables through SQLAlchemy models...")
+            db.create_all()
+            
+            logger.info("Database initialization completed successfully")
             return True
+            
         except Exception as e:
             db.session.rollback()
-            print(f"Error creating tables: {e}")
+            logger.error(f"Error during database initialization: {str(e)}")
             return False
 
 # Initialize database on startup
 if not init_db():
-    print("Failed to initialize database")
+    logger.error("Failed to initialize database")
 
 @app.route('/')
 def index():
     # Get latest date from articles
     latest_date = db.session.query(func.max(Articulo.fecha_publicacion)).scalar()
     
-    # Get categories with events count
+    # Get categories with their event counts
     categories = db.session.query(
-        Categoria, 
+        Categoria,
         func.count(Evento.evento_id).label('event_count')
-    ).join(Evento, isouter=True).group_by(Categoria.categoria_id, Categoria.nombre).order_by(func.count(Evento.evento_id).desc()).all()
+    ).outerjoin(
+        Evento,
+        Categoria.categoria_id == Evento.categoria_id
+    ).group_by(
+        Categoria.categoria_id,
+        Categoria.nombre
+    ).order_by(
+        func.count(Evento.evento_id).desc()
+    ).all()
     
     return render_template('index.html', 
                          categories=categories,
-                         selected_date=latest_date)
+                         selected_date=latest_date or datetime.now().date())
 
 @app.route('/api/articles')
 def get_articles():
@@ -66,14 +92,23 @@ def get_articles():
     category_id = request.args.get('category_id')
     search_query = request.args.get('q')
     
-    query = Articulo.query
+    query = db.session.query(Articulo).join(
+        Articulo.eventos
+    ).join(
+        Evento.categoria
+    ).join(
+        Articulo.periodico
+    )
     
     if date_str:
-        date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        query = query.filter(Articulo.fecha_publicacion == date)
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            query = query.filter(Articulo.fecha_publicacion == date)
+        except ValueError:
+            pass
         
     if category_id:
-        query = query.join(Articulo.eventos).filter(Evento.categoria_id == category_id)
+        query = query.filter(Evento.categoria_id == category_id)
         
     if search_query:
         query = query.filter(Articulo.titular.ilike(f'%{search_query}%'))
