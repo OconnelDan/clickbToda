@@ -76,6 +76,52 @@
     color: var(--bs-secondary);
 }
 
+/* Tab Navigation Styles */
+.category-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: var(--bs-body-bg);
+    padding: 1rem 0;
+}
+
+.nav-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.nav-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.nav-tabs .nav-link {
+    white-space: nowrap;
+}
+
+.subcategory-nav {
+    background: var(--bs-body-bg);
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.nav-pills {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.nav-pills::-webkit-scrollbar {
+    display: none;
+}
+
+.nav-pills .nav-link {
+    white-space: nowrap;
+    margin-right: 0.5rem;
+}
+
 /* Custom scrollbar for carousel */
 .carousel-wrapper::-webkit-scrollbar {
     height: 6px;

@@ -1,36 +1,53 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const categorySelector = document.getElementById('categorySelector');
-    const subcategorySelector = document.getElementById('subcategorySelector');
-    
-    // Load all events initially without filters
+    initializeTabNavigation();
     showAllCategories();
-    
-    // Initialize the category selector
-    categorySelector.addEventListener('change', function() {
-        const selectedCategoryId = this.value;
-        if (selectedCategoryId) {
-            fetchSubcategories(selectedCategoryId);
-            loadEventsByCategory(selectedCategoryId);
-        } else {
-            resetSubcategorySelector();
-            showAllCategories();
-        }
-    });
-    
-    // Handle subcategory selection
-    subcategorySelector.addEventListener('change', function() {
-        const selectedCategoryId = categorySelector.value;
-        const selectedSubcategoryId = this.value;
-        if (selectedCategoryId && selectedSubcategoryId) {
-            loadEventsBySubcategory(selectedCategoryId, selectedSubcategoryId);
-        }
-    });
 });
+
+function initializeTabNavigation() {
+    // Initialize Bootstrap tabs
+    const tabElements = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabElements.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(event) {
+            const categoryId = event.target.dataset.categoryId;
+            if (categoryId) {
+                fetchSubcategories(categoryId);
+                loadEventsByCategory(categoryId);
+            } else {
+                hideSubcategoryTabs();
+                showAllCategories();
+            }
+        });
+    });
+
+    // Handle subcategory clicks
+    const subcategoryNav = document.querySelector('.subcategory-nav');
+    if (subcategoryNav) {
+        subcategoryNav.addEventListener('click', function(e) {
+            const tabButton = e.target.closest('[role="tab"]');
+            if (!tabButton) return;
+
+            // Remove active class from all subcategory tabs
+            subcategoryNav.querySelectorAll('[role="tab"]').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Add active class to clicked tab
+            tabButton.classList.add('active');
+
+            const categoryId = document.querySelector('#categoryTabs .nav-link.active').dataset.categoryId;
+            const subcategoryId = tabButton.dataset.subcategoryId;
+
+            if (categoryId && subcategoryId) {
+                loadEventsBySubcategory(categoryId, subcategoryId);
+            } else if (categoryId) {
+                loadEventsByCategory(categoryId);
+            }
+        });
+    }
+}
 
 function showError(message, error = null) {
     console.error('Error:', message, error);
-    
-    // Remove any existing error messages
     const existingErrors = document.querySelectorAll('.alert-danger');
     existingErrors.forEach(error => error.remove());
     
@@ -43,153 +60,131 @@ function showError(message, error = null) {
     `;
     
     const container = document.querySelector('.container');
-    container.insertBefore(errorDiv, container.firstChild);
-    
-    // Auto-dismiss after 5 seconds
-    setTimeout(() => {
-        errorDiv.remove();
-    }, 5000);
-}
-
-function handleApiError(error, operation) {
-    console.error(`Error during ${operation}:`, error);
-    
-    let userMessage;
-    if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        userMessage = `Failed to ${operation}. Server returned an error.`;
-        console.error('Response:', error.response);
-    } else if (error.request) {
-        // The request was made but no response was received
-        userMessage = 'Unable to reach the server. Please check your internet connection.';
-        console.error('No response received:', error.request);
-    } else {
-        // Something happened in setting up the request that triggered an Error
-        userMessage = 'An unexpected error occurred. Please try again.';
-        console.error('Error details:', error.message);
+    if (container) {
+        container.insertBefore(errorDiv, container.firstChild);
+        setTimeout(() => errorDiv.remove(), 5000);
     }
-    
-    showError(userMessage, error);
-    
-    // Return empty data structure to prevent undefined errors
-    return {
-        categories: []
-    };
 }
 
 function fetchSubcategories(categoryId) {
+    const subcategoryNav = document.querySelector('.subcategory-nav');
+    if (!subcategoryNav) return;
+
     fetch(`/api/subcategories?category_id=${categoryId}`)
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
-            updateSubcategorySelector(data);
+            if (data && data.length > 0) {
+                updateSubcategoryTabs(data);
+                subcategoryNav.style.display = 'block';
+            } else {
+                hideSubcategoryTabs();
+            }
         })
         .catch(error => {
-            handleApiError(error, 'load subcategories');
-            resetSubcategorySelector(); // Recovery action
+            console.error('Error fetching subcategories:', error);
+            hideSubcategoryTabs();
         });
 }
 
-function updateSubcategorySelector(subcategories) {
-    const subcategorySelector = document.getElementById('subcategorySelector');
-    subcategorySelector.innerHTML = '<option value="">Select Subcategory</option>';
-    
-    if (subcategories && subcategories.length > 0) {
-        subcategorySelector.disabled = false;
-        subcategories.forEach(subcategory => {
-            const option = document.createElement('option');
-            option.value = subcategory.id;
-            option.textContent = subcategory.subnombre;
-            subcategorySelector.appendChild(option);
-        });
-    } else {
-        subcategorySelector.disabled = true;
+function updateSubcategoryTabs(subcategories) {
+    const subcategoryTabs = document.getElementById('subcategoryTabs');
+    if (!subcategoryTabs) return;
+
+    subcategoryTabs.innerHTML = `
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" role="tab" data-subcategory-id="">
+                All
+            </button>
+        </li>
+        ${subcategories.map(subcategory => `
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" role="tab" data-subcategory-id="${subcategory.id}">
+                    ${subcategory.subnombre}
+                </button>
+            </li>
+        `).join('')}
+    `;
+}
+
+function hideSubcategoryTabs() {
+    const subcategoryNav = document.querySelector('.subcategory-nav');
+    if (subcategoryNav) {
+        subcategoryNav.style.display = 'none';
+        const subcategoryTabs = document.getElementById('subcategoryTabs');
+        if (subcategoryTabs) {
+            subcategoryTabs.innerHTML = '';
+        }
     }
-}
-
-function resetSubcategorySelector() {
-    const subcategorySelector = document.getElementById('subcategorySelector');
-    subcategorySelector.innerHTML = '<option value="">Select Subcategory</option>';
-    subcategorySelector.disabled = true;
 }
 
 function showAllCategories() {
     fetch('/api/articles')
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
-            if (!data.categories) {
-                throw new Error('Invalid response format: missing categories');
-            }
+            if (!data.categories) throw new Error('Invalid response format: missing categories');
             updateDisplay(data);
+            hideSubcategoryTabs();
         })
         .catch(error => {
-            handleApiError(error, 'load articles');
-            // Show placeholder content
+            console.error('Error loading events:', error);
             const eventsContent = document.getElementById('events-content');
-            eventsContent.innerHTML = `
-                <div class="alert alert-info">
-                    Unable to load articles. 
-                    <button onclick="showAllCategories()" class="btn btn-link">Try Again</button>
-                </div>
-            `;
+            if (eventsContent) {
+                eventsContent.innerHTML = `
+                    <div class="alert alert-info">
+                        Unable to load articles. 
+                        <button onclick="showAllCategories()" class="btn btn-link">Try Again</button>
+                    </div>
+                `;
+            }
         });
 }
 
 function loadEventsByCategory(categoryId) {
+    if (!categoryId) return;
+    
     fetch(`/api/articles?category_id=${categoryId}`)
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
-            if (!data.categories) {
-                throw new Error('Invalid response format: missing categories');
-            }
+            if (!data.categories) throw new Error('Invalid response format: missing categories');
             updateDisplay(data);
         })
         .catch(error => {
-            handleApiError(error, 'load category articles');
-            // Recovery: show all categories
+            console.error('Error loading category events:', error);
             showAllCategories();
         });
 }
 
 function loadEventsBySubcategory(categoryId, subcategoryId) {
+    if (!categoryId || !subcategoryId) return;
+    
     fetch(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`)
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
-            if (!data.categories) {
-                throw new Error('Invalid response format: missing categories');
-            }
+            if (!data.categories) throw new Error('Invalid response format: missing categories');
             updateDisplay(data);
         })
         .catch(error => {
-            handleApiError(error, 'load subcategory articles');
-            // Recovery: reload category view
+            console.error('Error loading subcategory events:', error);
             loadEventsByCategory(categoryId);
         });
 }
 
 function updateDisplay(data) {
     const eventsContent = document.getElementById('events-content');
-    
+    if (!eventsContent) return;
+
     if (!data.categories || data.categories.length === 0) {
         eventsContent.innerHTML = `
             <div class="alert alert-info">
@@ -198,15 +193,9 @@ function updateDisplay(data) {
         `;
         return;
     }
-    
-    eventsContent.innerHTML = '';
 
-    data.categories.forEach(category => {
-        const categorySection = document.createElement('div');
-        categorySection.className = 'category-section mb-5';
-        categorySection.dataset.categoryId = category.categoria_id;
-
-        categorySection.innerHTML = `
+    eventsContent.innerHTML = data.categories.map(category => `
+        <div class="category-section mb-5" data-category-id="${category.categoria_id}">
             <h2 class="mb-3">${category.nombre}</h2>
             <div class="category-content">
                 ${category.subcategories.map(subcategory => `
@@ -257,11 +246,8 @@ function updateDisplay(data) {
                     </div>
                 `).join('')}
             </div>
-        `;
+        </div>
+    `).join('');
 
-        eventsContent.appendChild(categorySection);
-    });
-
-    // Initialize carousels after updating the display
     initializeCarousels();
 }
