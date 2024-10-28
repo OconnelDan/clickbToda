@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const categorySelector = document.getElementById('categorySelector');
     const subcategorySelector = document.getElementById('subcategorySelector');
     
-    // Load all events initially without date filter
+    // Load all events initially without filters
     showAllCategories();
     
     // Initialize the category selector
@@ -27,28 +27,71 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-function showError(message) {
+function showError(message, error = null) {
+    console.error('Error:', message, error);
+    
+    // Remove any existing error messages
+    const existingErrors = document.querySelectorAll('.alert-danger');
+    existingErrors.forEach(error => error.remove());
+    
     const errorDiv = document.createElement('div');
     errorDiv.className = 'alert alert-danger alert-dismissible fade show';
     errorDiv.innerHTML = `
         ${message}
+        ${error ? `<br><small class="text-muted">Technical details: ${error.message || error}</small>` : ''}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    document.querySelector('.container').insertBefore(errorDiv, document.querySelector('.container').firstChild);
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(errorDiv, container.firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        errorDiv.remove();
+    }, 5000);
+}
+
+function handleApiError(error, operation) {
+    console.error(`Error during ${operation}:`, error);
+    
+    let userMessage;
+    if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        userMessage = `Failed to ${operation}. Server returned an error.`;
+        console.error('Response:', error.response);
+    } else if (error.request) {
+        // The request was made but no response was received
+        userMessage = 'Unable to reach the server. Please check your internet connection.';
+        console.error('No response received:', error.request);
+    } else {
+        // Something happened in setting up the request that triggered an Error
+        userMessage = 'An unexpected error occurred. Please try again.';
+        console.error('Error details:', error.message);
+    }
+    
+    showError(userMessage, error);
+    
+    // Return empty data structure to prevent undefined errors
+    return {
+        categories: []
+    };
 }
 
 function fetchSubcategories(categoryId) {
     fetch(`/api/subcategories?category_id=${categoryId}`)
         .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch subcategories');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             return response.json();
         })
         .then(data => {
             updateSubcategorySelector(data);
         })
         .catch(error => {
-            console.error('Error fetching subcategories:', error);
-            showError('Failed to load subcategories. Please try again.');
+            handleApiError(error, 'load subcategories');
+            resetSubcategorySelector(); // Recovery action
         });
 }
 
@@ -78,53 +121,84 @@ function resetSubcategorySelector() {
 function showAllCategories() {
     fetch('/api/articles')
         .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch articles');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             return response.json();
         })
         .then(data => {
-            if (!data.categories) throw new Error('Invalid response format');
+            if (!data.categories) {
+                throw new Error('Invalid response format: missing categories');
+            }
             updateDisplay(data);
         })
         .catch(error => {
-            console.error('Error loading events:', error);
-            showError('Failed to load articles. Please try refreshing the page.');
+            handleApiError(error, 'load articles');
+            // Show placeholder content
+            const eventsContent = document.getElementById('events-content');
+            eventsContent.innerHTML = `
+                <div class="alert alert-info">
+                    Unable to load articles. 
+                    <button onclick="showAllCategories()" class="btn btn-link">Try Again</button>
+                </div>
+            `;
         });
 }
 
 function loadEventsByCategory(categoryId) {
     fetch(`/api/articles?category_id=${categoryId}`)
         .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch articles');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             return response.json();
         })
         .then(data => {
-            if (!data.categories) throw new Error('Invalid response format');
+            if (!data.categories) {
+                throw new Error('Invalid response format: missing categories');
+            }
             updateDisplay(data);
         })
         .catch(error => {
-            console.error('Error loading events:', error);
-            showError('Failed to load articles. Please try again.');
+            handleApiError(error, 'load category articles');
+            // Recovery: show all categories
+            showAllCategories();
         });
 }
 
 function loadEventsBySubcategory(categoryId, subcategoryId) {
     fetch(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`)
         .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch articles');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             return response.json();
         })
         .then(data => {
-            if (!data.categories) throw new Error('Invalid response format');
+            if (!data.categories) {
+                throw new Error('Invalid response format: missing categories');
+            }
             updateDisplay(data);
         })
         .catch(error => {
-            console.error('Error loading events:', error);
-            showError('Failed to load articles. Please try again.');
+            handleApiError(error, 'load subcategory articles');
+            // Recovery: reload category view
+            loadEventsByCategory(categoryId);
         });
 }
 
 function updateDisplay(data) {
     const eventsContent = document.getElementById('events-content');
+    
+    if (!data.categories || data.categories.length === 0) {
+        eventsContent.innerHTML = `
+            <div class="alert alert-info">
+                No articles found for the selected criteria.
+            </div>
+        `;
+        return;
+    }
+    
     eventsContent.innerHTML = '';
 
     data.categories.forEach(category => {

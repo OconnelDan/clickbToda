@@ -24,41 +24,6 @@ from models import User, Articulo, Evento, Categoria, Periodico, articulo_evento
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-def init_db():
-    with app.app_context():
-        try:
-            # Drop schema if exists
-            logger.info("Dropping schema if exists...")
-            db.session.execute(text('DROP SCHEMA IF EXISTS app CASCADE'))
-            db.session.commit()
-            
-            # Create schema
-            logger.info("Creating schema 'app'...")
-            db.session.execute(text('CREATE SCHEMA app'))
-            db.session.commit()
-            
-            # Create enum types
-            logger.info("Creating custom enum types...")
-            db.session.execute(text("""
-                CREATE TYPE app.agencia_enum AS ENUM ('Reuters', 'EFE', 'Otro')
-            """))
-            db.session.execute(text("""
-                CREATE TYPE app.sentimiento_enum AS ENUM ('positivo', 'negativo', 'neutral')
-            """))
-            db.session.commit()
-
-            # Create tables using SQLAlchemy models
-            logger.info("Creating tables through SQLAlchemy models...")
-            db.create_all()
-            
-            logger.info("Database initialization completed successfully")
-            return True
-            
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error during database initialization: {str(e)}")
-            return False
-
 @app.route('/')
 def index():
     # Get categories with their event counts
@@ -100,39 +65,24 @@ def get_subcategories():
 
 @app.route('/api/articles')
 def get_articles():
-    category_id = request.args.get('category_id')
-    subcategory_id = request.args.get('subcategory_id')
-    search_query = request.args.get('q')
-    
     try:
-        # Base query with all necessary joins
+        # Use exact query structure as specified
         base_query = db.session.query(
             Articulo, Evento, Categoria, Region, Periodico
-        ).join(
-            articulo_evento,
-            Articulo.articulo_id == articulo_evento.c.articulo_id
-        ).join(
-            Evento,
-            articulo_evento.c.evento_id == Evento.evento_id
-        ).join(
-            Categoria,
-            Evento.categoria_id == Categoria.categoria_id
-        ).outerjoin(
-            evento_region,
-            Evento.evento_id == evento_region.c.evento_id
-        ).outerjoin(
-            Region,
-            evento_region.c.region_id == Region.region_id
-        ).join(
-            Periodico,
-            Articulo.periodico_id == Periodico.periodico_id
-        )
+        ).select_from(text('app.articulo a'))\
+        .join(text('app.articulo_evento ae'), text('a.articulo_id = ae.articulo_id'), isouter=True)\
+        .join(text('app.evento e'), text('ae.evento_id = e.evento_id'), isouter=True)\
+        .join(text('app.categoria c'), text('e.categoria_id = c.categoria_id'), isouter=True)\
+        .join(text('app.evento_region er'), text('e.evento_id = er.evento_id'), isouter=True)\
+        .join(text('app.region r'), text('er.region_id = r.region_id'), isouter=True)\
+        .join(Periodico, Articulo.periodico_id == Periodico.periodico_id)
 
-        # Apply filters
+        # Apply optional filters
+        category_id = request.args.get('category_id')
+        search_query = request.args.get('q')
+        
         if category_id:
             base_query = base_query.filter(Categoria.categoria_id == category_id)
-        if subcategory_id:
-            base_query = base_query.filter(Categoria.categoria_id == subcategory_id)
         if search_query:
             base_query = base_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
 
@@ -147,6 +97,9 @@ def get_articles():
         # Organize results into hierarchical structure
         organized_data = {}
         for article, event, category, region, periodico in results:
+            if not category:
+                continue
+                
             # Initialize category if not exists
             if category.categoria_id not in organized_data:
                 organized_data[category.categoria_id] = {
@@ -165,25 +118,26 @@ def get_articles():
                     'events': {}
                 }
 
-            # Initialize event if not exists
-            if event.evento_id not in organized_data[category.categoria_id]['subcategories'][subcategory_key]['events']:
-                organized_data[category.categoria_id]['subcategories'][subcategory_key]['events'][event.evento_id] = {
-                    'evento_id': event.evento_id,
-                    'titulo': event.titulo,
-                    'descripcion': event.descripcion,
-                    'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
-                    'articles': []
-                }
+            if event:
+                # Initialize event if not exists
+                if event.evento_id not in organized_data[category.categoria_id]['subcategories'][subcategory_key]['events']:
+                    organized_data[category.categoria_id]['subcategories'][subcategory_key]['events'][event.evento_id] = {
+                        'evento_id': event.evento_id,
+                        'titulo': event.titulo,
+                        'descripcion': event.descripcion,
+                        'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
+                        'articles': []
+                    }
 
-            # Add article to event
-            organized_data[category.categoria_id]['subcategories'][subcategory_key]['events'][event.evento_id]['articles'].append({
-                'id': article.articulo_id,
-                'titular': article.titular,
-                'paywall': article.paywall,
-                'periodico_logo': periodico.logo_url,
-                'url': article.url,
-                'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None
-            })
+                # Add article to event
+                organized_data[category.categoria_id]['subcategories'][subcategory_key]['events'][event.evento_id]['articles'].append({
+                    'id': article.articulo_id,
+                    'titular': article.titular,
+                    'paywall': article.paywall,
+                    'periodico_logo': periodico.logo_url if periodico else None,
+                    'url': article.url,
+                    'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None
+                })
 
         # Convert to list format for response
         response_data = {
@@ -217,7 +171,10 @@ def get_articles():
         
     except Exception as e:
         logger.error(f"Error fetching articles: {str(e)}")
-        return jsonify({'error': 'An error occurred while fetching articles'}), 500
+        return jsonify({
+            'error': 'An error occurred while fetching articles',
+            'details': str(e)
+        }), 500
 
 # Authentication routes
 @app.route('/login', methods=['GET', 'POST'])
