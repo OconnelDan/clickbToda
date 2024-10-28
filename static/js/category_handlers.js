@@ -2,6 +2,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const categorySelector = document.getElementById('categorySelector');
     const subcategorySelector = document.getElementById('subcategorySelector');
     
+    // Load all events initially
+    showAllCategories();
+    
     // Initialize the category selector
     categorySelector.addEventListener('change', function() {
         const selectedCategoryId = this.value;
@@ -53,9 +56,24 @@ function resetSubcategorySelector() {
 }
 
 function showAllCategories() {
-    document.querySelectorAll('.category-section').forEach(section => {
-        section.style.display = 'block';
-    });
+    const date = document.getElementById('dateSelector').value;
+    let url = '/api/articles';
+    if (date) url += `?date=${date}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            document.querySelectorAll('.category-section').forEach(section => {
+                const categoryId = section.dataset.categoryId;
+                section.style.display = 'block';
+                const eventsContainer = section.querySelector('.events-container');
+                const categoryEvents = data.events.filter(event => {
+                    return true; // Show all events in each category section
+                });
+                updateEventsDisplay({ events: categoryEvents }, categoryId);
+            });
+        })
+        .catch(error => console.error('Error loading events:', error));
 }
 
 function loadEventsByCategory(categoryId) {
@@ -86,6 +104,8 @@ function loadEventsBySubcategory(categoryId, subcategoryId) {
 
 function updateEventsDisplay(data, categoryId) {
     const categorySection = document.querySelector(`.category-section[data-category-id="${categoryId}"]`);
+    if (!categorySection) return;
+    
     const eventsContainer = categorySection.querySelector('.events-container');
     
     if (data.events && data.events.length > 0) {

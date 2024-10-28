@@ -18,7 +18,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-from models import User, Articulo, Evento, Categoria, Periodico
+from models import User, Articulo, Evento, Categoria, Periodico, articulo_evento
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -109,8 +109,9 @@ def get_articles():
     search_query = request.args.get('q')
     
     # Query events first
-    events_query = db.session.query(Evento)
+    events_query = db.session.query(Evento).order_by(Evento.fecha_evento.desc())
     
+    # Apply filters if provided
     if category_id:
         events_query = events_query.filter(Evento.categoria_id == category_id)
         
@@ -132,7 +133,7 @@ def get_articles():
             articulo_evento.c.evento_id == event.evento_id
         ).join(
             Periodico
-        )
+        ).order_by(Articulo.fecha_publicacion.desc())
         
         if date_str:
             try:
@@ -144,7 +145,7 @@ def get_articles():
         if search_query:
             articles_query = articles_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
         
-        articles = articles_query.order_by(Articulo.fecha_publicacion.desc()).all()
+        articles = articles_query.all()
         
         if articles:  # Only include events that have articles
             result['events'].append({
