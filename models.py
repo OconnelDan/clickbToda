@@ -80,20 +80,15 @@ class Articulo(db.Model):
     ideologia = db.relationship('Ideologia', backref='articulos')
     eventos = db.relationship('Evento', secondary=articulo_evento, backref='articulos')
 
-class Periodico(db.Model):
-    __tablename__ = 'periodico'
+class Categoria(db.Model):
+    __tablename__ = 'categoria'
     __table_args__ = {'schema': 'app'}
     
-    periodico_id = db.Column(db.Integer, primary_key=True)
+    categoria_id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(255), nullable=False)
-    pais_iso_code = db.Column(db.String(2))
-    idioma = db.Column(db.String(50))
-    sitio_web = db.Column(db.String(255))
-    logo_url = db.Column(db.String(255))
-    tipo = db.Column(db.String(50))
-    circulacion = db.Column(db.Integer)
-    suscriptores = db.Column(db.Integer)
-    ideologia_id = db.Column(db.Integer, db.ForeignKey('app.ideologia.ideologia_id'))
+    descripcion = db.Column(db.Text)
+    subnombre = db.Column(db.String)
+    subdescripcion = db.Column(db.String)
 
 class Evento(db.Model):
     __tablename__ = 'evento'
@@ -115,14 +110,7 @@ class Evento(db.Model):
     categoria = db.relationship('Categoria', backref='eventos')
     regiones = db.relationship('Region', secondary=evento_region, backref='eventos')
 
-class Categoria(db.Model):
-    __tablename__ = 'categoria'
-    __table_args__ = {'schema': 'app'}
-    
-    categoria_id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(255), nullable=False)
-    descripcion = db.Column(db.Text)
-
+# Rest of the models...
 class Region(db.Model):
     __tablename__ = 'region'
     __table_args__ = {'schema': 'app'}
@@ -154,45 +142,17 @@ class Periodista(db.Model):
     nacionalidad = db.Column(db.String(255))
     foto = db.Column(db.String(255))
 
-class Influencer(db.Model):
-    __tablename__ = 'influencer'
+class Periodico(db.Model):
+    __tablename__ = 'periodico'
     __table_args__ = {'schema': 'app'}
     
-    influencer_id = db.Column(db.Integer, primary_key=True)
+    periodico_id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(255), nullable=False)
-    plataforma = db.Column(db.String(255))
-    username = db.Column(db.String(255))
-    seguidores = db.Column(db.Integer)
-    url = db.Column(db.String(255))
-
-class InfluencerOpinion(db.Model):
-    __tablename__ = 'influencer_opinion'
-    __table_args__ = {'schema': 'app'}
-    
-    opinion_id = db.Column(db.Integer, primary_key=True)
-    influencer_id = db.Column(db.Integer, db.ForeignKey('app.influencer.influencer_id'), nullable=False)
-    evento_id = db.Column(db.Integer, db.ForeignKey('app.evento.evento_id'), nullable=False)
-    contenido = db.Column(db.Text)
-    fecha_publicacion = db.Column(db.DateTime, default=datetime.utcnow)
-    url = db.Column(db.String(255))
-
-    influencer = db.relationship('Influencer', backref='opiniones')
-    evento = db.relationship('Evento', backref='opiniones')
-
-class UserLog(db.Model):
-    __tablename__ = 'user_log'
-    __table_args__ = {'schema': 'app'}
-    
-    log_id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('app.USER.user_id'))
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    articulo_id = db.Column(db.Integer, db.ForeignKey('app.articulo.articulo_id'))
-    evento_id = db.Column(db.Integer, db.ForeignKey('app.evento.evento_id'))
+    pais_iso_code = db.Column(db.String(2))
+    idioma = db.Column(db.String(50))
+    sitio_web = db.Column(db.String(255))
+    logo_url = db.Column(db.String(255))
     tipo = db.Column(db.String(50))
-    ip = db.Column(db.String(50))
-    navegador = db.Column(db.String(255))
-    puntos_otorgados = db.Column(db.Integer, default=0)
-
-    user = db.relationship('User', backref='logs')
-    articulo = db.relationship('Articulo', backref='logs')
-    evento = db.relationship('Evento', backref='logs')
+    circulacion = db.Column(db.Integer)
+    suscriptores = db.Column(db.Integer)
+    ideologia_id = db.Column(db.Integer, db.ForeignKey('app.ideologia.ideologia_id'))

@@ -10,4 +10,6 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "flask-login>=0.6.3",
     "oauthlib>=3.2.2",
+    "werkzeug>=3.0.6",
+    "sqlalchemy>=2.0.36",
 ]

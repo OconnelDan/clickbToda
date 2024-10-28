@@ -7,9 +7,24 @@ def seed_database():
         try:
             # Create sample categories
             categories_data = [
-                {'nombre': 'Politics', 'descripcion': 'Political news and events'},
-                {'nombre': 'Technology', 'descripcion': 'Tech news and innovations'},
-                {'nombre': 'Sports', 'descripcion': 'Sports coverage and updates'}
+                {
+                    'nombre': 'Politics', 
+                    'descripcion': 'Political news and events',
+                    'subnombre': 'Government & Policy',
+                    'subdescripcion': 'Coverage of government decisions and policy changes'
+                },
+                {
+                    'nombre': 'Technology', 
+                    'descripcion': 'Tech news and innovations',
+                    'subnombre': 'Digital & Innovation',
+                    'subdescripcion': 'Latest developments in technology and digital transformation'
+                },
+                {
+                    'nombre': 'Sports', 
+                    'descripcion': 'Sports coverage and updates',
+                    'subnombre': 'Athletics & Games',
+                    'subdescripcion': 'Coverage of sports events and athlete achievements'
+                }
             ]
             
             categories = []
