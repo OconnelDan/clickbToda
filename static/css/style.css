@@ -1,0 +1,53 @@
+/* Mobile-first styles */
+.articles-carousel {
+    position: relative;
+    overflow: hidden;
+    padding: 1rem 0;
+}
+
+.carousel-wrapper {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    gap: 1rem;
+}
+
+.article-card {
+    flex: 0 0 auto;
+    width: calc(50% - 0.5rem); /* 2 cards per row on mobile */
+    scroll-snap-align: start;
+}
+
+.newspaper-logo {
+    max-height: 30px;
+    width: auto;
+    object-fit: contain;
+}
+
+.article-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.9rem;
+}
+
+/* Tablet and up */
+@media (min-width: 768px) {
+    .article-card {
+        width: calc(33.333% - 0.67rem); /* 3 cards per row */
+    }
+    
+    .article-title {
+        font-size: 1rem;
+    }
+}
+
+/* Desktop and up */
+@media (min-width: 992px) {
+    .article-card {
+        width: calc(25% - 0.75rem); /* 4 cards per row */
+    }
+}
