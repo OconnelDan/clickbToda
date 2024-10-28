@@ -86,43 +86,84 @@ def index():
                          categories=categories,
                          selected_date=latest_date or datetime.now().date())
 
+@app.route('/api/subcategories')
+def get_subcategories():
+    category_id = request.args.get('category_id')
+    if not category_id:
+        return jsonify([])
+        
+    category = Categoria.query.get(category_id)
+    if not category or not category.subnombre:
+        return jsonify([])
+        
+    return jsonify([{
+        'id': category.categoria_id,
+        'subnombre': category.subnombre
+    }])
+
 @app.route('/api/articles')
 def get_articles():
     date_str = request.args.get('date')
     category_id = request.args.get('category_id')
+    subcategory_id = request.args.get('subcategory_id')
     search_query = request.args.get('q')
     
-    query = db.session.query(Articulo).join(
-        Articulo.eventos
-    ).join(
-        Evento.categoria
-    ).join(
-        Articulo.periodico
-    )
+    # Query events first
+    events_query = db.session.query(Evento)
     
-    if date_str:
-        try:
-            date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            query = query.filter(Articulo.fecha_publicacion == date)
-        except ValueError:
-            pass
-        
     if category_id:
-        query = query.filter(Evento.categoria_id == category_id)
+        events_query = events_query.filter(Evento.categoria_id == category_id)
         
-    if search_query:
-        query = query.filter(Articulo.titular.ilike(f'%{search_query}%'))
+    if subcategory_id:
+        events_query = events_query.join(Categoria).filter(
+            Categoria.categoria_id == subcategory_id
+        )
     
-    articles = query.order_by(Articulo.fecha_publicacion.desc()).limit(50).all()
+    events = events_query.all()
     
-    return jsonify([{
-        'id': a.articulo_id,
-        'titular': a.titular,
-        'paywall': a.paywall,
-        'periodico_logo': a.periodico.logo_url if a.periodico else None,
-        'url': a.url
-    } for a in articles])
+    # For each event, get its articles
+    result = {'events': []}
+    
+    for event in events:
+        articles_query = db.session.query(Articulo).join(
+            articulo_evento,
+            Articulo.articulo_id == articulo_evento.c.articulo_id
+        ).filter(
+            articulo_evento.c.evento_id == event.evento_id
+        ).join(
+            Periodico
+        )
+        
+        if date_str:
+            try:
+                date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                articles_query = articles_query.filter(Articulo.fecha_publicacion == date)
+            except ValueError:
+                pass
+            
+        if search_query:
+            articles_query = articles_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
+        
+        articles = articles_query.order_by(Articulo.fecha_publicacion.desc()).all()
+        
+        if articles:  # Only include events that have articles
+            result['events'].append({
+                'evento_id': event.evento_id,
+                'titulo': event.titulo,
+                'descripcion': event.descripcion,
+                'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
+                'articles': [{
+                    'id': a.articulo_id,
+                    'titular': a.titular,
+                    'paywall': a.paywall,
+                    'periodico_logo': a.periodico.logo_url if a.periodico else None,
+                    'url': a.url
+                } for a in articles]
+            })
+    
+    return jsonify(result)
 
+# Authentication routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':

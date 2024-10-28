@@ -12,15 +12,22 @@
            value="{{ selected_date.strftime('%Y-%m-%d') if selected_date else '' }}">
 </div>
 
-{% for category in categories %}
-<div class="category-section mb-5">
-    <h2 class="mb-3">{{ category.Categoria.nombre }}</h2>
-    {% include "components/category_carousel.html" %}
+{% include "components/category_selectors.html" %}
+
+<div id="events-content">
+    {% for category in categories %}
+    <div class="category-section mb-5" data-category-id="{{ category.Categoria.categoria_id }}">
+        <h2 class="mb-3">{{ category.Categoria.nombre }}</h2>
+        <div class="events-container">
+            <!-- Events will be loaded here dynamically -->
+        </div>
+    </div>
+    {% endfor %}
 </div>
-{% endfor %}
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/category_handlers.js') }}"></script>
 <script src="{{ url_for('static', filename='js/carousel.js') }}"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 {% endblock %}

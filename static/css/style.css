@@ -16,7 +16,7 @@
 
 .article-card {
     flex: 0 0 auto;
-    width: calc(50% - 0.5rem); /* 2 cards per row on mobile */
+    width: calc(100% - 1rem); /* 1 card per row on mobile */
     scroll-snap-align: start;
 }
 
@@ -34,20 +34,49 @@
     font-size: 0.9rem;
 }
 
-/* Tablet and up */
+.event-info {
+    margin-bottom: 1rem;
+}
+
+.event-title {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.event-description {
+    font-size: 0.9rem;
+    color: var(--bs-secondary);
+}
+
+/* Tablet (md) */
 @media (min-width: 768px) {
     .article-card {
-        width: calc(33.333% - 0.67rem); /* 3 cards per row */
+        width: calc(50% - 1rem); /* 2 cards per row */
     }
     
     .article-title {
         font-size: 1rem;
     }
+    
+    .event-info {
+        margin-bottom: 0;
+    }
 }
 
-/* Desktop and up */
+/* Desktop (lg) */
 @media (min-width: 992px) {
     .article-card {
-        width: calc(25% - 0.75rem); /* 4 cards per row */
+        width: calc(33.333% - 1rem); /* 3 cards per row */
+    }
+    
+    .event-title {
+        font-size: 1.25rem;
+    }
+}
+
+/* Large Desktop (xl) */
+@media (min-width: 1200px) {
+    .article-card {
+        width: calc(25% - 1rem); /* 4 cards per row */
     }
 }
