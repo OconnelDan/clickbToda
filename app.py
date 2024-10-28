@@ -5,15 +5,30 @@ from sqlalchemy import func, text, desc
 from datetime import datetime
 import logging
 from config import Config
+import sys
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
-db = SQLAlchemy(app)
+# Initialize SQLAlchemy with engine options
+try:
+    db = SQLAlchemy(app)
+    # Test database connection
+    with app.app_context():
+        db.engine.connect()
+    logger.info("Database connection successful")
+except Exception as e:
+    logger.error(f"Database connection failed: {str(e)}")
+    raise
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -26,67 +41,76 @@ def load_user(user_id):
 
 @app.route('/')
 def index():
-    # Get categories with their event counts
-    categories = db.session.query(
-        Categoria,
-        func.count(Evento.evento_id).label('event_count')
-    ).outerjoin(
-        Evento,
-        Categoria.categoria_id == Evento.categoria_id
-    ).group_by(
-        Categoria.categoria_id,
-        Categoria.nombre
-    ).order_by(
-        func.count(Evento.evento_id).desc()
-    ).all()
-    
-    return render_template('index.html', 
-                         categories=categories,
-                         selected_date=datetime.now().date())
+    try:
+        # Get unique categories with their event counts
+        categories = db.session.query(
+            Categoria,
+            func.count(Evento.evento_id).label('event_count')
+        ).outerjoin(
+            Evento,
+            Categoria.categoria_id == Evento.categoria_id
+        ).group_by(
+            Categoria.categoria_id,
+            Categoria.nombre
+        ).order_by(
+            func.count(Evento.evento_id).desc()
+        ).all()
+        
+        logger.info(f"Retrieved {len(categories)} categories")
+        return render_template('index.html', 
+                           categories=categories,
+                           selected_date=datetime.now().date())
+    except Exception as e:
+        logger.error(f"Error in index route: {str(e)}")
+        return render_template('index.html', categories=[], selected_date=datetime.now().date())
 
 @app.route('/api/subcategories')
 def get_subcategories():
-    category_id = request.args.get('category_id')
-    if not category_id:
-        return jsonify([])
-    
-    subcategories = db.session.query(
-        Categoria.categoria_id,
-        Categoria.subnombre
-    ).filter(
-        Categoria.categoria_id == category_id,
-        Categoria.subnombre.isnot(None)
-    ).all()
-    
-    return jsonify([{
-        'id': subcat.categoria_id,
-        'subnombre': subcat.subnombre
-    } for subcat in subcategories])
+    try:
+        category_id = request.args.get('category_id')
+        if not category_id:
+            return jsonify([])
+        
+        subcategories = db.session.query(
+            Categoria.categoria_id,
+            Categoria.subnombre
+        ).filter(
+            Categoria.categoria_id == category_id,
+            Categoria.subnombre.isnot(None)
+        ).all()
+        
+        return jsonify([{
+            'id': subcat.categoria_id,
+            'subnombre': subcat.subnombre
+        } for subcat in subcategories])
+    except Exception as e:
+        logger.error(f"Error in get_subcategories: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/articles')
 def get_articles():
     try:
-        # Use exact query structure as specified
-        base_query = db.session.query(
-            Articulo, Evento, Categoria, Region, Periodico
-        ).select_from(text('app.articulo a'))\
-        .join(text('app.articulo_evento ae'), text('a.articulo_id = ae.articulo_id'), isouter=True)\
-        .join(text('app.evento e'), text('ae.evento_id = e.evento_id'), isouter=True)\
-        .join(text('app.categoria c'), text('e.categoria_id = c.categoria_id'), isouter=True)\
-        .join(text('app.evento_region er'), text('e.evento_id = er.evento_id'), isouter=True)\
-        .join(text('app.region r'), text('er.region_id = r.region_id'), isouter=True)\
-        .join(Periodico, Articulo.periodico_id == Periodico.periodico_id)
-
-        # Apply optional filters
         category_id = request.args.get('category_id')
         search_query = request.args.get('q')
         
+        # Base query
+        base_query = db.session.query(
+            Articulo, Evento, Categoria, Region, Periodico
+        ).select_from(Articulo)\
+        .join(articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id, isouter=True)\
+        .join(Evento, articulo_evento.c.evento_id == Evento.evento_id, isouter=True)\
+        .join(Categoria, Evento.categoria_id == Categoria.categoria_id, isouter=True)\
+        .join(evento_region, Evento.evento_id == evento_region.c.evento_id, isouter=True)\
+        .join(Region, evento_region.c.region_id == Region.region_id, isouter=True)\
+        .join(Periodico, Articulo.periodico_id == Periodico.periodico_id)
+
+        # Apply filters
         if category_id:
             base_query = base_query.filter(Categoria.categoria_id == category_id)
         if search_query:
             base_query = base_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
 
-        # Execute query and fetch results
+        # Execute query
         results = base_query.order_by(
             Categoria.nombre,
             Categoria.subnombre,
@@ -94,13 +118,14 @@ def get_articles():
             desc(Articulo.fecha_publicacion)
         ).all()
 
-        # Organize results into hierarchical structure
+        logger.info(f"Retrieved {len(results)} articles")
+
+        # Organize results
         organized_data = {}
         for article, event, category, region, periodico in results:
             if not category:
                 continue
                 
-            # Initialize category if not exists
             if category.categoria_id not in organized_data:
                 organized_data[category.categoria_id] = {
                     'categoria_id': category.categoria_id,
@@ -109,7 +134,6 @@ def get_articles():
                     'subcategories': {}
                 }
 
-            # Initialize subcategory if not exists
             subcategory_key = category.subnombre or 'general'
             if subcategory_key not in organized_data[category.categoria_id]['subcategories']:
                 organized_data[category.categoria_id]['subcategories'][subcategory_key] = {
@@ -119,7 +143,6 @@ def get_articles():
                 }
 
             if event:
-                # Initialize event if not exists
                 if event.evento_id not in organized_data[category.categoria_id]['subcategories'][subcategory_key]['events']:
                     organized_data[category.categoria_id]['subcategories'][subcategory_key]['events'][event.evento_id] = {
                         'evento_id': event.evento_id,
@@ -129,7 +152,6 @@ def get_articles():
                         'articles': []
                     }
 
-                # Add article to event
                 organized_data[category.categoria_id]['subcategories'][subcategory_key]['events'][event.evento_id]['articles'].append({
                     'id': article.articulo_id,
                     'titular': article.titular,
@@ -139,7 +161,7 @@ def get_articles():
                     'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None
                 })
 
-        # Convert to list format for response
+        # Format response
         response_data = {
             'categories': [
                 {
@@ -168,7 +190,7 @@ def get_articles():
         }
 
         return jsonify(response_data)
-        
+            
     except Exception as e:
         logger.error(f"Error fetching articles: {str(e)}")
         return jsonify({
