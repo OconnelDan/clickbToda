@@ -42,16 +42,27 @@ def load_user(user_id):
 @app.route('/')
 def index():
     try:
-        logger.info("Executing categories query with schema: app")
         # Get unique categories with their event counts
         categories = db.session.query(
-            Categoria.nombre.label('nombre'),
+            Categoria,
             func.count(distinct(Evento.evento_id)).label('event_count')
         ).outerjoin(
             Evento,
             Categoria.categoria_id == Evento.categoria_id
         ).group_by(
-            Categoria.nombre
+            Categoria.categoria_id,
+            Categoria.nombre,
+            Categoria.descripcion,
+            Categoria.subnombre,
+            Categoria.subdescripcion
+        ).having(
+            Categoria.categoria_id == db.session.query(
+                func.min(Categoria.categoria_id)
+            ).filter(
+                Categoria.nombre == Categoria.nombre
+            ).group_by(
+                Categoria.nombre
+            )
         ).order_by(
             func.count(distinct(Evento.evento_id)).desc()
         ).all()
