@@ -45,19 +45,13 @@ def index():
         logger.info("Executing categories query with schema: app")
         # Get unique categories with their event counts
         categories = db.session.query(
-            Categoria,
+            Categoria.nombre.label('nombre'),
             func.count(distinct(Evento.evento_id)).label('event_count')
         ).outerjoin(
             Evento,
             Categoria.categoria_id == Evento.categoria_id
         ).group_by(
-            Categoria.categoria_id,
-            Categoria.nombre,
-            Categoria.descripcion,
-            Categoria.subnombre,
-            Categoria.subdescripcion
-        ).having(
-            func.count(distinct(Evento.evento_id)) > 0
+            Categoria.nombre
         ).order_by(
             func.count(distinct(Evento.evento_id)).desc()
         ).all()
@@ -115,25 +109,17 @@ def logout():
 @app.route('/api/subcategories')
 def get_subcategories():
     try:
-        category_id = request.args.get('category_id')
-        if not category_id:
+        category_name = request.args.get('category_name')
+        if not category_name:
             return jsonify([])
         
-        logger.info(f"Fetching subcategories for category ID: {category_id}")
-        # Get the category name first
-        category = db.session.query(Categoria.nombre).filter(
-            Categoria.categoria_id == category_id
-        ).first()
-        
-        if not category:
-            return jsonify([])
-            
-        # Get subcategories for all categories with this name
+        logger.info(f"Fetching subcategories for category name: {category_name}")
+        # Get all subcategories for this category name
         subcategories = db.session.query(
             Categoria.categoria_id,
             Categoria.subnombre
         ).filter(
-            Categoria.nombre == category.nombre,
+            Categoria.nombre == category_name,
             Categoria.subnombre.isnot(None)
         ).distinct(
             Categoria.subnombre
@@ -151,10 +137,10 @@ def get_subcategories():
 @app.route('/api/articles')
 def get_articles():
     try:
-        category_id = request.args.get('category_id')
+        category_name = request.args.get('category_name')
         subcategory_id = request.args.get('subcategory_id')
         
-        logger.info(f"Fetching articles for category ID: {category_id}, subcategory ID: {subcategory_id}")
+        logger.info(f"Fetching articles for category name: {category_name}, subcategory ID: {subcategory_id}")
         
         # Base query
         query = db.session.query(
@@ -173,18 +159,10 @@ def get_articles():
             Articulo.periodico_id == Periodico.periodico_id
         )
         
-        if category_id:
-            # Get category name first
-            category = db.session.query(Categoria.nombre).filter(
-                Categoria.categoria_id == category_id
-            ).first()
-            
-            if category:
-                # Filter by category name to get all related events
-                query = query.filter(Categoria.nombre == category.nombre)
-                
-                if subcategory_id:
-                    query = query.filter(Categoria.categoria_id == subcategory_id)
+        if category_name:
+            query = query.filter(Categoria.nombre == category_name)
+            if subcategory_id:
+                query = query.filter(Categoria.categoria_id == subcategory_id)
         
         # Get results
         results = query.all()
@@ -228,7 +206,7 @@ def get_articles():
             'categories': [
                 {
                     'categoria_id': cat_data['categoria_id'],
-                    'nombre': cat_data['nombre'],
+                    'nombre': cat_name,
                     'subcategories': [
                         {
                             'subnombre': subcat_data['subnombre'],

@@ -11,11 +11,11 @@
             </li>
             {% for category in categories %}
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="category-{{ category.Categoria.categoria_id }}-tab" 
-                        data-bs-toggle="tab" data-bs-target="#category-{{ category.Categoria.categoria_id }}" 
-                        type="button" role="tab" data-category-id="{{ category.Categoria.categoria_id }}"
-                        aria-controls="category-{{ category.Categoria.categoria_id }}" aria-selected="false">
-                    {{ category.Categoria.nombre }}
+                <button class="nav-link" id="category-{{ loop.index }}-tab" 
+                        data-bs-toggle="tab" data-bs-target="#category-{{ loop.index }}" 
+                        type="button" role="tab" data-category-name="{{ category.nombre }}"
+                        aria-controls="category-{{ loop.index }}" aria-selected="false">
+                    {{ category.nombre }}
                     <span class="badge rounded-pill bg-secondary ms-1">{{ category.event_count }}</span>
                 </button>
             </li>
