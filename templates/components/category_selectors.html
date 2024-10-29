@@ -1,4 +1,5 @@
 <div class="category-nav mb-4">
+    <!-- Category tabs with horizontal scroll for mobile -->
     <div class="nav-tabs-wrapper">
         <ul class="nav nav-tabs flex-nowrap overflow-auto" id="categoryTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -10,18 +11,19 @@
             </li>
             {% for category in categories %}
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="category-{{ loop.index }}-tab" 
-                        data-bs-toggle="tab" data-bs-target="#category-{{ loop.index }}" 
-                        type="button" role="tab" data-category-name="{{ category[0].nombre }}"
-                        aria-controls="category-{{ loop.index }}" aria-selected="false">
-                    {{ category[0].nombre }}
-                    <span class="badge rounded-pill bg-secondary ms-1">{{ category[1] }}</span>
+                <button class="nav-link" id="category-{{ category.Categoria.categoria_id }}-tab" 
+                        data-bs-toggle="tab" data-bs-target="#category-{{ category.Categoria.categoria_id }}" 
+                        type="button" role="tab" data-category-id="{{ category.Categoria.categoria_id }}"
+                        aria-controls="category-{{ category.Categoria.categoria_id }}" aria-selected="false">
+                    {{ category.Categoria.nombre }}
+                    <span class="badge rounded-pill bg-secondary ms-1">{{ category.event_count }}</span>
                 </button>
             </li>
             {% endfor %}
         </ul>
     </div>
 
+    <!-- Subcategory pills with slide animation -->
     <div class="subcategory-nav">
         <div class="nav-pills-wrapper">
             <ul class="nav nav-pills flex-nowrap" id="subcategoryTabs" role="tablist">

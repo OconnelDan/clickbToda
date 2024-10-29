@@ -7,10 +7,10 @@ function initializeTabNavigation() {
     const tabElements = document.querySelectorAll('[data-bs-toggle="tab"]');
     tabElements.forEach(tab => {
         tab.addEventListener('shown.bs.tab', function(event) {
-            const categoryName = event.target.dataset.categoryName;
-            if (categoryName) {
-                fetchSubcategories(categoryName);
-                loadEventsByCategory(categoryName);
+            const categoryId = event.target.dataset.categoryId;
+            if (categoryId) {
+                fetchSubcategories(categoryId);
+                loadEventsByCategory(categoryId);
             } else {
                 hideSubcategoryTabs();
                 showAllCategories();
@@ -36,13 +36,13 @@ function initializeTabNavigation() {
             tabButton.classList.add('active');
             tabButton.setAttribute('aria-selected', 'true');
 
-            const categoryName = document.querySelector('#categoryTabs .nav-link.active').dataset.categoryName;
+            const categoryId = document.querySelector('#categoryTabs .nav-link.active').dataset.categoryId;
             const subcategoryId = tabButton.dataset.subcategoryId;
 
-            if (categoryName && subcategoryId) {
-                loadEventsBySubcategory(categoryName, subcategoryId);
-            } else if (categoryName) {
-                loadEventsByCategory(categoryName);
+            if (categoryId && subcategoryId) {
+                loadEventsBySubcategory(categoryId, subcategoryId);
+            } else if (categoryId) {
+                loadEventsByCategory(categoryId);
             }
         });
     }
@@ -82,11 +82,11 @@ function showError(message, error = null) {
     }
 }
 
-function fetchSubcategories(categoryName) {
+function fetchSubcategories(categoryId) {
     const subcategoryNav = document.querySelector('.subcategory-nav');
     if (!subcategoryNav) return;
 
-    fetch(`/api/subcategories?category_name=${encodeURIComponent(categoryName)}`)
+    fetch(`/api/subcategories?category_id=${categoryId}`)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -102,6 +102,7 @@ function fetchSubcategories(categoryName) {
         .catch(error => {
             console.error('Error fetching subcategories:', error);
             hideSubcategoryTabs();
+            showError('Failed to load subcategories', error);
         });
 }
 
@@ -109,18 +110,35 @@ function updateSubcategoryTabs(subcategories) {
     const subcategoryTabs = document.getElementById('subcategoryTabs');
     if (!subcategoryTabs) return;
 
+    // Create a Set to store unique subcategory names
+    const uniqueSubcategories = new Set();
+    const filteredSubcategories = subcategories.filter(subcat => {
+        if (!subcat.subnombre) return false;
+        const key = `${subcat.id}-${subcat.subnombre}`;
+        if (!uniqueSubcategories.has(key)) {
+            uniqueSubcategories.add(key);
+            return true;
+        }
+        return false;
+    });
+
+    if (filteredSubcategories.length === 0) {
+        hideSubcategoryTabs();
+        return;
+    }
+
     subcategoryTabs.innerHTML = `
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" role="tab" 
+            <button class="nav-link active" role="tab" data-subcategory-id="" 
                     aria-selected="true">
                 All
             </button>
         </li>
-        ${subcategories.map(subcategory => `
+        ${filteredSubcategories.map(subcategory => `
             <li class="nav-item" role="presentation">
                 <button class="nav-link" role="tab" data-subcategory-id="${subcategory.id}"
                         aria-selected="false">
-                    ${subcategory.subnombre}
+                    ${subcategory.subnombre || 'Unnamed'}
                 </button>
             </li>
         `).join('')}
@@ -143,10 +161,12 @@ function hideSubcategoryTabs() {
         subcategoryNav.classList.remove('show');
         setTimeout(() => {
             subcategoryNav.style.display = 'none';
+            subcategoryNav.innerHTML = '';
         }, 300);
     }
 }
 
+// Implementation of the missing functions
 function showAllCategories() {
     showLoadingIndicator('events-content');
     
@@ -165,15 +185,15 @@ function showAllCategories() {
         });
 }
 
-function loadEventsByCategory(categoryName) {
-    if (!categoryName) {
-        console.error('Invalid category name');
+function loadEventsByCategory(categoryId) {
+    if (!categoryId) {
+        console.error('Invalid category ID');
         return;
     }
     
     showLoadingIndicator('events-content');
     
-    fetch(`/api/articles?category_name=${encodeURIComponent(categoryName)}`)
+    fetch(`/api/articles?category_id=${categoryId}`)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -183,20 +203,20 @@ function loadEventsByCategory(categoryName) {
         })
         .catch(error => {
             console.error('Error loading category events:', error);
-            showError(`Failed to load events for category ${categoryName}`, error);
+            showError(`Failed to load events for category ${categoryId}`, error);
             showAllCategories(); // Fallback to showing all categories
         });
 }
 
-function loadEventsBySubcategory(categoryName, subcategoryId) {
-    if (!categoryName || !subcategoryId) {
-        console.error('Invalid category name or subcategory ID');
+function loadEventsBySubcategory(categoryId, subcategoryId) {
+    if (!categoryId || !subcategoryId) {
+        console.error('Invalid category or subcategory ID');
         return;
     }
     
     showLoadingIndicator('events-content');
     
-    fetch(`/api/articles?category_name=${encodeURIComponent(categoryName)}&subcategory_id=${subcategoryId}`)
+    fetch(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -207,7 +227,7 @@ function loadEventsBySubcategory(categoryName, subcategoryId) {
         .catch(error => {
             console.error('Error loading subcategory events:', error);
             showError(`Failed to load events for subcategory ${subcategoryId}`, error);
-            loadEventsByCategory(categoryName); // Fallback to showing category events
+            loadEventsByCategory(categoryId); // Fallback to showing category events
         });
 }
 
@@ -226,7 +246,7 @@ function updateDisplay(data) {
     }
 
     eventsContent.innerHTML = data.categories.map(category => `
-        <div class="category-section mb-5">
+        <div class="category-section mb-5" data-category-id="${category.categoria_id}">
             <h2 class="mb-3">${category.nombre}</h2>
             <div class="category-content">
                 ${category.subcategories.map(subcategory => `
