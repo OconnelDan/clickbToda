@@ -16,7 +16,7 @@
                         type="button" role="tab" data-category-id="{{ category.Categoria.categoria_id }}"
                         aria-controls="category-{{ category.Categoria.categoria_id }}" aria-selected="false">
                     {{ category.Categoria.nombre }}
-                    <span class="badge bg-secondary ms-1">{{ category.event_count }}</span>
+                    <span class="badge rounded-pill bg-secondary ms-1">{{ category.event_count }}</span>
                 </button>
             </li>
             {% endfor %}
@@ -24,9 +24,9 @@
     </div>
 
     <!-- Subcategory pills with slide animation -->
-    <div class="subcategory-nav mt-3" style="display: none;">
+    <div class="subcategory-nav">
         <div class="nav-pills-wrapper">
-            <ul class="nav nav-pills flex-nowrap overflow-auto" id="subcategoryTabs" role="tablist">
+            <ul class="nav nav-pills flex-nowrap" id="subcategoryTabs" role="tablist">
                 <!-- Subcategories will be populated dynamically -->
             </ul>
         </div>
