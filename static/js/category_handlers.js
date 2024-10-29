@@ -166,4 +166,140 @@ function hideSubcategoryTabs() {
     }
 }
 
-// Rest of the functions (showAllCategories, loadEventsByCategory, etc.) remain unchanged...
+// Implementation of the missing functions
+function showAllCategories() {
+    showLoadingIndicator('events-content');
+    
+    fetch('/api/articles')
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            updateDisplay(data);
+            hideSubcategoryTabs();
+        })
+        .catch(error => {
+            console.error('Error loading events:', error);
+            showError('Failed to load articles', error);
+        });
+}
+
+function loadEventsByCategory(categoryId) {
+    if (!categoryId) {
+        console.error('Invalid category ID');
+        return;
+    }
+    
+    showLoadingIndicator('events-content');
+    
+    fetch(`/api/articles?category_id=${categoryId}`)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            updateDisplay(data);
+        })
+        .catch(error => {
+            console.error('Error loading category events:', error);
+            showError(`Failed to load events for category ${categoryId}`, error);
+            showAllCategories(); // Fallback to showing all categories
+        });
+}
+
+function loadEventsBySubcategory(categoryId, subcategoryId) {
+    if (!categoryId || !subcategoryId) {
+        console.error('Invalid category or subcategory ID');
+        return;
+    }
+    
+    showLoadingIndicator('events-content');
+    
+    fetch(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            updateDisplay(data);
+        })
+        .catch(error => {
+            console.error('Error loading subcategory events:', error);
+            showError(`Failed to load events for subcategory ${subcategoryId}`, error);
+            loadEventsByCategory(categoryId); // Fallback to showing category events
+        });
+}
+
+function updateDisplay(data) {
+    const eventsContent = document.getElementById('events-content');
+    if (!eventsContent) return;
+
+    if (!data.categories || !Array.isArray(data.categories) || data.categories.length === 0) {
+        eventsContent.innerHTML = `
+            <div class="alert alert-info">
+                <h4 class="alert-heading">No Content Available</h4>
+                <p>No articles found for the selected criteria.</p>
+            </div>
+        `;
+        return;
+    }
+
+    eventsContent.innerHTML = data.categories.map(category => `
+        <div class="category-section mb-5" data-category-id="${category.categoria_id}">
+            <h2 class="mb-3">${category.nombre}</h2>
+            <div class="category-content">
+                ${category.subcategories.map(subcategory => `
+                    <div class="subcategory-section mb-4">
+                        ${subcategory.subnombre ? 
+                            `<h3 class="h4 mb-3">${subcategory.subnombre}</h3>` : 
+                            ''}
+                        <div class="events-container">
+                            ${subcategory.events.map(event => `
+                                <div class="event-articles mb-4">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="event-info">
+                                                <h4 class="event-title">${event.titulo || 'Untitled Event'}</h4>
+                                                <p class="event-description">${event.descripcion || ''}</p>
+                                                <div class="event-meta">
+                                                    <small class="text-muted">${event.fecha_evento || ''}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-9">
+                                            <div class="articles-carousel">
+                                                <div class="carousel-wrapper">
+                                                    ${event.articles.map(article => `
+                                                        <div class="article-card">
+                                                            <div class="card h-100">
+                                                                <div class="card-body">
+                                                                    <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
+                                                                         class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                    <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
+                                                                        ${article.titular || 'No Title'}
+                                                                    </h5>
+                                                                    ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
+                                                                    <div class="article-meta mt-2">
+                                                                        <small class="text-muted">${article.fecha_publicacion || ''}</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+
+    // Initialize carousels after updating content
+    initializeCarousels();
+}
