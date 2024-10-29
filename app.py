@@ -42,6 +42,7 @@ def load_user(user_id):
 @app.route('/')
 def index():
     try:
+        logger.info("Executing categories query with schema: app")
         # Get unique categories with their event counts
         categories = db.session.query(
             Categoria,
@@ -50,18 +51,66 @@ def index():
             Evento,
             Categoria.categoria_id == Evento.categoria_id
         ).group_by(
-            Categoria.nombre  # Group by name only to get unique categories
+            Categoria.categoria_id,
+            Categoria.nombre,
+            Categoria.descripcion,
+            Categoria.subnombre,
+            Categoria.subdescripcion
+        ).having(
+            func.count(distinct(Evento.evento_id)) > 0
         ).order_by(
             func.count(distinct(Evento.evento_id)).desc()
         ).all()
         
-        logger.info(f"Retrieved {len(categories)} categories")
+        logger.info(f"Retrieved {len(categories)} categories with events")
         return render_template('index.html', 
                            categories=categories,
                            selected_date=datetime.now().date())
     except Exception as e:
         logger.error(f"Error in index route: {str(e)}")
         return render_template('index.html', categories=[], selected_date=datetime.now().date())
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        user = User.query.filter_by(email=email).first()
+        if user and user.check_password(password):
+            login_user(user)
+            return redirect(url_for('index'))
+            
+        flash('Invalid email or password')
+    return render_template('auth/login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        nombre = request.form.get('nombre')
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email already registered')
+            return redirect(url_for('register'))
+            
+        user = User(nombre=nombre, email=email)
+        user.set_password(password)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        login_user(user)
+        return redirect(url_for('index'))
+        
+    return render_template('auth/register.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
 
 @app.route('/api/subcategories')
 def get_subcategories():
@@ -70,15 +119,16 @@ def get_subcategories():
         if not category_id:
             return jsonify([])
         
-        # Get the category name for the selected category
+        logger.info(f"Fetching subcategories for category ID: {category_id}")
+        # Get the category name first
         category = db.session.query(Categoria.nombre).filter(
             Categoria.categoria_id == category_id
         ).first()
         
         if not category:
             return jsonify([])
-        
-        # Get all subcategories for this category name
+            
+        # Get subcategories for all categories with this name
         subcategories = db.session.query(
             Categoria.categoria_id,
             Categoria.subnombre
@@ -89,6 +139,7 @@ def get_subcategories():
             Categoria.subnombre
         ).all()
         
+        logger.info(f"Found {len(subcategories)} subcategories")
         return jsonify([{
             'id': subcat.categoria_id,
             'subnombre': subcat.subnombre
@@ -102,6 +153,8 @@ def get_articles():
     try:
         category_id = request.args.get('category_id')
         subcategory_id = request.args.get('subcategory_id')
+        
+        logger.info(f"Fetching articles for category ID: {category_id}, subcategory ID: {subcategory_id}")
         
         # Base query
         query = db.session.query(
