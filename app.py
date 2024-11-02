@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from sqlalchemy import func, text, desc
+from sqlalchemy import func, text, desc, and_, distinct
 from datetime import datetime
 import logging
 from config import Config
@@ -42,18 +42,22 @@ def load_user(user_id):
 @app.route('/')
 def index():
     try:
-        # Get unique categories with their event counts
+        # Get unique categories with their event and article counts
         categories = db.session.query(
             Categoria,
-            func.count(Evento.evento_id).label('event_count')
+            func.count(distinct(Evento.evento_id)).label('event_count'),
+            func.count(distinct(articulo_evento.c.articulo_id)).label('article_count')
         ).outerjoin(
             Evento,
             Categoria.categoria_id == Evento.categoria_id
+        ).outerjoin(
+            articulo_evento,
+            Evento.evento_id == articulo_evento.c.evento_id
         ).group_by(
             Categoria.categoria_id,
             Categoria.nombre
         ).order_by(
-            func.count(Evento.evento_id).desc()
+            func.count(distinct(articulo_evento.c.articulo_id)).desc()
         ).all()
         
         logger.info(f"Retrieved {len(categories)} categories")
@@ -93,16 +97,24 @@ def get_articles():
         category_id = request.args.get('category_id')
         search_query = request.args.get('q')
         
-        # Base query
+        # Subquery to count articles per event
+        article_count_subquery = db.session.query(
+            articulo_evento.c.evento_id,
+            func.count(articulo_evento.c.articulo_id).label('article_count')
+        ).group_by(articulo_evento.c.evento_id).subquery()
+        
+        # Base query with article count
         base_query = db.session.query(
-            Articulo, Evento, Categoria, Region, Periodico
+            Articulo, Evento, Categoria, Region, Periodico,
+            article_count_subquery.c.article_count
         ).select_from(Articulo)\
-        .join(articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id, isouter=True)\
-        .join(Evento, articulo_evento.c.evento_id == Evento.evento_id, isouter=True)\
-        .join(Categoria, Evento.categoria_id == Categoria.categoria_id, isouter=True)\
+        .join(articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id)\
+        .join(Evento, articulo_evento.c.evento_id == Evento.evento_id)\
+        .join(Categoria, Evento.categoria_id == Categoria.categoria_id)\
         .join(evento_region, Evento.evento_id == evento_region.c.evento_id, isouter=True)\
         .join(Region, evento_region.c.region_id == Region.region_id, isouter=True)\
-        .join(Periodico, Articulo.periodico_id == Periodico.periodico_id)
+        .join(Periodico, Articulo.periodico_id == Periodico.periodico_id)\
+        .join(article_count_subquery, Evento.evento_id == article_count_subquery.c.evento_id)
 
         # Apply filters
         if category_id:
@@ -114,6 +126,7 @@ def get_articles():
         results = base_query.order_by(
             Categoria.nombre,
             Categoria.subnombre,
+            article_count_subquery.c.article_count.desc(),
             desc(Evento.fecha_evento),
             desc(Articulo.fecha_publicacion)
         ).all()
@@ -122,7 +135,7 @@ def get_articles():
 
         # Organize results
         organized_data = {}
-        for article, event, category, region, periodico in results:
+        for article, event, category, region, periodico, article_count in results:
             if not category:
                 continue
                 
@@ -149,6 +162,7 @@ def get_articles():
                         'titulo': event.titulo,
                         'descripcion': event.descripcion,
                         'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
+                        'article_count': article_count,
                         'articles': []
                     }
 
@@ -172,7 +186,7 @@ def get_articles():
                         {
                             'subnombre': subcat_data['subnombre'],
                             'subdescripcion': subcat_data['subdescripcion'],
-                            'events': [
+                            'events': sorted([
                                 {
                                     **event_data,
                                     'articles': sorted(event_data['articles'], 
@@ -180,7 +194,7 @@ def get_articles():
                                                     reverse=True)
                                 }
                                 for event_id, event_data in subcat_data['events'].items()
-                            ]
+                            ], key=lambda x: (x['article_count'] or 0, x['fecha_evento'] or ''), reverse=True)
                         }
                         for subcat_key, subcat_data in cat_data['subcategories'].items()
                     ]
