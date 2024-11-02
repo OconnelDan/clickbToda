@@ -127,20 +127,19 @@
 
 .subcategory-nav {
     background: var(--bs-body-bg);
-    padding: 0.5rem 0;
+    padding: 0;
     border-bottom: 1px solid var(--bs-border-color);
+    max-height: 0;
     opacity: 0;
-    transform: translateY(-10px);
-    transition: all 0.3s ease;
-    visibility: hidden;
-    height: 0;
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+    margin-top: -1px;
 }
 
 .subcategory-nav.show {
+    padding: 0.5rem 0;
+    max-height: 4rem;
     opacity: 1;
-    transform: translateY(0);
-    visibility: visible;
-    height: auto;
 }
 
 /* Rest of the styles remain unchanged */
@@ -224,8 +223,9 @@
         padding: 0.75rem 1.5rem;
     }
 
-    .subcategory-nav {
+    .subcategory-nav.show {
         padding: 0.75rem 0;
+        max-height: 5rem;
     }
 }
 

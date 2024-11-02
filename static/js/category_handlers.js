@@ -86,23 +86,22 @@ function fetchSubcategories(categoryId) {
     const subcategoryNav = document.querySelector('.subcategory-nav');
     if (!subcategoryNav) return;
 
+    hideSubcategoryTabs();
+
     fetch(`/api/subcategories?category_id=${categoryId}`)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
-            if (data && data.length > 0) {
+            if (data && Array.isArray(data) && data.length > 0) {
                 updateSubcategoryTabs(data);
                 showSubcategoryNav();
-            } else {
-                hideSubcategoryTabs();
             }
         })
         .catch(error => {
             console.error('Error fetching subcategories:', error);
             hideSubcategoryTabs();
-            showError('Failed to load subcategories', error);
         });
 }
 
@@ -110,19 +109,13 @@ function updateSubcategoryTabs(subcategories) {
     const subcategoryTabs = document.getElementById('subcategoryTabs');
     if (!subcategoryTabs) return;
 
-    // Create a Set to store unique subcategory names
-    const uniqueSubcategories = new Set();
-    const filteredSubcategories = subcategories.filter(subcat => {
-        if (!subcat.subnombre) return false;
-        const key = `${subcat.id}-${subcat.subnombre}`;
-        if (!uniqueSubcategories.has(key)) {
-            uniqueSubcategories.add(key);
-            return true;
-        }
-        return false;
-    });
+    // Filter out subcategories without names and remove duplicates
+    const uniqueSubcategories = Array.from(new Set(subcategories
+        .filter(subcat => subcat.subnombre)
+        .map(subcat => JSON.stringify({ id: subcat.id, name: subcat.subnombre }))))
+        .map(str => JSON.parse(str));
 
-    if (filteredSubcategories.length === 0) {
+    if (uniqueSubcategories.length === 0) {
         hideSubcategoryTabs();
         return;
     }
@@ -134,22 +127,24 @@ function updateSubcategoryTabs(subcategories) {
                 All
             </button>
         </li>
-        ${filteredSubcategories.map(subcategory => `
+        ${uniqueSubcategories.map(subcategory => `
             <li class="nav-item" role="presentation">
                 <button class="nav-link" role="tab" data-subcategory-id="${subcategory.id}"
                         aria-selected="false">
-                    ${subcategory.subnombre || 'Unnamed'}
+                    ${subcategory.name}
                 </button>
             </li>
         `).join('')}
     `;
+
+    showSubcategoryNav();
 }
 
 function showSubcategoryNav() {
     const subcategoryNav = document.querySelector('.subcategory-nav');
     if (subcategoryNav) {
         subcategoryNav.style.display = 'block';
-        // Trigger reflow
+        // Force reflow
         subcategoryNav.offsetHeight;
         subcategoryNav.classList.add('show');
     }
@@ -160,13 +155,13 @@ function hideSubcategoryTabs() {
     if (subcategoryNav) {
         subcategoryNav.classList.remove('show');
         setTimeout(() => {
-            subcategoryNav.style.display = 'none';
-            subcategoryNav.innerHTML = '';
+            if (!subcategoryNav.classList.contains('show')) {
+                subcategoryNav.style.display = 'none';
+            }
         }, 300);
     }
 }
 
-// Implementation of the missing functions
 function showAllCategories() {
     showLoadingIndicator('events-content');
     
@@ -176,6 +171,9 @@ function showAllCategories() {
             return response.json();
         })
         .then(data => {
+            if (!data || !data.categories) {
+                throw new Error('Invalid response format');
+            }
             updateDisplay(data);
             hideSubcategoryTabs();
         })
@@ -186,10 +184,7 @@ function showAllCategories() {
 }
 
 function loadEventsByCategory(categoryId) {
-    if (!categoryId) {
-        console.error('Invalid category ID');
-        return;
-    }
+    if (!categoryId) return;
     
     showLoadingIndicator('events-content');
     
@@ -199,20 +194,19 @@ function loadEventsByCategory(categoryId) {
             return response.json();
         })
         .then(data => {
+            if (!data || !data.categories) {
+                throw new Error('Invalid response format');
+            }
             updateDisplay(data);
         })
         .catch(error => {
             console.error('Error loading category events:', error);
             showError(`Failed to load events for category ${categoryId}`, error);
-            showAllCategories(); // Fallback to showing all categories
         });
 }
 
 function loadEventsBySubcategory(categoryId, subcategoryId) {
-    if (!categoryId || !subcategoryId) {
-        console.error('Invalid category or subcategory ID');
-        return;
-    }
+    if (!categoryId || !subcategoryId) return;
     
     showLoadingIndicator('events-content');
     
@@ -222,12 +216,14 @@ function loadEventsBySubcategory(categoryId, subcategoryId) {
             return response.json();
         })
         .then(data => {
+            if (!data || !data.categories) {
+                throw new Error('Invalid response format');
+            }
             updateDisplay(data);
         })
         .catch(error => {
             console.error('Error loading subcategory events:', error);
             showError(`Failed to load events for subcategory ${subcategoryId}`, error);
-            loadEventsByCategory(categoryId); // Fallback to showing category events
         });
 }
 
