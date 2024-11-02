@@ -106,6 +106,7 @@ class Evento(db.Model):
     gpt_sujeto_pasivo = db.Column(db.String(255))
     gpt_importancia = db.Column(db.Integer)
     gpt_tiene_contexto = db.Column(db.Boolean, default=False)
+    embeddings = db.Column(db.String)  # Added embeddings field
 
     categoria = db.relationship('Categoria', backref='eventos')
     regiones = db.relationship('Region', secondary=evento_region, backref='eventos')
