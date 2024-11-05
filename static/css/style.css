@@ -21,16 +21,6 @@
     scroll-snap-align: start;
 }
 
-.clickable-card {
-    cursor: pointer;
-    transition: transform 0.2s ease-in-out;
-}
-
-.clickable-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
 .newspaper-logo {
     max-height: 30px;
     width: auto;
