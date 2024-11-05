@@ -87,17 +87,10 @@ function fetchSubcategories(categoryId) {
         .then(data => {
             console.log('Subcategories data:', data);
             
-            // Reset subcategory nav state
-            subcategoryNav.style.display = 'block';
-            subcategoryNav.classList.remove('visible');
-            subcategoryNav.style.transform = 'translateY(-10px)';
-            
-            // Update content
             if (data && data.length > 0) {
+                // Show subcategory nav immediately
+                subcategoryNav.style.display = 'block';
                 updateSubcategoryTabs(data);
-                // Trigger reflow
-                void subcategoryNav.offsetWidth;
-                // Show with animation
                 subcategoryNav.classList.add('visible');
             } else {
                 hideSubcategoryTabs();
@@ -138,12 +131,8 @@ function hideSubcategoryTabs() {
     if (!subcategoryNav) return;
     
     subcategoryNav.classList.remove('visible');
-    subcategoryNav.style.transform = 'translateY(-10px)';
-    
-    setTimeout(() => {
-        subcategoryNav.style.display = 'none';
-        subcategoryNav.innerHTML = '';
-    }, 300);
+    subcategoryNav.style.display = 'none';
+    subcategoryNav.innerHTML = '';
 }
 
 function showAllCategories() {

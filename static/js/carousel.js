@@ -26,16 +26,17 @@ function initializeScrollButtons() {
             const atStart = wrapper.scrollLeft <= 10;
             const atEnd = wrapper.scrollLeft + wrapper.clientWidth >= wrapper.scrollWidth - 10;
 
-            // Use visibility and opacity instead of display
-            leftBtn.style.visibility = hasOverflow && !atStart ? 'visible' : 'hidden';
-            rightBtn.style.visibility = hasOverflow && !atEnd ? 'visible' : 'hidden';
-            
+            // Update opacity instead of visibility
             leftBtn.style.opacity = hasOverflow && !atStart ? '1' : '0';
             rightBtn.style.opacity = hasOverflow && !atEnd ? '1' : '0';
+            
+            // Ensure buttons are always in the layout
+            leftBtn.style.pointerEvents = hasOverflow && !atStart ? 'auto' : 'none';
+            rightBtn.style.pointerEvents = hasOverflow && !atEnd ? 'auto' : 'none';
 
-            // Ensure buttons are always flex for proper positioning
-            leftBtn.style.display = 'flex';
-            rightBtn.style.display = 'flex';
+            // Add/remove visible class for proper styling
+            leftBtn.classList.toggle('visible', hasOverflow && !atStart);
+            rightBtn.classList.toggle('visible', hasOverflow && !atEnd);
         };
 
         const scroll = (direction) => {
