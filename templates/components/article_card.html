@@ -1,13 +1,41 @@
 <div class="article-card">
-    <a href="{{ article.url }}" target="_blank" class="text-decoration-none">
+    <a href="{{ article.url }}" target="_blank" class="text-decoration-none" title="{{ article.titular }}{% if article.subtitular %} - {{ article.subtitular }}{% endif %}">
         <div class="card h-100">
             <div class="card-body d-flex flex-column">
                 <div class="d-flex align-items-center mb-2">
                     <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
-                         class="newspaper-logo me-2" alt="Newspaper logo">
-                    {% if article.paywall %}
-                    <span class="badge bg-warning text-dark ms-auto">Paywall</span>
-                    {% endif %}
+                         class="newspaper-logo me-2 invert" alt="Newspaper logo">
+                    <div class="d-flex gap-2 ms-auto">
+                        {% if article.tipo == 'opinion' %}
+                        <img src="https://img.icons8.com/?size=24&id=89687&format=png" 
+                             class="article-icon" alt="Opinion article" title="Opinion article">
+                        {% endif %}
+                        
+                        {% if article.gpt_sentimiento %}
+                            {% if article.gpt_sentimiento == 'positivo' %}
+                            <img src="https://img.icons8.com/?size=26&id=675&format=png" 
+                                 class="article-icon" alt="Positive sentiment" title="Positive sentiment">
+                            {% elif article.gpt_sentimiento == 'negativo' %}
+                            <img src="https://img.icons8.com/?size=30&id=61017&format=png" 
+                                 class="article-icon" alt="Negative sentiment" title="Negative sentiment">
+                            {% else %}
+                            <img src="https://img.icons8.com/?size=32&id=16087&format=png" 
+                                 class="article-icon" alt="Neutral sentiment" title="Neutral sentiment">
+                            {% endif %}
+                        {% endif %}
+
+                        {% if article.gpt_cantidad_fuentes_citadas and article.gpt_cantidad_fuentes_citadas > 0 %}
+                        <div class="source-count" title="{{ article.gpt_cantidad_fuentes_citadas }} sources cited">
+                            <img src="https://www.svgrepo.com/show/340052/connect-source.svg" 
+                                 class="article-icon" alt="Sources">
+                            <span class="source-number">{{ article.gpt_cantidad_fuentes_citadas }}</span>
+                        </div>
+                        {% endif %}
+
+                        {% if article.paywall %}
+                        <span class="badge bg-warning text-dark">Paywall</span>
+                        {% endif %}
+                    </div>
                 </div>
                 <h5 class="card-title article-title flex-grow-1 {% if article.paywall %}text-muted{% endif %}">
                     {{ article.titular }}
