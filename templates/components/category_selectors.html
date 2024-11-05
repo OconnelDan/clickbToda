@@ -10,27 +10,21 @@
                 </button>
             </li>
             {% for category in categories %}
-            {% if category.event_count > 0 %}
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="category-{{ category.Categoria.categoria_id }}-tab" 
                         data-bs-toggle="tab" data-bs-target="#category-{{ category.Categoria.categoria_id }}" 
                         type="button" role="tab" data-category-id="{{ category.Categoria.categoria_id }}"
                         aria-controls="category-{{ category.Categoria.categoria_id }}" aria-selected="false">
                     {{ category.Categoria.nombre }}
-                    {% if category.article_count > 0 %}
-                    <span class="badge bg-secondary ms-1" title="{{ category.event_count }} events">
-                        {{ category.article_count }}
-                    </span>
-                    {% endif %}
+                    <span class="badge bg-secondary ms-1">{{ category.event_count }}</span>
                 </button>
             </li>
-            {% endif %}
             {% endfor %}
         </ul>
     </div>
 
     <!-- Subcategory pills with slide animation -->
-    <div class="subcategory-nav mt-3">
+    <div class="subcategory-nav mt-3" style="display: none;">
         <div class="nav-pills-wrapper">
             <ul class="nav nav-pills flex-nowrap overflow-auto" id="subcategoryTabs" role="tablist">
                 <!-- Subcategories will be populated dynamically -->

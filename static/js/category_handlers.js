@@ -5,19 +5,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initializeTabNavigation() {
     const tabElements = document.querySelectorAll('[data-bs-toggle="tab"]');
-    const subcategoryNav = document.querySelector('.subcategory-nav');
-    
-    // Initialize subcategory nav as hidden
-    if (subcategoryNav) {
-        subcategoryNav.style.display = 'none';
-        subcategoryNav.style.opacity = '0';
-    }
-
     tabElements.forEach(tab => {
         tab.addEventListener('shown.bs.tab', function(event) {
             const categoryId = event.target.dataset.categoryId;
             if (categoryId) {
                 fetchSubcategories(categoryId);
+                loadEventsByCategory(categoryId);
             } else {
                 hideSubcategoryTabs();
                 showAllCategories();
@@ -26,31 +19,28 @@ function initializeTabNavigation() {
     });
 
     // Handle subcategory clicks with animation
+    const subcategoryNav = document.querySelector('.subcategory-nav');
     if (subcategoryNav) {
         subcategoryNav.addEventListener('click', function(e) {
             const tabButton = e.target.closest('[role="tab"]');
             if (!tabButton) return;
 
-            // Remove active class from all tabs
+            // Animate the transition
             const allSubcategoryTabs = subcategoryNav.querySelectorAll('[role="tab"]');
             allSubcategoryTabs.forEach(tab => {
                 tab.classList.remove('active');
-                tab.setAttribute('aria-selected', 'false');
+                tab.style.transition = 'all 0.3s ease';
             });
             
-            // Add active class to clicked tab
             tabButton.classList.add('active');
-            tabButton.setAttribute('aria-selected', 'true');
 
             const categoryId = document.querySelector('#categoryTabs .nav-link.active').dataset.categoryId;
             const subcategoryId = tabButton.dataset.subcategoryId;
 
-            if (categoryId) {
-                if (subcategoryId) {
-                    loadEventsBySubcategory(categoryId, subcategoryId);
-                } else {
-                    loadEventsByCategory(categoryId);
-                }
+            if (categoryId && subcategoryId) {
+                loadEventsBySubcategory(categoryId, subcategoryId);
+            } else if (categoryId) {
+                loadEventsByCategory(categoryId);
             }
         });
     }
@@ -100,7 +90,13 @@ function fetchSubcategories(categoryId) {
             console.log('Subcategories data:', data);
             if (data && data.length > 0) {
                 updateSubcategoryTabs(data);
-                showSubcategoryNav();
+                // Add fade-in animation
+                subcategoryNav.style.opacity = '0';
+                subcategoryNav.style.display = 'block';
+                setTimeout(() => {
+                    subcategoryNav.style.transition = 'opacity 0.3s ease';
+                    subcategoryNav.style.opacity = '1';
+                }, 10);
             } else {
                 hideSubcategoryTabs();
             }
@@ -116,47 +112,42 @@ function updateSubcategoryTabs(subcategories) {
     const subcategoryTabs = document.getElementById('subcategoryTabs');
     if (!subcategoryTabs) return;
 
-    subcategoryTabs.innerHTML = subcategories.map((subcategory, index) => `
+    const uniqueSubcategories = new Set();
+    const filteredSubcategories = subcategories.filter(subcat => {
+        const key = `${subcat.id}-${subcat.subnombre}`;
+        if (!uniqueSubcategories.has(key)) {
+            uniqueSubcategories.add(key);
+            return true;
+        }
+        return false;
+    });
+
+    subcategoryTabs.innerHTML = `
         <li class="nav-item" role="presentation">
-            <button class="nav-link ${index === 0 ? 'active' : ''}" 
-                    role="tab"
-                    data-subcategory-id="${subcategory.id}"
-                    aria-selected="${index === 0 ? 'true' : 'false'}">
-                ${subcategory.nombre}
-                ${subcategory.article_count ? 
-                    `<span class="badge bg-secondary ms-1" title="${subcategory.event_count} events">
-                        ${subcategory.article_count}
-                    </span>` : 
-                    ''}
+            <button class="nav-link active" role="tab" data-subcategory-id="">
+                All
             </button>
         </li>
-    `).join('');
-}
-
-function showSubcategoryNav() {
-    const subcategoryNav = document.querySelector('.subcategory-nav');
-    if (!subcategoryNav) return;
-
-    subcategoryNav.style.display = 'block';
-    // Trigger reflow
-    subcategoryNav.offsetHeight;
-    subcategoryNav.style.transition = 'opacity 0.3s ease';
-    subcategoryNav.style.opacity = '1';
+        ${filteredSubcategories.map(subcategory => `
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" role="tab" data-subcategory-id="${subcategory.id}">
+                    ${subcategory.subnombre || 'Unnamed'}
+                </button>
+            </li>
+        `).join('')}
+    `;
 }
 
 function hideSubcategoryTabs() {
     const subcategoryNav = document.querySelector('.subcategory-nav');
-    if (!subcategoryNav) return;
-
-    subcategoryNav.style.transition = 'opacity 0.3s ease';
-    subcategoryNav.style.opacity = '0';
-    setTimeout(() => {
-        subcategoryNav.style.display = 'none';
-        const subcategoryTabs = document.getElementById('subcategoryTabs');
-        if (subcategoryTabs) {
-            subcategoryTabs.innerHTML = '';
-        }
-    }, 300);
+    if (subcategoryNav) {
+        subcategoryNav.style.transition = 'opacity 0.3s ease';
+        subcategoryNav.style.opacity = '0';
+        setTimeout(() => {
+            subcategoryNav.style.display = 'none';
+            subcategoryNav.innerHTML = '';
+        }, 300);
+    }
 }
 
 function showAllCategories() {
@@ -164,7 +155,9 @@ function showAllCategories() {
     
     fetch('/api/articles')
         .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             return response.json();
         })
         .then(data => {
@@ -177,6 +170,12 @@ function showAllCategories() {
             if (!Array.isArray(data.categories)) {
                 throw new Error('Invalid response format: missing or invalid categories array');
             }
+            
+            data.categories.forEach((category, index) => {
+                if (!category.categoria_id || !category.nombre) {
+                    console.warn(`Invalid category at index ${index}:`, category);
+                }
+            });
 
             updateDisplay(data);
             hideSubcategoryTabs();
@@ -269,21 +268,21 @@ function updateDisplay(data) {
         }
 
         eventsContent.innerHTML = data.categories.map(category => `
-            <div class="category-section mb-5" data-category-id="${category.categoria_id}">
-                <h2 class="mb-3">${category.nombre}</h2>
+            <div class="category-section mb-5" data-category-id="${category.categoria_id || ''}"">
+                <h2 class="mb-3">${category.nombre || 'Unnamed Category'}</h2>
                 <div class="category-content">
-                    ${category.subcategories.map(subcategory => `
+                    ${(category.subcategories || []).map(subcategory => `
                         <div class="subcategory-section mb-4">
-                            ${subcategory.nombre ? 
-                                `<h3 class="h4 mb-3">${subcategory.nombre}</h3>` : 
+                            ${subcategory.subnombre ? 
+                                `<h3 class="h4 mb-3">${subcategory.subnombre}</h3>` : 
                                 ''}
                             <div class="events-container">
-                                ${subcategory.events.map(event => `
+                                ${(subcategory.events || []).map(event => `
                                     <div class="event-articles mb-4">
                                         <div class="row">
                                             <div class="col-md-3">
                                                 <div class="event-info">
-                                                    <h4 class="event-title">${event.titulo}</h4>
+                                                    <h4 class="event-title">${event.titulo || 'Untitled Event'}</h4>
                                                     <p class="event-description">${event.descripcion || ''}</p>
                                                     <div class="event-meta">
                                                         <small class="text-muted">${event.fecha_evento || ''}</small>
@@ -293,14 +292,14 @@ function updateDisplay(data) {
                                             <div class="col-md-9">
                                                 <div class="articles-carousel">
                                                     <div class="carousel-wrapper">
-                                                        ${event.articles.map(article => `
-                                                            <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url}" role="button">
+                                                        ${(event.articles || []).map(article => `
+                                                            <div class="article-card" data-article-id="${article.id}" role="button">
                                                                 <div class="card h-100">
                                                                     <div class="card-body">
                                                                         <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
                                                                              class="newspaper-logo mb-2" alt="Newspaper logo">
                                                                         <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
-                                                                            ${article.titular}
+                                                                            ${article.titular || 'No Title'}
                                                                         </h5>
                                                                         ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
                                                                         <div class="article-meta mt-2">
@@ -323,15 +322,16 @@ function updateDisplay(data) {
             </div>
         `).join('');
 
+        // Add click event listeners to article cards
         document.querySelectorAll('.article-card').forEach(card => {
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');
+            
+            // Add debug logging
             console.log('Article card initialized:', card.dataset.articleId);
         });
 
-        if (typeof initializeCarousels === 'function') {
-            initializeCarousels();
-        }
+        initializeCarousels();
     } catch (error) {
         console.error('Error updating display:', error);
         showError('Failed to render content', error);
