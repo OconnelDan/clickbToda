@@ -295,7 +295,7 @@ function updateDisplay(data) {
                                                 <div class="articles-carousel">
                                                     <div class="carousel-wrapper">
                                                         ${(event.articles || []).map(article => `
-                                                            <div class="article-card">
+                                                            <div class="article-card" data-article-url="${article.url || '#'}" role="button">
                                                                 <div class="card h-100">
                                                                     <div class="card-body">
                                                                         <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
@@ -323,6 +323,20 @@ function updateDisplay(data) {
                 </div>
             </div>
         `).join('');
+
+        // Add click event listeners to article cards
+        document.querySelectorAll('.article-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const url = this.dataset.articleUrl;
+                if (url && url !== '#') {
+                    window.open(url, '_blank');
+                }
+            });
+
+            // Add hover effect
+            card.style.cursor = 'pointer';
+            card.classList.add('article-card-clickable');
+        });
 
         initializeCarousels();
     } catch (error) {
