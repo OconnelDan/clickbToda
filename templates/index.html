@@ -1,17 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        {% include "components/search_bar.html" %}
-    </div>
-</div>
-
-<div class="date-selector mb-4">
-    <input type="date" class="form-control" id="dateSelector" 
-           value="{{ selected_date.strftime('%Y-%m-%d') if selected_date else '' }}">
-</div>
-
 {% include "components/category_selectors.html" %}
 
 <div id="events-content">
@@ -32,6 +21,5 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/category_handlers.js') }}"></script>
 <script src="{{ url_for('static', filename='js/carousel.js') }}"></script>
-<script src="{{ url_for('static', filename='js/search.js') }}"></script>
 <script src="{{ url_for('static', filename='js/article_modal.js') }}"></script>
 {% endblock %}
