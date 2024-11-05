@@ -5,12 +5,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initializeTabNavigation() {
     const tabElements = document.querySelectorAll('[data-bs-toggle="tab"]');
+    const subcategoryNav = document.querySelector('.subcategory-nav');
+    
+    // Initialize subcategory nav as hidden
+    if (subcategoryNav) {
+        subcategoryNav.style.display = 'none';
+        subcategoryNav.style.opacity = '0';
+    }
+
     tabElements.forEach(tab => {
         tab.addEventListener('shown.bs.tab', function(event) {
             const categoryId = event.target.dataset.categoryId;
             if (categoryId) {
                 fetchSubcategories(categoryId);
-                loadEventsByCategory(categoryId);
             } else {
                 hideSubcategoryTabs();
                 showAllCategories();
@@ -19,28 +26,31 @@ function initializeTabNavigation() {
     });
 
     // Handle subcategory clicks with animation
-    const subcategoryNav = document.querySelector('.subcategory-nav');
     if (subcategoryNav) {
         subcategoryNav.addEventListener('click', function(e) {
             const tabButton = e.target.closest('[role="tab"]');
             if (!tabButton) return;
 
-            // Animate the transition
+            // Remove active class from all tabs
             const allSubcategoryTabs = subcategoryNav.querySelectorAll('[role="tab"]');
             allSubcategoryTabs.forEach(tab => {
                 tab.classList.remove('active');
-                tab.style.transition = 'all 0.3s ease';
+                tab.setAttribute('aria-selected', 'false');
             });
             
+            // Add active class to clicked tab
             tabButton.classList.add('active');
+            tabButton.setAttribute('aria-selected', 'true');
 
             const categoryId = document.querySelector('#categoryTabs .nav-link.active').dataset.categoryId;
             const subcategoryId = tabButton.dataset.subcategoryId;
 
-            if (categoryId && subcategoryId) {
-                loadEventsBySubcategory(categoryId, subcategoryId);
-            } else if (categoryId) {
-                loadEventsByCategory(categoryId);
+            if (categoryId) {
+                if (subcategoryId) {
+                    loadEventsBySubcategory(categoryId, subcategoryId);
+                } else {
+                    loadEventsByCategory(categoryId);
+                }
             }
         });
     }
@@ -90,13 +100,7 @@ function fetchSubcategories(categoryId) {
             console.log('Subcategories data:', data);
             if (data && data.length > 0) {
                 updateSubcategoryTabs(data);
-                // Add fade-in animation
-                subcategoryNav.style.opacity = '0';
-                subcategoryNav.style.display = 'block';
-                setTimeout(() => {
-                    subcategoryNav.style.transition = 'opacity 0.3s ease';
-                    subcategoryNav.style.opacity = '1';
-                }, 10);
+                showSubcategoryNav();
             } else {
                 hideSubcategoryTabs();
             }
@@ -112,33 +116,47 @@ function updateSubcategoryTabs(subcategories) {
     const subcategoryTabs = document.getElementById('subcategoryTabs');
     if (!subcategoryTabs) return;
 
-    subcategoryTabs.innerHTML = `
+    subcategoryTabs.innerHTML = subcategories.map((subcategory, index) => `
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" role="tab" data-subcategory-id="">
-                All
+            <button class="nav-link ${index === 0 ? 'active' : ''}" 
+                    role="tab"
+                    data-subcategory-id="${subcategory.id}"
+                    aria-selected="${index === 0 ? 'true' : 'false'}">
+                ${subcategory.nombre}
+                ${subcategory.article_count ? 
+                    `<span class="badge bg-secondary ms-1" title="${subcategory.event_count} events">
+                        ${subcategory.article_count}
+                    </span>` : 
+                    ''}
             </button>
         </li>
-        ${subcategories.map(subcategory => `
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" role="tab" data-subcategory-id="${subcategory.id}">
-                    ${subcategory.nombre || 'Unnamed'}
-                    ${subcategory.article_count ? `<span class="badge bg-secondary ms-1">${subcategory.article_count}</span>` : ''}
-                </button>
-            </li>
-        `).join('')}
-    `;
+    `).join('');
+}
+
+function showSubcategoryNav() {
+    const subcategoryNav = document.querySelector('.subcategory-nav');
+    if (!subcategoryNav) return;
+
+    subcategoryNav.style.display = 'block';
+    // Trigger reflow
+    subcategoryNav.offsetHeight;
+    subcategoryNav.style.transition = 'opacity 0.3s ease';
+    subcategoryNav.style.opacity = '1';
 }
 
 function hideSubcategoryTabs() {
     const subcategoryNav = document.querySelector('.subcategory-nav');
-    if (subcategoryNav) {
-        subcategoryNav.style.transition = 'opacity 0.3s ease';
-        subcategoryNav.style.opacity = '0';
-        setTimeout(() => {
-            subcategoryNav.style.display = 'none';
-            subcategoryNav.innerHTML = '';
-        }, 300);
-    }
+    if (!subcategoryNav) return;
+
+    subcategoryNav.style.transition = 'opacity 0.3s ease';
+    subcategoryNav.style.opacity = '0';
+    setTimeout(() => {
+        subcategoryNav.style.display = 'none';
+        const subcategoryTabs = document.getElementById('subcategoryTabs');
+        if (subcategoryTabs) {
+            subcategoryTabs.innerHTML = '';
+        }
+    }, 300);
 }
 
 function showAllCategories() {
@@ -146,9 +164,7 @@ function showAllCategories() {
     
     fetch('/api/articles')
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
@@ -307,15 +323,15 @@ function updateDisplay(data) {
             </div>
         `).join('');
 
-        // Add click event listeners to article cards
         document.querySelectorAll('.article-card').forEach(card => {
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');
-            
             console.log('Article card initialized:', card.dataset.articleId);
         });
 
-        initializeCarousels();
+        if (typeof initializeCarousels === 'function') {
+            initializeCarousels();
+        }
     } catch (error) {
         console.error('Error updating display:', error);
         showError('Failed to render content', error);

@@ -51,12 +51,15 @@ def index():
             Evento.evento_id == articulo_evento.c.evento_id
         ).group_by(
             Categoria.categoria_id,
-            Categoria.nombre
+            Categoria.nombre,
+            Categoria.descripcion
         ).order_by(
-            func.count(distinct(articulo_evento.c.articulo_id)).desc()
+            desc(func.count(distinct(articulo_evento.c.articulo_id)))
         ).all()
         
-        logger.info(f"Retrieved {len(categories)} categories")
+        categories = [cat for cat in categories if cat.event_count > 0]
+        
+        logger.info(f"Retrieved {len(categories)} active categories")
         return render_template('index.html', 
                            categories=categories,
                            selected_date=datetime.now().date())
@@ -82,7 +85,10 @@ def get_subcategories():
             articulo_evento,
             Evento.evento_id == articulo_evento.c.evento_id
         ).filter(
-            Subcategoria.categoria_id == category_id
+            and_(
+                Subcategoria.categoria_id == category_id,
+                Evento.evento_id.isnot(None)
+            )
         ).group_by(
             Subcategoria.subcategoria_id,
             Subcategoria.nombre,
@@ -91,13 +97,33 @@ def get_subcategories():
             func.count(distinct(articulo_evento.c.articulo_id)).desc()
         ).all()
         
-        return jsonify([{
+        total_counts = db.session.query(
+            func.count(distinct(Evento.evento_id)).label('event_count'),
+            func.count(distinct(articulo_evento.c.articulo_id)).label('article_count')
+        ).join(
+            articulo_evento,
+            Evento.evento_id == articulo_evento.c.evento_id
+        ).filter(
+            Evento.categoria_id == category_id
+        ).first()
+        
+        response = [{
+            'id': None,
+            'nombre': 'All',
+            'descripcion': 'All subcategories',
+            'event_count': total_counts.event_count if total_counts else 0,
+            'article_count': total_counts.article_count if total_counts else 0
+        }]
+        
+        response.extend([{
             'id': subcat.Subcategoria.subcategoria_id,
             'nombre': subcat.Subcategoria.nombre,
             'descripcion': subcat.Subcategoria.descripcion,
             'event_count': subcat.event_count,
             'article_count': subcat.article_count
-        } for subcat in subcategories])
+        } for subcat in subcategories if subcat.event_count > 0])
+        
+        return jsonify(response)
     except Exception as e:
         logger.error(f"Error in get_subcategories: {str(e)}")
         return jsonify({'error': str(e)}), 500
