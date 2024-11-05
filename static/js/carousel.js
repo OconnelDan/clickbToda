@@ -23,16 +23,19 @@ function initializeScrollButtons() {
 
         const updateButtons = () => {
             const hasOverflow = wrapper.scrollWidth > wrapper.clientWidth;
-            const atStart = wrapper.scrollLeft <= 10; // Small threshold for better UX
+            const atStart = wrapper.scrollLeft <= 10;
             const atEnd = wrapper.scrollLeft + wrapper.clientWidth >= wrapper.scrollWidth - 10;
 
-            // Show/hide buttons based on scroll position
-            leftBtn.style.display = hasOverflow && !atStart ? 'flex' : 'none';
-            rightBtn.style.display = hasOverflow && !atEnd ? 'flex' : 'none';
-
-            // Update opacity for smooth transitions
+            // Use visibility and opacity instead of display
+            leftBtn.style.visibility = hasOverflow && !atStart ? 'visible' : 'hidden';
+            rightBtn.style.visibility = hasOverflow && !atEnd ? 'visible' : 'hidden';
+            
             leftBtn.style.opacity = hasOverflow && !atStart ? '1' : '0';
             rightBtn.style.opacity = hasOverflow && !atEnd ? '1' : '0';
+
+            // Ensure buttons are always flex for proper positioning
+            leftBtn.style.display = 'flex';
+            rightBtn.style.display = 'flex';
         };
 
         const scroll = (direction) => {
@@ -48,15 +51,19 @@ function initializeScrollButtons() {
         // Button click handlers
         container.querySelectorAll('.scroll-button').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                e.preventDefault(); // Prevent any default behavior
-                e.stopPropagation(); // Prevent event bubbling
+                e.preventDefault();
+                e.stopPropagation();
                 scroll(btn.dataset.direction);
             });
         });
 
-        // Scroll event listener
+        // Scroll event listener with debouncing
+        let scrollTimeout;
         wrapper.addEventListener('scroll', () => {
-            requestAnimationFrame(updateButtons);
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                requestAnimationFrame(updateButtons);
+            }, 100);
         });
 
         // Resize observer for responsive updates
