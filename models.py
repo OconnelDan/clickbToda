@@ -46,6 +46,49 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+class Subcategoria(db.Model):
+    __tablename__ = 'subcategoria'
+    __table_args__ = {'schema': 'app'}
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String)  # Was subnombre in Categoria
+    descripcion = db.Column(db.String)  # Was subdescripcion in Categoria
+    categoria_id = db.Column(db.Integer, db.ForeignKey('app.categoria.categoria_id'))
+    
+    categoria = db.relationship('Categoria', backref='subcategorias')
+
+class Categoria(db.Model):
+    __tablename__ = 'categoria'
+    __table_args__ = {'schema': 'app'}
+    
+    categoria_id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(255), nullable=False)
+    descripcion = db.Column(db.Text)
+
+class Evento(db.Model):
+    __tablename__ = 'evento'
+    __table_args__ = {'schema': 'app'}
+    
+    evento_id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(255), nullable=False)
+    descripcion = db.Column(db.Text)
+    fecha_evento = db.Column(db.Date)
+    impacto = db.Column(db.String(255))
+    categoria_id = db.Column(db.Integer, db.ForeignKey('app.categoria.categoria_id'), nullable=False)
+    subcategoria_id = db.Column(db.Integer, db.ForeignKey('app.subcategoria.id'))
+    grupo_de_eventos_id = db.Column(db.Integer)
+    subgrupo_de_eventos_id = db.Column(db.Integer)
+    gpt_sujeto_activo = db.Column(db.String(255))
+    gpt_sujeto_pasivo = db.Column(db.String(255))
+    gpt_importancia = db.Column(db.Integer)
+    gpt_tiene_contexto = db.Column(db.Boolean, default=False)
+    embeddings = db.Column(db.String)
+    gpt_palabras_clave = db.Column(db.String(1000))
+
+    categoria = db.relationship('Categoria', backref='eventos')
+    subcategoria = db.relationship('Subcategoria', backref='eventos')
+    regiones = db.relationship('Region', secondary=evento_region, backref='eventos')
+
 class Articulo(db.Model):
     __tablename__ = 'articulo'
     __table_args__ = {'schema': 'app'}
@@ -80,39 +123,6 @@ class Articulo(db.Model):
     ideologia = db.relationship('Ideologia', backref='articulos')
     eventos = db.relationship('Evento', secondary=articulo_evento, backref='articulos')
 
-class Categoria(db.Model):
-    __tablename__ = 'categoria'
-    __table_args__ = {'schema': 'app'}
-    
-    categoria_id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(255), nullable=False)
-    descripcion = db.Column(db.Text)
-    subnombre = db.Column(db.String)
-    subdescripcion = db.Column(db.String)
-
-class Evento(db.Model):
-    __tablename__ = 'evento'
-    __table_args__ = {'schema': 'app'}
-    
-    evento_id = db.Column(db.Integer, primary_key=True)
-    titulo = db.Column(db.String(255), nullable=False)
-    descripcion = db.Column(db.Text)
-    fecha_evento = db.Column(db.Date)
-    impacto = db.Column(db.String(255))
-    categoria_id = db.Column(db.Integer, db.ForeignKey('app.categoria.categoria_id'), nullable=False)
-    grupo_de_eventos_id = db.Column(db.Integer)
-    subgrupo_de_eventos_id = db.Column(db.Integer)
-    gpt_sujeto_activo = db.Column(db.String(255))
-    gpt_sujeto_pasivo = db.Column(db.String(255))
-    gpt_importancia = db.Column(db.Integer)
-    gpt_tiene_contexto = db.Column(db.Boolean, default=False)
-    embeddings = db.Column(db.String)  # Added embeddings field
-    gpt_palabras_clave = db.Column(db.String(1000))  # Added gpt_palabras_clave field
-
-    categoria = db.relationship('Categoria', backref='eventos')
-    regiones = db.relationship('Region', secondary=evento_region, backref='eventos')
-
-# Rest of the models...
 class Region(db.Model):
     __tablename__ = 'region'
     __table_args__ = {'schema': 'app'}

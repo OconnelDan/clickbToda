@@ -1,4 +1,4 @@
-<div class="article-card" data-article-id="{{ article.id }}" data-article-url="{{ article.url }}" role="button">
+<div class="article-card article-card-clickable" data-article-id="{{ article.id }}" role="button">
     <div class="card h-100">
         <div class="card-body">
             <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 

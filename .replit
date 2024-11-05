@@ -19,12 +19,19 @@ args = "Flask Server"
 task = "workflow.run"
 args = "Seed Database"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Migration"
+
 [[workflows.workflow]]
 name = "Flask Server"
 author = "agent"
 
 [workflows.workflow.metadata]
 agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -41,6 +48,20 @@ agentRequireRestartOnSave = false
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python seed_data.py"
+
+[[workflows.workflow]]
+name = "Migration"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python execute_migration.py"
 
 [deployment]
 run = ["sh", "-c", "python main.py"]
