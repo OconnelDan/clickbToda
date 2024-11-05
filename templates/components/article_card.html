@@ -1,4 +1,4 @@
-<div class="article-card">
+<div class="article-card" data-article-id="{{ article.id }}" data-article-url="{{ article.url }}">
     <div class="card h-100">
         <div class="card-body">
             <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
@@ -12,3 +12,4 @@
         </div>
     </div>
 </div>
+{% include "components/article_modal.html" %}

@@ -33,7 +33,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-from models import User, Articulo, Evento, Categoria, Periodico, articulo_evento, evento_region, Region
+from models import User, Articulo, Evento, Categoria, Periodico, articulo_evento, evento_region, Region, Periodista
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -67,6 +67,45 @@ def index():
     except Exception as e:
         logger.error(f"Error in index route: {str(e)}")
         return render_template('index.html', categories=[], selected_date=datetime.now().date())
+
+@app.route('/api/article/<int:article_id>')
+def get_article_details(article_id):
+    try:
+        article = db.session.query(
+            Articulo,
+            Periodico,
+            Periodista
+        ).join(
+            Periodico,
+            Articulo.periodico_id == Periodico.periodico_id
+        ).outerjoin(
+            Periodista,
+            Articulo.periodista_id == Periodista.periodista_id
+        ).filter(
+            Articulo.articulo_id == article_id
+        ).first()
+
+        if not article:
+            return jsonify({'error': 'Article not found'}), 404
+
+        article_obj, periodico, periodista = article
+        
+        return jsonify({
+            'id': article_obj.articulo_id,
+            'titular': article_obj.titular,
+            'subtitular': article_obj.subtitular,
+            'fecha_publicacion': article_obj.fecha_publicacion.strftime('%Y-%m-%d') if article_obj.fecha_publicacion else None,
+            'periodico_logo': periodico.logo_url if periodico else None,
+            'periodico_nombre': periodico.nombre if periodico else None,
+            'periodista': f"{periodista.nombre} {periodista.apellido}" if periodista else None,
+            'url': article_obj.url,
+            'paywall': article_obj.paywall,
+            'cuerpo': article_obj.cuerpo,
+            'gpt_resumen': article_obj.gpt_resumen
+        })
+    except Exception as e:
+        logger.error(f"Error fetching article details: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/subcategories')
 def get_subcategories():
