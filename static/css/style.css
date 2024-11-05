@@ -23,8 +23,15 @@
 }
 
 .article-card .card {
-    height: 240px; /* Increased from 180px */
+    height: 480px; /* Increased from 240px */
     transition: box-shadow 0.2s ease-in-out;
+}
+
+.article-card .card-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
 .article-card-clickable:hover {
@@ -58,16 +65,19 @@
     overflow: hidden;
     font-size: 0.9rem;
     line-height: 1.4;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     max-height: 3.8em; /* Approximately 3 lines */
 }
 
 /* Opinion text styles in modal */
 #articleOpinion {
     font-size: 0.95rem;
-    line-height: 1.6;
+    line-height: 1.8;
     color: var(--bs-body-color);
-    margin-bottom: 1rem;
+    margin: 1.25rem 0;
+    padding: 1rem;
+    border-left: 3px solid var(--bs-primary);
+    background: rgba(var(--bs-primary-rgb), 0.05);
 }
 
 /* Tab Navigation Styles */
@@ -219,7 +229,7 @@
     }
     
     .article-card .card {
-        height: 260px; /* Increased from 200px */
+        height: 520px; /* Increased from 260px */
     }
 
     .article-title {
@@ -243,6 +253,8 @@
 
     #articleOpinion {
         font-size: 1rem;
+        line-height: 1.9;
+        margin: 1.5rem 0;
     }
 }
 
@@ -253,7 +265,7 @@
     }
     
     .article-card .card {
-        height: 280px; /* Increased from 220px */
+        height: 560px; /* Increased from 280px */
     }
 
     .event-title {
@@ -270,7 +282,9 @@
 
     #articleOpinion {
         font-size: 1.05rem;
-        line-height: 1.7;
+        line-height: 2;
+        margin: 1.75rem 0;
+        padding: 1.25rem;
     }
 }
 
