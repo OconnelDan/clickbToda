@@ -35,9 +35,19 @@
 }
 
 .newspaper-logo {
-    max-height: 30px;
+    max-height: 24px;
     width: auto;
     object-fit: contain;
+    object-position: left center;
+    filter: invert(1) brightness(1);
+    mix-blend-mode: difference;
+    transition: all 0.2s ease;
+    margin-bottom: 0.75rem;
+    display: block;
+}
+
+.newspaper-logo:hover {
+    filter: invert(1) brightness(1.2);
 }
 
 .article-title {
@@ -211,6 +221,10 @@
     .nav-pills .nav-link {
         padding: 0.75rem 1.5rem;
     }
+
+    .newspaper-logo {
+        max-height: 28px;
+    }
 }
 
 /* Desktop (lg) */
@@ -225,6 +239,10 @@
 
     .category-nav {
         padding: 1rem 0;
+    }
+
+    .newspaper-logo {
+        max-height: 32px;
     }
 }
 
