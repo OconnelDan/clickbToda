@@ -23,7 +23,7 @@
 }
 
 .article-card .card {
-    height: 180px; /* Fixed height for consistency */
+    height: 240px; /* Increased from 180px */
     transition: box-shadow 0.2s ease-in-out;
 }
 
@@ -219,7 +219,7 @@
     }
     
     .article-card .card {
-        height: 200px; /* Slightly taller on tablets */
+        height: 260px; /* Increased from 200px */
     }
 
     .article-title {
@@ -253,7 +253,7 @@
     }
     
     .article-card .card {
-        height: 220px; /* Taller on desktop */
+        height: 280px; /* Increased from 220px */
     }
 
     .event-title {
