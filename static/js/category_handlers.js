@@ -112,26 +112,16 @@ function updateSubcategoryTabs(subcategories) {
     const subcategoryTabs = document.getElementById('subcategoryTabs');
     if (!subcategoryTabs) return;
 
-    const uniqueSubcategories = new Set();
-    const filteredSubcategories = subcategories.filter(subcat => {
-        const key = `${subcat.id}-${subcat.subnombre}`;
-        if (!uniqueSubcategories.has(key)) {
-            uniqueSubcategories.add(key);
-            return true;
-        }
-        return false;
-    });
-
     subcategoryTabs.innerHTML = `
         <li class="nav-item" role="presentation">
             <button class="nav-link active" role="tab" data-subcategory-id="">
                 All
             </button>
         </li>
-        ${filteredSubcategories.map(subcategory => `
+        ${subcategories.map(subcategory => `
             <li class="nav-item" role="presentation">
                 <button class="nav-link" role="tab" data-subcategory-id="${subcategory.id}">
-                    ${subcategory.subnombre || 'Unnamed'}
+                    ${subcategory.nombre || 'Unnamed'}
                 </button>
             </li>
         `).join('')}
@@ -273,8 +263,8 @@ function updateDisplay(data) {
                 <div class="category-content">
                     ${(category.subcategories || []).map(subcategory => `
                         <div class="subcategory-section mb-4">
-                            ${subcategory.subnombre ? 
-                                `<h3 class="h4 mb-3">${subcategory.subnombre}</h3>` : 
+                            ${subcategory.nombre ? 
+                                `<h3 class="h4 mb-3">${subcategory.nombre}</h3>` : 
                                 ''}
                             <div class="events-container">
                                 ${(subcategory.events || []).map(event => `
@@ -302,9 +292,6 @@ function updateDisplay(data) {
                                                                             ${article.titular || 'No Title'}
                                                                         </h5>
                                                                         ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
-                                                                        <div class="article-meta mt-2">
-                                                                            <small class="text-muted">${article.fecha_publicacion || ''}</small>
-                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -326,9 +313,6 @@ function updateDisplay(data) {
         document.querySelectorAll('.article-card').forEach(card => {
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');
-            
-            // Add debug logging
-            console.log('Article card initialized:', card.dataset.articleId);
         });
 
         initializeCarousels();

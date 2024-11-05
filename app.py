@@ -30,7 +30,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-from models import User, Articulo, Evento, Categoria, Periodico, articulo_evento, evento_region, Region, Periodista
+from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, articulo_evento, evento_region, Region, Periodista
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -39,13 +39,17 @@ def load_user(user_id):
 @app.route('/')
 def index():
     try:
+        # Query categories with subcategory and article counts
         categories = db.session.query(
             Categoria,
             func.count(distinct(Evento.evento_id)).label('event_count'),
             func.count(distinct(articulo_evento.c.articulo_id)).label('article_count')
         ).outerjoin(
+            Subcategoria,
+            Categoria.categoria_id == Subcategoria.categoria_id
+        ).outerjoin(
             Evento,
-            Categoria.categoria_id == Evento.categoria_id
+            Subcategoria.subcategoria_id == Evento.subcategoria_id
         ).outerjoin(
             articulo_evento,
             Evento.evento_id == articulo_evento.c.evento_id
@@ -115,16 +119,15 @@ def get_subcategories():
             return jsonify([])
         
         subcategories = db.session.query(
-            Categoria.categoria_id,
-            Categoria.subnombre
+            Subcategoria.subcategoria_id,
+            Subcategoria.nombre
         ).filter(
-            Categoria.categoria_id == category_id,
-            Categoria.subnombre.isnot(None)
+            Subcategoria.categoria_id == category_id
         ).all()
         
         return jsonify([{
-            'id': subcat.categoria_id,
-            'subnombre': subcat.subnombre
+            'id': subcat.subcategoria_id,
+            'nombre': subcat.nombre
         } for subcat in subcategories])
     except Exception as e:
         logger.error(f"Error in get_subcategories: {str(e)}")
@@ -134,6 +137,7 @@ def get_subcategories():
 def get_articles():
     try:
         category_id = request.args.get('category_id')
+        subcategory_id = request.args.get('subcategory_id')
         search_query = request.args.get('q')
         
         article_count_subquery = db.session.query(
@@ -142,12 +146,13 @@ def get_articles():
         ).group_by(articulo_evento.c.evento_id).subquery()
         
         base_query = db.session.query(
-            Articulo, Evento, Categoria, Region, Periodico,
+            Articulo, Evento, Categoria, Subcategoria, Region, Periodico,
             article_count_subquery.c.article_count
         ).select_from(Articulo)\
         .join(articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id)\
         .join(Evento, articulo_evento.c.evento_id == Evento.evento_id)\
-        .join(Categoria, Evento.categoria_id == Categoria.categoria_id)\
+        .join(Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id)\
+        .join(Categoria, Subcategoria.categoria_id == Categoria.categoria_id)\
         .join(evento_region, Evento.evento_id == evento_region.c.evento_id, isouter=True)\
         .join(Region, evento_region.c.region_id == Region.region_id, isouter=True)\
         .join(Periodico, Articulo.periodico_id == Periodico.periodico_id)\
@@ -155,12 +160,13 @@ def get_articles():
 
         if category_id:
             base_query = base_query.filter(Categoria.categoria_id == category_id)
+        if subcategory_id:
+            base_query = base_query.filter(Subcategoria.subcategoria_id == subcategory_id)
         if search_query:
             base_query = base_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
 
         results = base_query.order_by(
             Categoria.nombre,
-            Categoria.subnombre,
             article_count_subquery.c.article_count.desc(),
             desc(Evento.fecha_evento),
             desc(Articulo.fecha_publicacion)
@@ -169,7 +175,7 @@ def get_articles():
         logger.info(f"Retrieved {len(results)} articles")
 
         organized_data = {}
-        for article, event, category, region, periodico, article_count in results:
+        for article, event, category, subcategory, region, periodico, article_count in results:
             if not category:
                 continue
                 
@@ -181,11 +187,12 @@ def get_articles():
                     'subcategories': {}
                 }
 
-            subcategory_key = category.subnombre or 'general'
+            subcategory_key = subcategory.subcategoria_id
             if subcategory_key not in organized_data[category.categoria_id]['subcategories']:
                 organized_data[category.categoria_id]['subcategories'][subcategory_key] = {
-                    'subnombre': category.subnombre,
-                    'subdescripcion': category.subdescripcion,
+                    'subcategoria_id': subcategory.subcategoria_id,
+                    'nombre': subcategory.nombre,
+                    'descripcion': subcategory.descripcion,
                     'events': {}
                 }
 
@@ -217,14 +224,15 @@ def get_articles():
                     'descripcion': cat_data['descripcion'],
                     'subcategories': [
                         {
-                            'subnombre': subcat_data['subnombre'],
-                            'subdescripcion': subcat_data['subdescripcion'],
+                            'subcategoria_id': subcat_data['subcategoria_id'],
+                            'nombre': subcat_data['nombre'],
+                            'descripcion': subcat_data['descripcion'],
                             'events': sorted([
                                 {
                                     **event_data,
                                     'articles': sorted(event_data['articles'], 
-                                                    key=lambda x: x['fecha_publicacion'] or '', 
-                                                    reverse=True)
+                                                   key=lambda x: x['fecha_publicacion'] or '', 
+                                                   reverse=True)
                                 }
                                 for event_id, event_data in subcat_data['events'].items()
                             ], key=lambda x: (x['article_count'] or 0, x['fecha_evento'] or ''), reverse=True)
