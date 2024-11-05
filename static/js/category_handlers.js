@@ -84,16 +84,32 @@ function fetchSubcategories(categoryId) {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })
-        .then(data => {
-            if (data && data.length > 0) {
-                updateSubcategoryTabs(data);
-                // Show immediately with transition
-                requestAnimationFrame(() => {
-                    subcategoryNav.classList.add('visible');
+        .then(subcategories => {
+            // Get subcategories with events
+            fetch(`/api/articles?category_id=${categoryId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const subcatsWithEvents = new Set();
+                    data.categories[0]?.subcategories.forEach(subcat => {
+                        if (subcat.events && subcat.events.length > 0) {
+                            subcatsWithEvents.add(subcat.subcategoria_id);
+                        }
+                    });
+
+                    // Filter and render only subcategories with events
+                    const filteredSubcats = subcategories.filter(subcat => 
+                        subcatsWithEvents.has(subcat.id)
+                    );
+
+                    if (filteredSubcats.length > 0) {
+                        updateSubcategoryTabs(filteredSubcats);
+                        requestAnimationFrame(() => {
+                            subcategoryNav.classList.add('visible');
+                        });
+                    } else {
+                        hideSubcategoryTabs();
+                    }
                 });
-            } else {
-                hideSubcategoryTabs();
-            }
         })
         .catch(error => {
             console.error('Error fetching subcategories:', error);
