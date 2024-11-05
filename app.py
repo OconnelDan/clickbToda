@@ -82,21 +82,18 @@ def get_subcategories():
 def get_articles():
     try:
         category_id = request.args.get('category_id')
+        subcategory_id = request.args.get('subcategory_id')
         search_query = request.args.get('q')
         
-        # Base query for articles
+        # Base query for articles with related data
         query = db.session.query(
-            Articulo,
-            Evento,
-            Categoria,
-            Subcategoria,
-            Periodico
+            Articulo, Evento, Categoria, Subcategoria, Periodico
         ).select_from(Articulo).join(
             articulo_evento,
             Articulo.articulo_id == articulo_evento.c.articulo_id
         ).join(
             Evento,
-            Evento.evento_id == articulo_evento.c.evento_id
+            articulo_evento.c.evento_id == Evento.evento_id
         ).join(
             Categoria,
             Evento.categoria_id == Categoria.categoria_id
@@ -111,17 +108,22 @@ def get_articles():
         # Add filters
         if category_id:
             query = query.filter(Categoria.categoria_id == category_id)
+        if subcategory_id:
+            query = query.filter(Subcategoria.id == subcategory_id)
         if search_query:
             query = query.filter(Articulo.titular.ilike(f'%{search_query}%'))
 
         # Add ordering
         query = query.order_by(
             Categoria.nombre,
-            Subcategoria.nombre,
             desc(Evento.fecha_evento),
             desc(Articulo.fecha_publicacion)
         )
 
+        # Log the SQL query for debugging
+        logger.info(f"Query SQL: {query.statement.compile(compile_kwargs={'literal_binds': True})}")
+
+        # Execute query and fetch results
         results = query.all()
         logger.info(f"Retrieved {len(results)} articles")
 
