@@ -1,14 +1,25 @@
 <div class="article-card">
-    <div class="card h-100">
-        <div class="card-body">
-            <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
-                 class="newspaper-logo mb-2" alt="Newspaper logo">
-            <h5 class="card-title article-title {% if article.paywall %}text-muted{% endif %}">
-                {{ article.titular }}
-            </h5>
-            {% if article.paywall %}
-            <span class="badge bg-secondary">Paywall</span>
-            {% endif %}
+    <a href="{{ article.url }}" target="_blank" class="text-decoration-none">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex align-items-center mb-2">
+                    <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
+                         class="newspaper-logo me-2" alt="Newspaper logo">
+                    {% if article.paywall %}
+                    <span class="badge bg-warning text-dark ms-auto">Paywall</span>
+                    {% endif %}
+                </div>
+                <h5 class="card-title article-title flex-grow-1 {% if article.paywall %}text-muted{% endif %}">
+                    {{ article.titular }}
+                </h5>
+                <div class="article-meta mt-2">
+                    {% if article.fecha_publicacion %}
+                    <small class="text-muted">
+                        Published: {{ article.fecha_publicacion }}
+                    </small>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-    </div>
+    </a>
 </div>
