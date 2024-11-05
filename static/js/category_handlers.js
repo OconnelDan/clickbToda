@@ -279,6 +279,9 @@ function updateDisplay(data) {
                                                                             ${article.titular || 'No Title'}
                                                                         </h5>
                                                                         ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
+                                                                        <div class="article-opinion mt-2">
+                                                                            ${article.gpt_opinion || ''}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>

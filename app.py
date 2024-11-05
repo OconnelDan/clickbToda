@@ -39,7 +39,6 @@ def load_user(user_id):
 @app.route('/')
 def index():
     try:
-        # Query categories with subcategory and article counts
         categories = db.session.query(
             Categoria,
             func.count(distinct(Evento.evento_id)).label('event_count')
@@ -137,7 +136,6 @@ def get_articles():
         
         logger.info(f"Fetching articles with params - category: {category_id}, subcategory: {subcategory_id}, search: {search_query}")
 
-        # Start with base query from Evento
         base_query = db.session.query(
             Evento,
             Categoria,
@@ -145,7 +143,6 @@ def get_articles():
             func.count(distinct(Articulo.articulo_id)).label('article_count')
         ).select_from(Evento)
 
-        # Join with categories and subcategories
         base_query = base_query.outerjoin(
             Subcategoria,
             Evento.subcategoria_id == Subcategoria.subcategoria_id
@@ -163,7 +160,6 @@ def get_articles():
             )
         )
 
-        # Apply filters
         if category_id:
             base_query = base_query.filter(Categoria.categoria_id == category_id)
         if subcategory_id:
@@ -171,7 +167,6 @@ def get_articles():
         if search_query:
             base_query = base_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
 
-        # Group and order
         base_query = base_query.group_by(
             Evento.evento_id,
             Categoria.categoria_id,
@@ -185,11 +180,9 @@ def get_articles():
         events = base_query.all()
         logger.info(f"Retrieved {len(events)} events")
 
-        # Organize into response structure
         organized_data = {}
         
         for event, category, subcategory, article_count in events:
-            # Get articles for this event
             articles = db.session.query(
                 Articulo,
                 Periodico
@@ -205,7 +198,6 @@ def get_articles():
                 desc(Articulo.fecha_publicacion)
             ).all()
 
-            # Initialize category if needed
             cat_id = category.categoria_id if category else 0
             if cat_id not in organized_data:
                 organized_data[cat_id] = {
@@ -215,7 +207,6 @@ def get_articles():
                     'subcategories': {}
                 }
 
-            # Initialize subcategory if needed
             subcat_id = subcategory.subcategoria_id if subcategory else 0
             if subcat_id not in organized_data[cat_id]['subcategories']:
                 organized_data[cat_id]['subcategories'][subcat_id] = {
@@ -225,7 +216,6 @@ def get_articles():
                     'events': {}
                 }
 
-            # Add event data
             organized_data[cat_id]['subcategories'][subcat_id]['events'][event.evento_id] = {
                 'evento_id': event.evento_id,
                 'titulo': event.titulo,
@@ -238,11 +228,11 @@ def get_articles():
                     'paywall': article.paywall,
                     'periodico_logo': periodico.logo_url if periodico else None,
                     'url': article.url,
-                    'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None
+                    'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None,
+                    'gpt_opinion': article.gpt_opinion
                 } for article, periodico in articles]
             }
 
-        # Prepare final response
         response_data = {
             'categories': [
                 {
