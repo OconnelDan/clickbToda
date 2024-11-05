@@ -2,7 +2,7 @@
 <html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News App</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
@@ -53,18 +53,30 @@
     
     <script>
     function setViewportScale() {
-        // Force viewport scale to 2.0
-        const viewport = document.querySelector('meta[name="viewport"]');
-        if (viewport) {
-            viewport.setAttribute('content', 
-                'width=device-width, initial-scale=2.0, maximum-scale=2.0, minimum-scale=2.0');
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+            const viewport = document.querySelector('meta[name="viewport"]');
+            if (viewport) {
+                // Force viewport scale to 2.0 for mobile devices
+                viewport.setAttribute('content', 
+                    'width=device-width, initial-scale=2.0, maximum-scale=2.0, minimum-scale=2.0, user-scalable=no');
+                
+                // Log for debugging
+                console.log('Viewport scale set to 2.0 for mobile');
+            }
         }
     }
-    
-    // Set scale on load
+
+    // Set scale on page load
     document.addEventListener('DOMContentLoaded', setViewportScale);
+
     // Reset on orientation change
-    window.addEventListener('orientationchange', setViewportScale);
+    window.addEventListener('orientationchange', function() {
+        // Small delay to ensure proper handling after orientation change
+        setTimeout(setViewportScale, 100);
+    });
+
+    // Additional check after any dynamic content loads
+    window.addEventListener('load', setViewportScale);
     </script>
 </body>
 </html>
