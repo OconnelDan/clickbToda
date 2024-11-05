@@ -327,6 +327,9 @@ function updateDisplay(data) {
             // Add hover effect
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');
+            
+            // Add debug logging
+            console.log('Article card initialized:', card.dataset.articleId);
         });
 
         initializeCarousels();
