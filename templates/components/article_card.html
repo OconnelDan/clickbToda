@@ -1,5 +1,5 @@
 <div class="article-card">
-    <div class="card h-100">
+    <div class="card h-100 clickable-card" onclick="window.open('{{ article.url }}', '_blank')">
         <div class="card-body">
             <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
                  class="newspaper-logo mb-2" alt="Newspaper logo">
