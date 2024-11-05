@@ -18,14 +18,12 @@ function initializeTabNavigation() {
         });
     });
 
-    // Handle subcategory clicks with animation
     const subcategoryNav = document.querySelector('.subcategory-nav');
     if (subcategoryNav) {
         subcategoryNav.addEventListener('click', function(e) {
             const tabButton = e.target.closest('[role="tab"]');
             if (!tabButton) return;
 
-            // Animate the transition
             const allSubcategoryTabs = subcategoryNav.querySelectorAll('[role="tab"]');
             allSubcategoryTabs.forEach(tab => {
                 tab.classList.remove('active');
@@ -280,11 +278,6 @@ function updateDisplay(data) {
                                                                         <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
                                                                             ${article.titular || 'No Title'}
                                                                         </h5>
-                                                                        ${article.gpt_opinion ? `
-                                                                            <div class="article-opinion">
-                                                                                ${article.gpt_opinion}
-                                                                            </div>
-                                                                        ` : ''}
                                                                         ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
                                                                     </div>
                                                                 </div>
@@ -303,7 +296,6 @@ function updateDisplay(data) {
             </div>
         `).join('');
 
-        // Add click event listeners to article cards
         document.querySelectorAll('.article-card').forEach(card => {
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');
