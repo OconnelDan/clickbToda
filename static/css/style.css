@@ -35,7 +35,7 @@
 }
 
 .newspaper-logo {
-    max-height: 24px;
+    max-height: 12px; /* Reduced from 24px */
     width: auto;
     object-fit: contain;
     object-position: left center;
@@ -223,7 +223,7 @@
     }
 
     .newspaper-logo {
-        max-height: 28px;
+        max-height: 14px; /* Reduced from 28px */
     }
 }
 
@@ -242,7 +242,7 @@
     }
 
     .newspaper-logo {
-        max-height: 32px;
+        max-height: 16px; /* Reduced from 32px */
     }
 }
 
