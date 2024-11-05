@@ -87,8 +87,21 @@ class Categoria(db.Model):
     categoria_id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(255), nullable=False)
     descripcion = db.Column(db.Text)
-    subnombre = db.Column(db.String)
-    subdescripcion = db.Column(db.String)
+    
+    # Relationship with Subcategoria
+    subcategorias = db.relationship('Subcategoria', backref='categoria', lazy=True)
+    eventos = db.relationship('Evento', backref='categoria', lazy=True)
+
+class Subcategoria(db.Model):
+    __tablename__ = 'subcategoria'
+    __table_args__ = {'schema': 'app'}
+    
+    subcategoria_id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(255), nullable=False)
+    descripcion = db.Column(db.Text)
+    categoria_id = db.Column(db.Integer, db.ForeignKey('app.categoria.categoria_id'), nullable=False)
+    
+    eventos = db.relationship('Evento', backref='subcategoria', lazy=True)
 
 class Evento(db.Model):
     __tablename__ = 'evento'
@@ -100,19 +113,18 @@ class Evento(db.Model):
     fecha_evento = db.Column(db.Date)
     impacto = db.Column(db.String(255))
     categoria_id = db.Column(db.Integer, db.ForeignKey('app.categoria.categoria_id'), nullable=False)
+    subcategoria_id = db.Column(db.Integer, db.ForeignKey('app.subcategoria.subcategoria_id'))
     grupo_de_eventos_id = db.Column(db.Integer)
     subgrupo_de_eventos_id = db.Column(db.Integer)
     gpt_sujeto_activo = db.Column(db.String(255))
     gpt_sujeto_pasivo = db.Column(db.String(255))
     gpt_importancia = db.Column(db.Integer)
     gpt_tiene_contexto = db.Column(db.Boolean, default=False)
-    embeddings = db.Column(db.String)  # Added embeddings field
-    gpt_palabras_clave = db.Column(db.String(1000))  # Added gpt_palabras_clave field
+    embeddings = db.Column(db.String)
+    gpt_palabras_clave = db.Column(db.String(1000))
 
-    categoria = db.relationship('Categoria', backref='eventos')
     regiones = db.relationship('Region', secondary=evento_region, backref='eventos')
 
-# Rest of the models...
 class Region(db.Model):
     __tablename__ = 'region'
     __table_args__ = {'schema': 'app'}
