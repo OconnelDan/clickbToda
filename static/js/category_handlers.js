@@ -112,7 +112,6 @@ function updateSubcategoryTabs(subcategories) {
     const subcategoryTabs = document.getElementById('subcategoryTabs');
     if (!subcategoryTabs) return;
 
-    // Create a Set to store unique subcategory names
     const uniqueSubcategories = new Set();
     const filteredSubcategories = subcategories.filter(subcat => {
         const key = `${subcat.id}-${subcat.subnombre}`;
@@ -172,7 +171,6 @@ function showAllCategories() {
                 throw new Error('Invalid response format: missing or invalid categories array');
             }
             
-            // Validate data structure
             data.categories.forEach((category, index) => {
                 if (!category.categoria_id || !category.nombre) {
                     console.warn(`Invalid category at index ${index}:`, category);
@@ -295,7 +293,7 @@ function updateDisplay(data) {
                                                 <div class="articles-carousel">
                                                     <div class="carousel-wrapper">
                                                         ${(event.articles || []).map(article => `
-                                                            <div class="article-card" data-article-url="${article.url || '#'}" role="button">
+                                                            <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url || '#'}" role="button">
                                                                 <div class="card h-100">
                                                                     <div class="card-body">
                                                                         <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
@@ -326,13 +324,6 @@ function updateDisplay(data) {
 
         // Add click event listeners to article cards
         document.querySelectorAll('.article-card').forEach(card => {
-            card.addEventListener('click', function() {
-                const url = this.dataset.articleUrl;
-                if (url && url !== '#') {
-                    window.open(url, '_blank');
-                }
-            });
-
             // Add hover effect
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');

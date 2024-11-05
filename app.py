@@ -7,7 +7,6 @@ import logging
 from config import Config
 import sys
 
-# Set up logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -18,10 +17,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Initialize SQLAlchemy with engine options
 try:
     db = SQLAlchemy(app)
-    # Test database connection
     with app.app_context():
         db.engine.connect()
     logger.info("Database connection successful")
@@ -42,7 +39,6 @@ def load_user(user_id):
 @app.route('/')
 def index():
     try:
-        # Get unique categories with their event and article counts
         categories = db.session.query(
             Categoria,
             func.count(distinct(Evento.evento_id)).label('event_count'),
@@ -101,7 +97,11 @@ def get_article_details(article_id):
             'url': article_obj.url,
             'paywall': article_obj.paywall,
             'cuerpo': article_obj.cuerpo,
-            'gpt_resumen': article_obj.gpt_resumen
+            'gpt_resumen': article_obj.gpt_resumen,
+            'gpt_opinion': article_obj.gpt_opinion,
+            'gpt_palabras_clave': article_obj.gpt_palabras_clave,
+            'gpt_cantidad_fuentes_citadas': article_obj.gpt_cantidad_fuentes_citadas,
+            'agencia': article_obj.agencia
         })
     except Exception as e:
         logger.error(f"Error fetching article details: {str(e)}")
@@ -136,13 +136,11 @@ def get_articles():
         category_id = request.args.get('category_id')
         search_query = request.args.get('q')
         
-        # Subquery to count articles per event
         article_count_subquery = db.session.query(
             articulo_evento.c.evento_id,
             func.count(articulo_evento.c.articulo_id).label('article_count')
         ).group_by(articulo_evento.c.evento_id).subquery()
         
-        # Base query with article count
         base_query = db.session.query(
             Articulo, Evento, Categoria, Region, Periodico,
             article_count_subquery.c.article_count
@@ -155,13 +153,11 @@ def get_articles():
         .join(Periodico, Articulo.periodico_id == Periodico.periodico_id)\
         .join(article_count_subquery, Evento.evento_id == article_count_subquery.c.evento_id)
 
-        # Apply filters
         if category_id:
             base_query = base_query.filter(Categoria.categoria_id == category_id)
         if search_query:
             base_query = base_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
 
-        # Execute query
         results = base_query.order_by(
             Categoria.nombre,
             Categoria.subnombre,
@@ -172,7 +168,6 @@ def get_articles():
 
         logger.info(f"Retrieved {len(results)} articles")
 
-        # Organize results
         organized_data = {}
         for article, event, category, region, periodico, article_count in results:
             if not category:
@@ -214,7 +209,6 @@ def get_articles():
                     'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None
                 })
 
-        # Format response
         response_data = {
             'categories': [
                 {
@@ -251,7 +245,6 @@ def get_articles():
             'details': str(e)
         }), 500
 
-# Authentication routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
