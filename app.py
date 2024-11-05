@@ -58,10 +58,10 @@ def index():
         logger.info(f"Retrieved {len(categories)} categories")
         return render_template('index.html', 
                            categories=categories,
-                           selected_date=datetime.now())
+                           selected_date=datetime.now().date())
     except Exception as e:
         logger.error(f"Error in index route: {str(e)}")
-        return render_template('index.html', categories=[], selected_date=datetime.now())
+        return render_template('index.html', categories=[], selected_date=datetime.now().date())
 
 @app.route('/api/article/<int:article_id>')
 def get_article_details(article_id):
@@ -133,13 +133,17 @@ def get_articles():
         category_id = request.args.get('category_id')
         subcategory_id = request.args.get('subcategory_id')
         search_query = request.args.get('q')
-        time_filter = request.args.get('time_filter', '24')  # Default to 24 hours
+        time_filter = request.args.get('time_filter', 'today')
         
         logger.info(f"Fetching articles with params - category: {category_id}, subcategory: {subcategory_id}, search: {search_query}, time_filter: {time_filter}")
 
-        end_date = datetime.now()
-        hours = int(time_filter)
-        start_date = end_date - timedelta(hours=hours)
+        end_date = datetime.now().date()
+        if time_filter == 'week':
+            start_date = end_date - timedelta(days=7)
+        elif time_filter == 'month':
+            start_date = end_date - timedelta(days=30)
+        else:  # today
+            start_date = end_date
 
         base_query = db.session.query(
             Evento,
@@ -162,8 +166,8 @@ def get_articles():
             and_(
                 articulo_evento.c.articulo_id == Articulo.articulo_id,
                 Articulo.paywall.is_(False) if request.args.get('hide_paywall') else True,
-                Articulo.fecha_publicacion >= start_date.date(),
-                Articulo.fecha_publicacion <= end_date.date()
+                Articulo.fecha_publicacion >= start_date,
+                Articulo.fecha_publicacion <= end_date
             )
         )
 
@@ -201,8 +205,8 @@ def get_articles():
                 Articulo.periodico_id == Periodico.periodico_id
             ).filter(
                 articulo_evento.c.evento_id == event.evento_id,
-                Articulo.fecha_publicacion >= start_date.date(),
-                Articulo.fecha_publicacion <= end_date.date()
+                Articulo.fecha_publicacion >= start_date,
+                Articulo.fecha_publicacion <= end_date
             ).order_by(
                 desc(Articulo.fecha_publicacion)
             ).all()
