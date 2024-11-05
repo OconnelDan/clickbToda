@@ -133,12 +133,14 @@ function handleSwipe(wrapper, startX, endX) {
 function reloadArticles(date) {
     const activeTab = document.querySelector('#categoryTabs .nav-link.active');
     const selectedCategoryId = activeTab ? activeTab.dataset.categoryId : null;
+    const selectedTimeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
     
     let url = '/api/articles';
     const params = new URLSearchParams();
     
     if (selectedCategoryId) params.append('category_id', selectedCategoryId);
     if (date) params.append('date', date);
+    params.append('time_filter', selectedTimeFilter);
     
     if (params.toString()) url += `?${params.toString()}`;
     

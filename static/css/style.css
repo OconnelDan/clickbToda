@@ -50,7 +50,7 @@
 }
 
 .article-card .card {
-    min-height: 11.25rem; /* 180px / 16px */
+    min-height: 11.25rem;
     height: 100%;
     transition: all 0.2s ease-in-out;
 }
@@ -71,7 +71,7 @@
 }
 
 .newspaper-logo {
-    max-height: 0.75rem; /* 12px / 16px */
+    max-height: 0.75rem;
     width: auto;
     object-fit: contain;
     object-position: left center;
@@ -260,6 +260,74 @@
     padding: 1.5rem;
 }
 
+/* Time Filter Styles */
+.time-filter {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: rgba(var(--bs-primary-rgb), 0.1);
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.time-filter-label {
+    font-weight: 500;
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+}
+
+.toggle-slider {
+    position: relative;
+    display: inline-flex;
+    background: rgba(var(--bs-dark-rgb), 0.2);
+    border-radius: 2rem;
+    padding: 0.25rem;
+}
+
+.toggle-slider input[type="radio"] {
+    display: none;
+}
+
+.toggle-slider label {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    margin: 0;
+    color: var(--bs-body-color);
+}
+
+.toggle-slider input[type="radio"]:checked + label {
+    color: var(--bs-light);
+}
+
+.toggle-slider .slider {
+    position: absolute;
+    z-index: 0;
+    left: 0.25rem;
+    top: 0.25rem;
+    bottom: 0.25rem;
+    width: 5rem;
+    background: var(--bs-primary);
+    border-radius: 1.5rem;
+    transition: transform 0.2s ease;
+}
+
+.toggle-slider input[type="radio"]#week:checked ~ .slider {
+    transform: translateX(5rem);
+}
+
+.toggle-slider input[type="radio"]#month:checked ~ .slider {
+    transform: translateX(10rem);
+}
+
 /* Tablet (md) */
 @media (min-width: 768px) {
     .article-card {
@@ -327,5 +395,35 @@
 @media (min-width: 1200px) {
     .article-card {
         width: calc(25% - 1rem);
+    }
+}
+
+@media (max-width: 767px) {
+    .time-filter {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .toggle-slider {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .toggle-slider label {
+        min-width: 4rem;
+        padding: 0.5rem;
+    }
+    
+    .toggle-slider .slider {
+        width: 4rem;
+    }
+    
+    .toggle-slider input[type="radio"]#week:checked ~ .slider {
+        transform: translateX(4rem);
+    }
+    
+    .toggle-slider input[type="radio"]#month:checked ~ .slider {
+        transform: translateX(8rem);
     }
 }

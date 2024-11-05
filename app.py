@@ -2,7 +2,7 @@ from flask import Flask, render_template, jsonify, request, flash, redirect, url
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import func, text, desc, and_, distinct, or_
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from config import Config
 import sys
@@ -133,8 +133,17 @@ def get_articles():
         category_id = request.args.get('category_id')
         subcategory_id = request.args.get('subcategory_id')
         search_query = request.args.get('q')
+        time_filter = request.args.get('time_filter', 'today')
         
-        logger.info(f"Fetching articles with params - category: {category_id}, subcategory: {subcategory_id}, search: {search_query}")
+        logger.info(f"Fetching articles with params - category: {category_id}, subcategory: {subcategory_id}, search: {search_query}, time_filter: {time_filter}")
+
+        end_date = datetime.now().date()
+        if time_filter == 'week':
+            start_date = end_date - timedelta(days=7)
+        elif time_filter == 'month':
+            start_date = end_date - timedelta(days=30)
+        else:  # today
+            start_date = end_date
 
         base_query = db.session.query(
             Evento,
@@ -156,7 +165,9 @@ def get_articles():
             Articulo,
             and_(
                 articulo_evento.c.articulo_id == Articulo.articulo_id,
-                Articulo.paywall.is_(False) if request.args.get('hide_paywall') else True
+                Articulo.paywall.is_(False) if request.args.get('hide_paywall') else True,
+                Articulo.fecha_publicacion >= start_date,
+                Articulo.fecha_publicacion <= end_date
             )
         )
 
@@ -193,10 +204,15 @@ def get_articles():
                 Periodico,
                 Articulo.periodico_id == Periodico.periodico_id
             ).filter(
-                articulo_evento.c.evento_id == event.evento_id
+                articulo_evento.c.evento_id == event.evento_id,
+                Articulo.fecha_publicacion >= start_date,
+                Articulo.fecha_publicacion <= end_date
             ).order_by(
                 desc(Articulo.fecha_publicacion)
             ).all()
+
+            if not articles:
+                continue
 
             cat_id = category.categoria_id if category else 0
             if cat_id not in organized_data:
