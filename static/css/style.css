@@ -178,18 +178,18 @@
 /* Subcategory Navigation */
 .subcategory-nav {
     opacity: 0;
+    visibility: hidden;
     transform: translateY(-10px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: all 0.3s ease;
     margin-top: 0.5rem;
     background: var(--bs-body-bg);
     border-top: 1px solid rgba(var(--bs-secondary-rgb), 0.1);
-    display: none;
 }
 
 .subcategory-nav.visible {
     opacity: 1;
+    visibility: visible;
     transform: translateY(0);
-    display: block;
 }
 
 .nav-pills .nav-link {

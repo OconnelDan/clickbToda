@@ -85,13 +85,12 @@ function fetchSubcategories(categoryId) {
             return response.json();
         })
         .then(data => {
-            console.log('Subcategories data:', data);
-            
             if (data && data.length > 0) {
-                // Show subcategory nav immediately
-                subcategoryNav.style.display = 'block';
                 updateSubcategoryTabs(data);
-                subcategoryNav.classList.add('visible');
+                // Show immediately with transition
+                requestAnimationFrame(() => {
+                    subcategoryNav.classList.add('visible');
+                });
             } else {
                 hideSubcategoryTabs();
             }
@@ -99,7 +98,6 @@ function fetchSubcategories(categoryId) {
         .catch(error => {
             console.error('Error fetching subcategories:', error);
             hideSubcategoryTabs();
-            showError('Failed to load subcategories', error);
         });
 }
 
@@ -131,8 +129,6 @@ function hideSubcategoryTabs() {
     if (!subcategoryNav) return;
     
     subcategoryNav.classList.remove('visible');
-    subcategoryNav.style.display = 'none';
-    subcategoryNav.innerHTML = '';
 }
 
 function showAllCategories() {
