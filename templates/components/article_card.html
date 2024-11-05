@@ -1,19 +1,5 @@
-<div class="article-card" data-article-url="{{ article.url }}" role="button">
-    <div class="card h-100" 
-         data-bs-toggle="popover" 
-         data-bs-trigger="hover"
-         data-bs-html="true"
-         data-bs-content='
-            <div class="article-popup">
-                <p class="mb-2"><strong>{{ article.titular }}</strong></p>
-                {% if article.fecha_publicacion %}
-                <p class="mb-1"><small>Published: {{ article.fecha_publicacion }}</small></p>
-                {% endif %}
-                {% if article.paywall %}
-                <p class="mb-0"><span class="badge bg-secondary">Paywall</span></p>
-                {% endif %}
-            </div>
-         '>
+<div class="article-card">
+    <div class="card h-100">
         <div class="card-body">
             <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
                  class="newspaper-logo mb-2" alt="Newspaper logo">
