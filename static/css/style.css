@@ -1,265 +1,3 @@
-/* Base mobile styles (up to 767px) */
-:root {
-    --viewport-scale: 2.0;
-    font-size: calc(16px * var(--viewport-scale));
-}
-
-/* Tablet styles */
-@media (min-width: 768px) and (max-width: 991px) {
-    :root {
-        --viewport-scale: 1.5;
-        font-size: calc(16px * var(--viewport-scale));
-    }
-}
-
-/* Desktop styles */
-@media (min-width: 992px) {
-    :root {
-        --viewport-scale: 1.0;
-        font-size: 16px;
-    }
-}
-
-.articles-carousel {
-    position: relative;
-    overflow: hidden;
-    padding: 1rem 0;
-}
-
-.carousel-wrapper {
-    display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    gap: 1rem;
-    padding-bottom: 1rem;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    position: relative;
-}
-
-.carousel-wrapper::-webkit-scrollbar {
-    display: none;
-}
-
-.article-card {
-    flex: 0 0 auto;
-    width: calc(100% - 1rem);
-    scroll-snap-align: start;
-}
-
-.article-card .card {
-    min-height: 11.25rem;
-    height: 100%;
-    transition: all 0.2s ease-in-out;
-}
-
-.article-card .card-body {
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.article-card-clickable:hover {
-    transform: translateY(-2px);
-}
-
-.article-card-clickable:hover .card {
-    box-shadow: 0 0.5rem 1rem rgba(var(--bs-primary-rgb), 0.15);
-}
-
-.newspaper-logo {
-    max-height: 0.75rem;
-    width: auto;
-    object-fit: contain;
-    object-position: left center;
-    filter: invert(1) brightness(1);
-    mix-blend-mode: difference;
-    transition: all 0.2s ease;
-    display: block;
-}
-
-.article-title {
-    font-size: 0.9rem;
-    line-height: 1.4;
-    margin-bottom: 0.25rem;
-    flex-grow: 0;
-}
-
-.article-opinion {
-    font-size: 0.75rem;
-    line-height: 1.4;
-    color: var(--bs-secondary);
-    margin-top: auto;
-    padding: 0.5rem;
-    background: rgba(var(--bs-secondary-rgb), 0.1);
-    border-radius: 0.25rem;
-}
-
-/* Scroll Button Styles */
-.scroll-button {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 10;
-    background: rgba(var(--bs-primary-rgb), 0.9);
-    border: none;
-    color: var(--bs-light);
-    padding: 0.75rem;
-    border-radius: 50%;
-    width: 2rem;
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    opacity: 0;
-    pointer-events: none;
-    font-size: 1rem;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.scroll-button.visible {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.scroll-button.left {
-    left: 0.5rem;
-}
-
-.scroll-button.right {
-    right: 0.5rem;
-}
-
-.scroll-button:hover {
-    background: rgba(var(--bs-primary-rgb), 1);
-    transform: translateY(-50%) scale(1.1);
-}
-
-.scroll-button:active {
-    transform: translateY(-50%) scale(0.95);
-}
-
-/* Category Navigation Styles */
-.category-nav {
-    padding: 0.75rem 0;
-    position: sticky;
-    top: 0;
-    z-index: 1020;
-    background: var(--bs-body-bg);
-    border-bottom: 1px solid rgba(var(--bs-secondary-rgb), 0.1);
-}
-
-.nav-tabs-wrapper, .nav-pills-wrapper {
-    position: relative;
-    overflow: hidden;
-    margin: 0;
-    padding: 0 2.5rem;
-}
-
-.nav-tabs, .nav-pills {
-    display: flex;
-    overflow-x: auto;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    gap: 0.75rem;
-    padding: 0.5rem 0;
-    position: relative;
-}
-
-.nav-tabs::-webkit-scrollbar, .nav-pills::-webkit-scrollbar {
-    display: none;
-}
-
-.nav-tabs .nav-link {
-    white-space: nowrap;
-    border: none;
-    background: transparent;
-    transition: all 0.2s ease-in-out;
-    margin: 0;
-    padding: 0.75rem 1.25rem;
-    font-weight: 500;
-}
-
-.nav-tabs .nav-link.active {
-    background: var(--bs-primary);
-    color: var(--bs-light);
-    border-radius: 0.25rem;
-}
-
-.nav-tabs .badge {
-    font-size: 0.75em;
-    padding: 0.25em 0.5em;
-    background: rgba(var(--bs-secondary-rgb), 0.2);
-}
-
-/* Subcategory Navigation */
-.subcategory-nav {
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-10px);
-    transition: all 0.3s ease;
-    margin: 0;
-    padding: 0;
-    background: var(--bs-body-bg);
-    border-top: none;
-}
-
-.subcategory-nav.visible {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-.nav-pills .nav-link {
-    color: var(--bs-body-color);
-    border-radius: 2rem;
-    padding: 0.25rem 1rem;
-    font-size: 0.85rem;
-    transition: all 0.2s ease-in-out;
-    font-weight: 500;
-    line-height: 1.2;
-}
-
-.nav-pills .nav-link:hover {
-    background: rgba(var(--bs-primary-rgb), 0.1);
-}
-
-.nav-pills .nav-link.active {
-    background: var(--bs-primary);
-    color: var(--bs-light);
-}
-
-/* Modal Styles */
-.modal-content {
-    border: 3px solid rgba(var(--bs-primary-rgb), 0.2);
-    border-radius: 1rem;
-}
-
-.modal-header {
-    border-bottom: 2px solid rgba(var(--bs-primary-rgb), 0.1);
-    padding: 1.5rem;
-}
-
-.modal-header .newspaper-logo {
-    max-height: 1.25rem;
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.modal-footer {
-    border-top: 2px solid rgba(var(--bs-primary-rgb), 0.1);
-    padding: 1.5rem;
-}
-
 /* Time Filter Styles */
 .time-filter {
     display: flex;
@@ -295,8 +33,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 5rem;
-    padding: 0.5rem 1rem;
+    min-width: 4rem;
+    padding: 0.5rem 0.75rem;
     font-size: 0.85rem;
     cursor: pointer;
     transition: color 0.2s ease;
@@ -314,88 +52,18 @@
     left: 0.25rem;
     top: 0.25rem;
     bottom: 0.25rem;
-    width: 5rem;
+    width: 4rem;
     background: var(--bs-primary);
     border-radius: 1.5rem;
     transition: transform 0.2s ease;
 }
 
-.toggle-slider input[type="radio"]#week:checked ~ .slider {
-    transform: translateX(5rem);
+.toggle-slider input[type="radio"]#48h:checked ~ .slider {
+    transform: translateX(4rem);
 }
 
-.toggle-slider input[type="radio"]#month:checked ~ .slider {
-    transform: translateX(10rem);
-}
-
-/* Tablet (md) */
-@media (min-width: 768px) {
-    .article-card {
-        width: calc(50% - 1rem);
-    }
-
-    .article-card .card {
-        min-height: 12.5rem;
-    }
-
-    .article-title {
-        font-size: 0.95rem;
-    }
-    
-    .newspaper-logo {
-        max-height: 0.875rem;
-    }
-
-    .article-opinion {
-        font-size: 0.8rem;
-        line-height: 1.5;
-    }
-
-    .nav-tabs-wrapper, .nav-pills-wrapper {
-        margin: 0;
-        padding: 0 3rem;
-    }
-
-    .scroll-button {
-        width: 2.25rem;
-        height: 2.25rem;
-    }
-}
-
-/* Desktop (lg) */
-@media (min-width: 992px) {
-    .article-card {
-        width: calc(33.333% - 1rem);
-    }
-
-    .article-card .card {
-        min-height: 13.75rem;
-    }
-    
-    .newspaper-logo {
-        max-height: 1rem;
-    }
-
-    .article-opinion {
-        font-size: 0.85rem;
-        line-height: 1.6;
-    }
-
-    .nav-tabs-wrapper, .nav-pills-wrapper {
-        padding: 0 3.5rem;
-    }
-
-    .scroll-button {
-        width: 2.5rem;
-        height: 2.5rem;
-    }
-}
-
-/* Large Desktop (xl) */
-@media (min-width: 1200px) {
-    .article-card {
-        width: calc(25% - 1rem);
-    }
+.toggle-slider input[type="radio"]#72h:checked ~ .slider {
+    transform: translateX(8rem);
 }
 
 @media (max-width: 767px) {
@@ -411,19 +79,19 @@
     }
     
     .toggle-slider label {
-        min-width: 4rem;
+        min-width: 3.5rem;
         padding: 0.5rem;
     }
     
     .toggle-slider .slider {
-        width: 4rem;
+        width: 3.5rem;
     }
     
-    .toggle-slider input[type="radio"]#week:checked ~ .slider {
-        transform: translateX(4rem);
+    .toggle-slider input[type="radio"]#48h:checked ~ .slider {
+        transform: translateX(3.5rem);
     }
     
-    .toggle-slider input[type="radio"]#month:checked ~ .slider {
-        transform: translateX(8rem);
+    .toggle-slider input[type="radio"]#72h:checked ~ .slider {
+        transform: translateX(7rem);
     }
 }
