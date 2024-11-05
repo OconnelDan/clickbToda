@@ -39,6 +39,7 @@ function setupEventDelegation() {
         if (!articleCard) return;
         
         event.preventDefault();
+        event.stopPropagation();
         
         const articleId = articleCard.dataset.articleId;
         console.log('Article card clicked:', articleId);
@@ -118,50 +119,90 @@ function fetchArticleDetails(articleId) {
 
 function updateModalContent(article) {
     try {
-        // Update modal header
-        document.getElementById('modalNewspaperLogo').src = article.periodico_logo || '/static/img/default-newspaper.svg';
-        document.getElementById('articleModalLabel').textContent = article.titular;
+        const elements = {
+            'modalNewspaperLogo': { type: 'img', value: article.periodico_logo || '/static/img/default-newspaper.svg' },
+            'articleModalLabel': { type: 'text', value: article.titular },
+            'articleSubtitle': { type: 'text', value: article.subtitular || '' },
+            'articleDate': { type: 'text', value: article.fecha_publicacion || '' },
+            'articleAuthor': { type: 'text', value: article.periodista || '' },
+            'articleAgency': { type: 'text', value: article.agencia || '' },
+            'articleSummary': { type: 'text', value: article.gpt_resumen || 'No summary available' },
+            'articleOpinion': { type: 'text', value: article.gpt_opinion || 'No opinion available' }
+        };
         
-        // Update article details
-        document.getElementById('articleSubtitle').textContent = article.subtitular || '';
-        document.getElementById('articleDate').textContent = article.fecha_publicacion || '';
-        document.getElementById('articleAuthor').textContent = article.periodista || '';
-        document.getElementById('articleAgency').textContent = article.agencia || '';
-        
-        // Update summary and opinion
-        document.getElementById('articleSummary').textContent = article.gpt_resumen || 'No summary available';
-        document.getElementById('articleOpinion').textContent = article.gpt_opinion || 'No opinion available';
-        
-        // Update keywords
-        const keywordsDiv = document.getElementById('articleKeywords');
-        if (article.gpt_palabras_clave) {
-            const keywords = article.gpt_palabras_clave.split(',');
-            keywordsDiv.innerHTML = keywords
-                .map(keyword => `<span class="badge bg-secondary me-1">${keyword.trim()}</span>`)
-                .join('');
-        } else {
-            keywordsDiv.innerHTML = '<span class="text-muted">No keywords available</span>';
+        for (const [id, config] of Object.entries(elements)) {
+            const element = document.getElementById(id);
+            if (element) {
+                if (config.type === 'img') {
+                    element.src = config.value;
+                } else {
+                    element.textContent = config.value;
+                }
+            } else {
+                console.error(`Element with id '${id}' not found`);
+            }
         }
         
-        // Update sources
-        const sourcesDiv = document.getElementById('articleSources');
-        sourcesDiv.textContent = article.gpt_cantidad_fuentes_citadas ? 
-            `${article.gpt_cantidad_fuentes_citadas} sources cited` : 
-            'No source information available';
-        
-        // Update paywall warning
-        document.getElementById('paywallWarning').classList.toggle('d-none', !article.paywall);
-        
-        // Update article link
-        const articleLink = document.getElementById('articleLink');
-        if (article.url) {
-            articleLink.href = article.url;
-            articleLink.classList.remove('d-none');
-        } else {
-            articleLink.classList.add('d-none');
-        }
+        updateKeywords(article.gpt_palabras_clave);
+        updateSources(article.gpt_cantidad_fuentes_citadas);
+        updatePaywallWarning(article.paywall);
+        updateArticleLink(article.url);
     } catch (error) {
         console.error('Error updating modal content:', error);
         showError('Failed to display article details');
+    }
+}
+
+function updateKeywords(keywords) {
+    const keywordsDiv = document.getElementById('articleKeywords');
+    if (!keywordsDiv) {
+        console.error('Keywords element not found');
+        return;
+    }
+    
+    if (keywords) {
+        const badges = keywords.split(',')
+            .map(keyword => `<span class="badge bg-secondary me-1">${keyword.trim()}</span>`)
+            .join('');
+        keywordsDiv.innerHTML = badges;
+    } else {
+        keywordsDiv.innerHTML = '<span class="text-muted">No keywords available</span>';
+    }
+}
+
+function updateSources(sourcesCount) {
+    const sourcesDiv = document.getElementById('articleSources');
+    if (!sourcesDiv) {
+        console.error('Sources element not found');
+        return;
+    }
+    
+    sourcesDiv.textContent = sourcesCount ? 
+        `${sourcesCount} sources cited` : 
+        'No source information available';
+}
+
+function updatePaywallWarning(hasPaywall) {
+    const paywallWarning = document.getElementById('paywallWarning');
+    if (!paywallWarning) {
+        console.error('Paywall warning element not found');
+        return;
+    }
+    
+    paywallWarning.classList.toggle('d-none', !hasPaywall);
+}
+
+function updateArticleLink(url) {
+    const articleLink = document.getElementById('articleLink');
+    if (!articleLink) {
+        console.error('Article link element not found');
+        return;
+    }
+    
+    if (url) {
+        articleLink.href = url;
+        articleLink.classList.remove('d-none');
+    } else {
+        articleLink.classList.add('d-none');
     }
 }

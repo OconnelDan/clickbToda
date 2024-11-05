@@ -30,7 +30,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-from models import User, Articulo, Evento, Categoria, Periodico, articulo_evento, evento_region, Region, Periodista, Subcategoria
+from models import User, Articulo, Evento, Categoria, Periodico, articulo_evento, evento_region, Region, Periodista
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -41,15 +41,19 @@ def index():
     try:
         categories = db.session.query(
             Categoria,
-            func.count(distinct(Evento.evento_id)).label('event_count')
+            func.count(distinct(Evento.evento_id)).label('event_count'),
+            func.count(distinct(articulo_evento.c.articulo_id)).label('article_count')
         ).outerjoin(
             Evento,
             Categoria.categoria_id == Evento.categoria_id
+        ).outerjoin(
+            articulo_evento,
+            Evento.evento_id == articulo_evento.c.evento_id
         ).group_by(
             Categoria.categoria_id,
             Categoria.nombre
         ).order_by(
-            desc('event_count')
+            func.count(distinct(articulo_evento.c.articulo_id)).desc()
         ).all()
         
         logger.info(f"Retrieved {len(categories)} categories")
@@ -59,155 +63,6 @@ def index():
     except Exception as e:
         logger.error(f"Error in index route: {str(e)}")
         return render_template('index.html', categories=[], selected_date=datetime.now().date())
-
-@app.route('/api/subcategories')
-def get_subcategories():
-    try:
-        category_id = request.args.get('category_id')
-        if not category_id:
-            return jsonify([])
-        
-        subcategories = Subcategoria.query.filter_by(categoria_id=category_id).all()
-        
-        return jsonify([{
-            'id': subcat.id,
-            'nombre': subcat.nombre or '',
-            'descripcion': subcat.descripcion or ''
-        } for subcat in subcategories])
-    except Exception as e:
-        logger.error(f"Error in get_subcategories: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/articles')
-def get_articles():
-    try:
-        category_id = request.args.get('category_id')
-        subcategory_id = request.args.get('subcategory_id')
-        search_query = request.args.get('q')
-        
-        # Base query for articles with related data
-        query = db.session.query(
-            Articulo, Evento, Categoria, Subcategoria, Periodico
-        ).select_from(Articulo).join(
-            articulo_evento,
-            Articulo.articulo_id == articulo_evento.c.articulo_id
-        ).join(
-            Evento,
-            articulo_evento.c.evento_id == Evento.evento_id
-        ).join(
-            Categoria,
-            Evento.categoria_id == Categoria.categoria_id
-        ).outerjoin(
-            Subcategoria,
-            Evento.subcategoria_id == Subcategoria.id
-        ).join(
-            Periodico,
-            Articulo.periodico_id == Periodico.periodico_id
-        )
-
-        # Add filters
-        if category_id:
-            query = query.filter(Categoria.categoria_id == category_id)
-        if subcategory_id:
-            query = query.filter(Subcategoria.id == subcategory_id)
-        if search_query:
-            query = query.filter(Articulo.titular.ilike(f'%{search_query}%'))
-
-        # Add ordering
-        query = query.order_by(
-            Categoria.nombre,
-            desc(Evento.fecha_evento),
-            desc(Articulo.fecha_publicacion)
-        )
-
-        # Log the SQL query for debugging
-        logger.info(f"Query SQL: {query.statement.compile(compile_kwargs={'literal_binds': True})}")
-
-        # Execute query and fetch results
-        results = query.all()
-        logger.info(f"Retrieved {len(results)} articles")
-
-        # Organize the data
-        organized_data = {}
-        for article, event, category, subcategory, periodico in results:
-            if not category:
-                continue
-                
-            cat_id = category.categoria_id
-            if cat_id not in organized_data:
-                organized_data[cat_id] = {
-                    'categoria_id': cat_id,
-                    'nombre': category.nombre,
-                    'descripcion': category.descripcion,
-                    'subcategories': {}
-                }
-
-            subcat_key = str(subcategory.id) if subcategory else 'none'
-            if subcat_key not in organized_data[cat_id]['subcategories']:
-                organized_data[cat_id]['subcategories'][subcat_key] = {
-                    'nombre': subcategory.nombre if subcategory else None,
-                    'descripcion': subcategory.descripcion if subcategory else None,
-                    'events': {}
-                }
-
-            event_id = event.evento_id
-            if event_id not in organized_data[cat_id]['subcategories'][subcat_key]['events']:
-                organized_data[cat_id]['subcategories'][subcat_key]['events'][event_id] = {
-                    'evento_id': event_id,
-                    'titulo': event.titulo,
-                    'descripcion': event.descripcion,
-                    'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
-                    'articles': []
-                }
-
-            organized_data[cat_id]['subcategories'][subcat_key]['events'][event_id]['articles'].append({
-                'id': article.articulo_id,
-                'titular': article.titular,
-                'paywall': article.paywall,
-                'periodico_logo': periodico.logo_url if periodico else None,
-                'url': article.url,
-                'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None
-            })
-
-        # Format response
-        response_data = {
-            'categories': [
-                {
-                    'categoria_id': cat_data['categoria_id'],
-                    'nombre': cat_data['nombre'],
-                    'descripcion': cat_data['descripcion'],
-                    'subcategories': [
-                        {
-                            'nombre': subcat_data['nombre'],
-                            'descripcion': subcat_data['descripcion'],
-                            'events': sorted(
-                                [
-                                    {
-                                        **event_data,
-                                        'articles': sorted(
-                                            event_data['articles'],
-                                            key=lambda x: x['fecha_publicacion'] or '',
-                                            reverse=True
-                                        )
-                                    }
-                                    for event_id, event_data in subcat_data['events'].items()
-                                ],
-                                key=lambda x: x['fecha_evento'] or '',
-                                reverse=True
-                            )
-                        }
-                        for subcat_key, subcat_data in cat_data['subcategories'].items()
-                    ]
-                }
-                for cat_id, cat_data in organized_data.items()
-            ]
-        }
-
-        return jsonify(response_data)
-            
-    except Exception as e:
-        logger.error(f"Error fetching articles: {str(e)}")
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/article/<int:article_id>')
 def get_article_details(article_id):
@@ -252,7 +107,144 @@ def get_article_details(article_id):
         logger.error(f"Error fetching article details: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-# Authentication routes
+@app.route('/api/subcategories')
+def get_subcategories():
+    try:
+        category_id = request.args.get('category_id')
+        if not category_id:
+            return jsonify([])
+        
+        subcategories = db.session.query(
+            Categoria.categoria_id,
+            Categoria.subnombre
+        ).filter(
+            Categoria.categoria_id == category_id,
+            Categoria.subnombre.isnot(None)
+        ).all()
+        
+        return jsonify([{
+            'id': subcat.categoria_id,
+            'subnombre': subcat.subnombre
+        } for subcat in subcategories])
+    except Exception as e:
+        logger.error(f"Error in get_subcategories: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/articles')
+def get_articles():
+    try:
+        category_id = request.args.get('category_id')
+        search_query = request.args.get('q')
+        
+        article_count_subquery = db.session.query(
+            articulo_evento.c.evento_id,
+            func.count(articulo_evento.c.articulo_id).label('article_count')
+        ).group_by(articulo_evento.c.evento_id).subquery()
+        
+        base_query = db.session.query(
+            Articulo, Evento, Categoria, Region, Periodico,
+            article_count_subquery.c.article_count
+        ).select_from(Articulo)\
+        .join(articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id)\
+        .join(Evento, articulo_evento.c.evento_id == Evento.evento_id)\
+        .join(Categoria, Evento.categoria_id == Categoria.categoria_id)\
+        .join(evento_region, Evento.evento_id == evento_region.c.evento_id, isouter=True)\
+        .join(Region, evento_region.c.region_id == Region.region_id, isouter=True)\
+        .join(Periodico, Articulo.periodico_id == Periodico.periodico_id)\
+        .join(article_count_subquery, Evento.evento_id == article_count_subquery.c.evento_id)
+
+        if category_id:
+            base_query = base_query.filter(Categoria.categoria_id == category_id)
+        if search_query:
+            base_query = base_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
+
+        results = base_query.order_by(
+            Categoria.nombre,
+            Categoria.subnombre,
+            article_count_subquery.c.article_count.desc(),
+            desc(Evento.fecha_evento),
+            desc(Articulo.fecha_publicacion)
+        ).all()
+
+        logger.info(f"Retrieved {len(results)} articles")
+
+        organized_data = {}
+        for article, event, category, region, periodico, article_count in results:
+            if not category:
+                continue
+                
+            if category.categoria_id not in organized_data:
+                organized_data[category.categoria_id] = {
+                    'categoria_id': category.categoria_id,
+                    'nombre': category.nombre,
+                    'descripcion': category.descripcion,
+                    'subcategories': {}
+                }
+
+            subcategory_key = category.subnombre or 'general'
+            if subcategory_key not in organized_data[category.categoria_id]['subcategories']:
+                organized_data[category.categoria_id]['subcategories'][subcategory_key] = {
+                    'subnombre': category.subnombre,
+                    'subdescripcion': category.subdescripcion,
+                    'events': {}
+                }
+
+            if event:
+                if event.evento_id not in organized_data[category.categoria_id]['subcategories'][subcategory_key]['events']:
+                    organized_data[category.categoria_id]['subcategories'][subcategory_key]['events'][event.evento_id] = {
+                        'evento_id': event.evento_id,
+                        'titulo': event.titulo,
+                        'descripcion': event.descripcion,
+                        'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
+                        'article_count': article_count,
+                        'articles': []
+                    }
+
+                organized_data[category.categoria_id]['subcategories'][subcategory_key]['events'][event.evento_id]['articles'].append({
+                    'id': article.articulo_id,
+                    'titular': article.titular,
+                    'paywall': article.paywall,
+                    'periodico_logo': periodico.logo_url if periodico else None,
+                    'url': article.url,
+                    'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None
+                })
+
+        response_data = {
+            'categories': [
+                {
+                    'categoria_id': cat_data['categoria_id'],
+                    'nombre': cat_data['nombre'],
+                    'descripcion': cat_data['descripcion'],
+                    'subcategories': [
+                        {
+                            'subnombre': subcat_data['subnombre'],
+                            'subdescripcion': subcat_data['subdescripcion'],
+                            'events': sorted([
+                                {
+                                    **event_data,
+                                    'articles': sorted(event_data['articles'], 
+                                                    key=lambda x: x['fecha_publicacion'] or '', 
+                                                    reverse=True)
+                                }
+                                for event_id, event_data in subcat_data['events'].items()
+                            ], key=lambda x: (x['article_count'] or 0, x['fecha_evento'] or ''), reverse=True)
+                        }
+                        for subcat_key, subcat_data in cat_data['subcategories'].items()
+                    ]
+                }
+                for cat_id, cat_data in organized_data.items()
+            ]
+        }
+
+        return jsonify(response_data)
+            
+    except Exception as e:
+        logger.error(f"Error fetching articles: {str(e)}")
+        return jsonify({
+            'error': 'An error occurred while fetching articles',
+            'details': str(e)
+        }), 500
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
