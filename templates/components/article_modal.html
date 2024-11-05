@@ -1,6 +1,8 @@
+<!-- Article Details Modal -->
 <div class="modal fade" id="articleModal" tabindex="-1" aria-labelledby="articleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
+            <!-- Modal Header -->
             <div class="modal-header">
                 <div class="d-flex align-items-center">
                     <img id="modalNewspaperLogo" src="" alt="Newspaper logo" class="newspaper-logo me-2">
@@ -8,6 +10,8 @@
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            
+            <!-- Modal Body -->
             <div class="modal-body">
                 <!-- Loading spinner -->
                 <div id="articleLoadingSpinner" class="text-center my-4 d-none">
@@ -18,40 +22,70 @@
                 </div>
                 
                 <!-- Error message -->
-                <div id="articleErrorMessage" class="alert alert-danger d-none"></div>
+                <div id="articleErrorMessage" class="alert alert-danger d-none" role="alert"></div>
                 
                 <!-- Article content -->
-                <div id="articleContent">
-                    <div id="articleSubtitle" class="text-muted mb-3"></div>
-                    <div class="article-meta mb-3">
-                        <span id="articleDate" class="me-3"></span>
-                        <span id="articleAuthor" class="me-3"></span>
-                        <span id="articleAgency"></span>
+                <div id="articleContent" class="d-none">
+                    <!-- Subtitle -->
+                    <div id="articleSubtitle" class="lead text-muted mb-3"></div>
+                    
+                    <!-- Article metadata -->
+                    <div class="article-meta mb-4">
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="me-3">
+                                <i class="bi bi-calendar"></i>
+                                <span id="articleDate"></span>
+                            </div>
+                            <div class="me-3">
+                                <i class="bi bi-person"></i>
+                                <span id="articleAuthor"></span>
+                            </div>
+                            <div>
+                                <i class="bi bi-building"></i>
+                                <span id="articleAgency"></span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <h6>Summary</h6>
-                        <div id="articleSummary"></div>
+                    
+                    <!-- Summary section -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold">Summary</h6>
+                        <div id="articleSummary" class="card card-body bg-light"></div>
                     </div>
-                    <div class="mb-3">
-                        <h6>Opinion</h6>
-                        <div id="articleOpinion"></div>
+                    
+                    <!-- Opinion section -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold">Analysis</h6>
+                        <div id="articleOpinion" class="card card-body bg-light"></div>
                     </div>
-                    <div class="mb-3">
-                        <h6>Keywords</h6>
-                        <div id="articleKeywords"></div>
+                    
+                    <!-- Keywords section -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold">Keywords</h6>
+                        <div id="articleKeywords" class="d-flex flex-wrap gap-2"></div>
                     </div>
-                    <div class="mb-3">
-                        <h6>Sources</h6>
-                        <div id="articleSources"></div>
+                    
+                    <!-- Sources section -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold">Sources</h6>
+                        <div id="articleSources" class="text-muted"></div>
                     </div>
-                    <div id="paywallWarning" class="alert alert-warning d-none">
+                    
+                    <!-- Paywall warning -->
+                    <div id="paywallWarning" class="alert alert-warning d-none" role="alert">
+                        <i class="bi bi-lock-fill me-2"></i>
                         This article is behind a paywall. You may need a subscription to read the full content.
                     </div>
                 </div>
             </div>
+            
+            <!-- Modal Footer -->
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <a id="articleLink" href="#" target="_blank" class="btn btn-primary">Read Full Article</a>
+                <a id="articleLink" href="#" target="_blank" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>
+                    Read Full Article
+                </a>
             </div>
         </div>
     </div>
