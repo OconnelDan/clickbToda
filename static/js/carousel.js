@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize carousels
+    // Initialize carousels and scroll buttons
     initializeCarousels();
+    initializeScrollButtons();
     
     // Date selector handler
     const dateSelector = document.getElementById('dateSelector');
@@ -10,6 +11,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function initializeScrollButtons() {
+    document.querySelectorAll('.articles-carousel, .nav-tabs-wrapper').forEach(container => {
+        const wrapper = container.querySelector('.carousel-wrapper, .nav-tabs');
+        const leftBtn = container.querySelector('.scroll-button.left');
+        const rightBtn = container.querySelector('.scroll-button.right');
+        
+        if (!wrapper || !leftBtn || !rightBtn) return;
+
+        const updateButtons = () => {
+            const hasOverflow = wrapper.scrollWidth > wrapper.clientWidth;
+            const atStart = wrapper.scrollLeft <= 0;
+            const atEnd = wrapper.scrollLeft + wrapper.clientWidth >= wrapper.scrollWidth - 1;
+
+            leftBtn.classList.toggle('visible', hasOverflow && !atStart);
+            rightBtn.classList.toggle('visible', hasOverflow && !atEnd);
+        };
+
+        const scroll = (direction) => {
+            const scrollAmount = wrapper.clientWidth * 0.8;
+            wrapper.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
+        };
+
+        container.querySelectorAll('.scroll-button').forEach(btn => {
+            btn.addEventListener('click', () => scroll(btn.dataset.direction));
+        });
+
+        wrapper.addEventListener('scroll', updateButtons);
+        window.addEventListener('resize', updateButtons);
+        
+        // Initial check
+        updateButtons();
+    });
+}
 
 function initializeCarousels() {
     document.querySelectorAll('.carousel-wrapper').forEach(wrapper => {
@@ -75,6 +113,7 @@ function reloadArticles(date) {
                     const eventsContainer = section.querySelector('.events-container');
                     updateEventsDisplay(categoryData, categoryId);
                     initializeCarousels();
+                    initializeScrollButtons();
                 } else {
                     section.style.display = 'none';
                 }

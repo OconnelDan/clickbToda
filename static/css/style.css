@@ -19,13 +19,12 @@
     flex: 0 0 auto;
     width: calc(100% - 1rem); /* 1 card per row on mobile */
     scroll-snap-align: start;
-    transition: transform 0.2s ease-in-out;
 }
 
 .article-card .card {
-    min-height: 180px; /* Minimum height for consistency */
+    min-height: 180px;
     height: 100%;
-    transition: box-shadow 0.2s ease-in-out;
+    transition: all 0.2s ease-in-out;
 }
 
 .article-card .card-body {
@@ -36,7 +35,7 @@
 }
 
 .article-card-clickable:hover {
-    transform: translateY(-5px);
+    transform: translateY(-2px);
 }
 
 .article-card-clickable:hover .card {
@@ -54,10 +53,6 @@
     display: block;
 }
 
-.newspaper-logo:hover {
-    filter: invert(1) brightness(1.2);
-}
-
 .article-title {
     font-size: 0.9rem;
     line-height: 1.4;
@@ -73,6 +68,46 @@
     padding: 0.5rem;
     background: rgba(var(--bs-secondary-rgb), 0.1);
     border-radius: 0.25rem;
+}
+
+/* Scroll Button Styles */
+.scroll-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    background: rgba(var(--bs-dark-rgb), 0.8);
+    border: none;
+    color: var(--bs-light);
+    padding: 0.5rem;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+}
+
+.scroll-button.left {
+    left: 0;
+}
+
+.scroll-button.right {
+    right: 0;
+}
+
+.scroll-button:hover {
+    background: rgba(var(--bs-dark-rgb), 0.9);
+}
+
+.scroll-button.visible {
+    display: flex;
+}
+
+.articles-carousel, .nav-tabs-wrapper {
+    position: relative;
 }
 
 /* Category Navigation Styles */

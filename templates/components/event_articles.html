@@ -11,6 +11,8 @@
         </div>
         <div class="col-md-9">
             <div class="articles-carousel">
+                <button class="scroll-button left" data-direction="left">←</button>
+                <button class="scroll-button right" data-direction="right">→</button>
                 <div class="carousel-wrapper">
                     {% for article in event.articles %}
                         {% include "components/article_card.html" %}
