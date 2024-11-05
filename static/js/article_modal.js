@@ -6,15 +6,41 @@ function initModal() {
     console.log('Initializing article modal...');
     const modalElement = document.getElementById('articleModal');
     if (!modalElement) {
-        console.error('Modal element not found in the DOM');
+        console.error('Modal element not found in the DOM. Please check if the modal HTML is properly included.');
         return false;
     }
+
+    // Verify all required elements are present
+    const requiredElements = [
+        'articleLoadingSpinner',
+        'articleContent',
+        'articleErrorMessage',
+        'modalNewspaperLogo',
+        'articleModalLabel',
+        'articleSubtitle',
+        'articleDate',
+        'articleAuthor',
+        'articleAgency',
+        'articleSummary',
+        'articleOpinion',
+        'articleKeywords',
+        'articleSources',
+        'paywallWarning',
+        'articleLink'
+    ];
+
+    const missingElements = requiredElements.filter(id => !document.getElementById(id));
+    if (missingElements.length > 0) {
+        console.error('Missing required modal elements:', missingElements);
+        return false;
+    }
+
     try {
         articleModal = new bootstrap.Modal(modalElement);
         console.log('Modal initialized successfully');
         return true;
     } catch (error) {
-        console.error('Error initializing modal:', error);
+        console.error('Error initializing Bootstrap modal:', error);
         return false;
     }
 }
@@ -23,6 +49,7 @@ function initModal() {
 function addClickHandlers() {
     console.log('Adding click handlers to article cards...');
     document.addEventListener('click', handleArticleClick);
+    console.log('Click handlers added successfully');
 }
 
 // Handle article card clicks
@@ -46,10 +73,13 @@ function handleArticleClick(event) {
 
 // Show article details in modal
 function showArticleDetails(articleId) {
+    console.log('Attempting to show article details...');
+    
     if (!articleModal) {
-        console.error('Modal not initialized');
+        console.log('Modal not initialized, attempting to initialize...');
         if (!initModal()) {
-            showError('Unable to display article details. Please try again.');
+            console.error('Failed to initialize modal');
+            alert('Unable to display article details. Please try again.');
             return;
         }
     }
@@ -57,9 +87,11 @@ function showArticleDetails(articleId) {
     // Show modal with loading state
     showLoading(true);
     hideError();
+    console.log('Showing modal with loading state...');
     articleModal.show();
     
     // Fetch article details
+    console.log('Fetching article data from API...');
     fetch(`/api/article/${articleId}`)
         .then(response => {
             if (!response.ok) {
@@ -121,6 +153,7 @@ function hideError() {
 
 // Update modal content with article details
 function updateModalContent(article) {
+    console.log('Updating modal content...');
     try {
         const elements = {
             modalNewspaperLogo: {
@@ -207,6 +240,7 @@ function updateModalContent(article) {
                 paywallWarning.classList.add('d-none');
             }
         }
+        console.log('Modal content updated successfully');
     } catch (error) {
         console.error('Error updating modal content:', error);
         showError('Failed to display article details');
@@ -216,6 +250,11 @@ function updateModalContent(article) {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing modal and handlers...');
-    initModal();
-    addClickHandlers();
+    const initialized = initModal();
+    if (initialized) {
+        console.log('Modal initialized successfully, adding click handlers...');
+        addClickHandlers();
+    } else {
+        console.error('Failed to initialize modal, click handlers not added');
+    }
 });
