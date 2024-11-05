@@ -1,54 +1,14 @@
 <div class="article-card">
-    <a href="{{ article.url }}" target="_blank" class="text-decoration-none">
-        <div class="card h-100">
-            <div class="card-body d-flex flex-column">
-                <div class="d-flex align-items-center mb-2">
-                    <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
-                         class="newspaper-logo me-2" alt="Newspaper logo">
-                    <div class="ms-auto d-flex align-items-center gap-2">
-                        {% if article.tipo == 'opinion' %}
-                        <img src="https://img.icons8.com/?size=24&id=89687&format=png" 
-                             class="article-icon" width="24" height="24" alt="Opinion article" title="Opinion article">
-                        {% endif %}
-                        
-                        {% if article.gpt_sentimiento %}
-                            {% if article.gpt_sentimiento == 'positivo' %}
-                            <img src="https://img.icons8.com/?size=26&id=675&format=png" 
-                                 class="article-icon" width="26" height="26" alt="Positive sentiment" title="Positive sentiment">
-                            {% elif article.gpt_sentimiento == 'negativo' %}
-                            <img src="https://img.icons8.com/?size=30&id=61017&format=png" 
-                                 class="article-icon" width="30" height="30" alt="Negative sentiment" title="Negative sentiment">
-                            {% else %}
-                            <img src="https://img.icons8.com/?size=32&id=16087&format=png" 
-                                 class="article-icon" width="32" height="32" alt="Neutral sentiment" title="Neutral sentiment">
-                            {% endif %}
-                        {% endif %}
-
-                        {% if article.gpt_cantidad_fuentes_citadas and article.gpt_cantidad_fuentes_citadas > 0 %}
-                        <span class="source-count">
-                            <img src="https://www.svgrepo.com/show/340052/connect-source.svg" 
-                                 class="article-icon" width="20" height="20" alt="Sources" title="{{ article.gpt_cantidad_fuentes_citadas }} sources cited">
-                            <span>{{ article.gpt_cantidad_fuentes_citadas }}</span>
-                        </span>
-                        {% endif %}
-
-                        {% if article.paywall %}
-                        <span class="badge bg-warning text-dark">Paywall</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <h5 class="card-title article-title" data-tooltip="{{ article.titular }}{% if article.subtitular %}
-{{ article.subtitular }}{% endif %}">
-                    {{ article.titular }}
-                </h5>
-                <div class="article-meta mt-2">
-                    {% if article.fecha_publicacion %}
-                    <small class="text-muted">
-                        Published: {{ article.fecha_publicacion }}
-                    </small>
-                    {% endif %}
-                </div>
-            </div>
+    <div class="card h-100">
+        <div class="card-body">
+            <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
+                 class="newspaper-logo mb-2" alt="Newspaper logo">
+            <h5 class="card-title article-title {% if article.paywall %}text-muted{% endif %}">
+                {{ article.titular }}
+            </h5>
+            {% if article.paywall %}
+            <span class="badge bg-secondary">Paywall</span>
+            {% endif %}
         </div>
-    </a>
+    </div>
 </div>
