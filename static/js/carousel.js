@@ -13,8 +13,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeScrollButtons() {
-    document.querySelectorAll('.articles-carousel, .nav-tabs-wrapper').forEach(container => {
-        const wrapper = container.querySelector('.carousel-wrapper, .nav-tabs');
+    // Handle both article carousels and category selectors
+    document.querySelectorAll('.articles-carousel, .nav-tabs-wrapper, .nav-pills-wrapper').forEach(container => {
+        const wrapper = container.querySelector('.carousel-wrapper, .nav-tabs, .nav-pills');
         const leftBtn = container.querySelector('.scroll-button.left');
         const rightBtn = container.querySelector('.scroll-button.right');
         
@@ -22,27 +23,47 @@ function initializeScrollButtons() {
 
         const updateButtons = () => {
             const hasOverflow = wrapper.scrollWidth > wrapper.clientWidth;
-            const atStart = wrapper.scrollLeft <= 0;
-            const atEnd = wrapper.scrollLeft + wrapper.clientWidth >= wrapper.scrollWidth - 1;
+            const atStart = wrapper.scrollLeft <= 10; // Small threshold for better UX
+            const atEnd = wrapper.scrollLeft + wrapper.clientWidth >= wrapper.scrollWidth - 10;
 
-            leftBtn.classList.toggle('visible', hasOverflow && !atStart);
-            rightBtn.classList.toggle('visible', hasOverflow && !atEnd);
+            // Show/hide buttons based on scroll position
+            leftBtn.style.display = hasOverflow && !atStart ? 'flex' : 'none';
+            rightBtn.style.display = hasOverflow && !atEnd ? 'flex' : 'none';
+
+            // Update opacity for smooth transitions
+            leftBtn.style.opacity = hasOverflow && !atStart ? '1' : '0';
+            rightBtn.style.opacity = hasOverflow && !atEnd ? '1' : '0';
         };
 
         const scroll = (direction) => {
-            const scrollAmount = wrapper.clientWidth * 0.8;
+            const isCategory = wrapper.classList.contains('nav-tabs') || wrapper.classList.contains('nav-pills');
+            const scrollAmount = isCategory ? 200 : wrapper.clientWidth * 0.8;
+            
             wrapper.scrollBy({
                 left: direction === 'left' ? -scrollAmount : scrollAmount,
                 behavior: 'smooth'
             });
         };
 
+        // Button click handlers
         container.querySelectorAll('.scroll-button').forEach(btn => {
-            btn.addEventListener('click', () => scroll(btn.dataset.direction));
+            btn.addEventListener('click', (e) => {
+                e.preventDefault(); // Prevent any default behavior
+                e.stopPropagation(); // Prevent event bubbling
+                scroll(btn.dataset.direction);
+            });
         });
 
-        wrapper.addEventListener('scroll', updateButtons);
-        window.addEventListener('resize', updateButtons);
+        // Scroll event listener
+        wrapper.addEventListener('scroll', () => {
+            requestAnimationFrame(updateButtons);
+        });
+
+        // Resize observer for responsive updates
+        const resizeObserver = new ResizeObserver(() => {
+            requestAnimationFrame(updateButtons);
+        });
+        resizeObserver.observe(wrapper);
         
         // Initial check
         updateButtons();
@@ -54,17 +75,36 @@ function initializeCarousels() {
         // Add touch event listeners for mobile swipe
         let touchStartX = 0;
         let touchEndX = 0;
+        let isSwiping = false;
         
         wrapper.addEventListener('touchstart', e => {
             touchStartX = e.touches[0].clientX;
-        });
+            isSwiping = true;
+        }, { passive: true });
         
         wrapper.addEventListener('touchmove', e => {
+            if (!isSwiping) return;
             touchEndX = e.touches[0].clientX;
-        });
+            // Prevent vertical scroll while swiping horizontally
+            if (Math.abs(touchEndX - touchStartX) > 10) {
+                e.preventDefault();
+            }
+        }, { passive: false });
         
         wrapper.addEventListener('touchend', () => {
+            if (!isSwiping) return;
             handleSwipe(wrapper, touchStartX, touchEndX);
+            isSwiping = false;
+        });
+
+        // Reinitialize scroll buttons after content changes
+        const observer = new MutationObserver(() => {
+            initializeScrollButtons();
+        });
+        
+        observer.observe(wrapper, { 
+            childList: true, 
+            subtree: true 
         });
     });
 }
@@ -74,27 +114,25 @@ function handleSwipe(wrapper, startX, endX) {
     const difference = startX - endX;
     
     if (Math.abs(difference) > SWIPE_THRESHOLD) {
-        if (difference > 0) {
-            // Swipe left
-            wrapper.scrollBy({ left: wrapper.offsetWidth, behavior: 'smooth' });
-        } else {
-            // Swipe right
-            wrapper.scrollBy({ left: -wrapper.offsetWidth, behavior: 'smooth' });
-        }
+        const scrollAmount = wrapper.clientWidth * 0.8;
+        wrapper.scrollBy({ 
+            left: difference > 0 ? scrollAmount : -scrollAmount, 
+            behavior: 'smooth' 
+        });
     }
 }
 
 function reloadArticles(date) {
-    const categorySelector = document.getElementById('categorySelector');
-    const selectedCategoryId = categorySelector.value;
+    const activeTab = document.querySelector('#categoryTabs .nav-link.active');
+    const selectedCategoryId = activeTab ? activeTab.dataset.categoryId : null;
     
     let url = '/api/articles';
-    if (selectedCategoryId) {
-        url += `?category_id=${selectedCategoryId}`;
-        if (date) url += `&date=${date}`;
-    } else if (date) {
-        url += `?date=${date}`;
-    }
+    const params = new URLSearchParams();
+    
+    if (selectedCategoryId) params.append('category_id', selectedCategoryId);
+    if (date) params.append('date', date);
+    
+    if (params.toString()) url += `?${params.toString()}`;
     
     fetch(url)
         .then(response => {
@@ -104,20 +142,9 @@ function reloadArticles(date) {
         .then(data => {
             if (!data.categories) throw new Error('Invalid response format');
             
-            document.querySelectorAll('.category-section').forEach(section => {
-                const categoryId = section.dataset.categoryId;
-                const categoryData = data.categories.find(c => c.categoria_id.toString() === categoryId);
-                
-                if (categoryData) {
-                    section.style.display = 'block';
-                    const eventsContainer = section.querySelector('.events-container');
-                    updateEventsDisplay(categoryData, categoryId);
-                    initializeCarousels();
-                    initializeScrollButtons();
-                } else {
-                    section.style.display = 'none';
-                }
-            });
+            updateDisplay(data);
+            initializeCarousels();
+            initializeScrollButtons();
         })
         .catch(error => {
             console.error('Error loading articles:', error);

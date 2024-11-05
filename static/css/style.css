@@ -13,6 +13,13 @@
     -webkit-overflow-scrolling: touch;
     gap: 1rem;
     padding-bottom: 1rem;
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.carousel-wrapper::-webkit-scrollbar {
+    display: none;
 }
 
 .article-card {
@@ -87,7 +94,8 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: opacity 0.3s ease;
+    transition: all 0.3s ease;
+    opacity: 0;
 }
 
 .scroll-button.left {
@@ -100,14 +108,11 @@
 
 .scroll-button:hover {
     background: rgba(var(--bs-dark-rgb), 0.9);
+    transform: translateY(-50%) scale(1.1);
 }
 
-.scroll-button.visible {
-    display: flex;
-}
-
-.articles-carousel, .nav-tabs-wrapper {
-    position: relative;
+.scroll-button:active {
+    transform: translateY(-50%) scale(0.95);
 }
 
 /* Category Navigation Styles */
@@ -119,27 +124,34 @@
     background: var(--bs-body-bg);
 }
 
-.nav-tabs-wrapper {
+.nav-tabs-wrapper, .nav-pills-wrapper {
     position: relative;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
     margin-bottom: -1px;
-    padding: 0.25rem 0;
+    padding: 0.25rem 2rem;
 }
 
-.nav-tabs {
-    border-bottom: none;
-    flex-wrap: nowrap;
-    min-width: max-content;
-    padding: 0 1px;
+.nav-tabs, .nav-pills {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+}
+
+.nav-tabs::-webkit-scrollbar, .nav-pills::-webkit-scrollbar {
+    display: none;
 }
 
 .nav-tabs .nav-link {
     white-space: nowrap;
-    margin: 0 0.25rem;
     border: 1px solid var(--bs-border-color);
     background: var(--bs-body-bg);
     transition: all 0.2s ease-in-out;
+    margin: 0;
 }
 
 .nav-tabs .nav-link.active {
