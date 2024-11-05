@@ -17,7 +17,7 @@
 
 .article-card {
     flex: 0 0 auto;
-    width: calc(100% - 1rem); /* 1 card per row on mobile */
+    width: calc(100% - 1rem);
     scroll-snap-align: start;
     transition: transform 0.2s ease-in-out;
 }
@@ -35,7 +35,7 @@
 }
 
 .newspaper-logo {
-    max-height: 12px; /* Reduced from 24px */
+    max-height: 12px;
     width: auto;
     object-fit: contain;
     object-position: left center;
@@ -57,6 +57,25 @@
     overflow: hidden;
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
+}
+
+/* Popover styles */
+.popover {
+    max-width: 300px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.article-popup {
+    font-size: 0.9rem;
+    padding: 0.5rem;
+}
+
+.article-popup p {
+    margin-bottom: 0.5rem;
+}
+
+.article-popup .badge {
+    font-size: 0.8rem;
 }
 
 /* Tab Navigation Styles */
@@ -204,7 +223,7 @@
 /* Tablet (md) */
 @media (min-width: 768px) {
     .article-card {
-        width: calc(50% - 1rem); /* 2 cards per row */
+        width: calc(50% - 1rem);
     }
     
     .article-title {
@@ -223,14 +242,14 @@
     }
 
     .newspaper-logo {
-        max-height: 14px; /* Reduced from 28px */
+        max-height: 14px;
     }
 }
 
 /* Desktop (lg) */
 @media (min-width: 992px) {
     .article-card {
-        width: calc(33.333% - 1rem); /* 3 cards per row */
+        width: calc(33.333% - 1rem);
     }
     
     .event-title {
@@ -242,13 +261,13 @@
     }
 
     .newspaper-logo {
-        max-height: 16px; /* Reduced from 32px */
+        max-height: 16px;
     }
 }
 
 /* Large Desktop (xl) */
 @media (min-width: 1200px) {
     .article-card {
-        width: calc(25% - 1rem); /* 4 cards per row */
+        width: calc(25% - 1rem);
     }
 }

@@ -339,6 +339,11 @@ function updateDisplay(data) {
         });
 
         initializeCarousels();
+        
+        // Initialize popovers for the new content
+        if (window.reinitializePopovers) {
+            window.reinitializePopovers();
+        }
     } catch (error) {
         console.error('Error updating display:', error);
         showError('Failed to render content', error);
