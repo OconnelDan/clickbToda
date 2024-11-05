@@ -9,9 +9,7 @@
             {% if article.paywall %}
             <span class="badge bg-secondary">Paywall</span>
             {% endif %}
-            <div class="article-meta mt-2">
-                <small class="text-muted">{{ article.fecha_publicacion }}</small>
-            </div>
         </div>
     </div>
 </div>
+{% include "components/article_modal.html" %}
