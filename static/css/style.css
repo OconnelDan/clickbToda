@@ -22,12 +22,13 @@
     transition: transform 0.2s ease-in-out;
 }
 
-.article-card-clickable:hover {
-    transform: translateY(-5px);
+.article-card .card {
+    height: 180px; /* Fixed height for consistency */
+    transition: box-shadow 0.2s ease-in-out;
 }
 
-.article-card-clickable .card {
-    transition: box-shadow 0.2s ease-in-out;
+.article-card-clickable:hover {
+    transform: translateY(-5px);
 }
 
 .article-card-clickable:hover .card {
@@ -56,7 +57,17 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     font-size: 0.9rem;
+    line-height: 1.4;
     margin-bottom: 0.5rem;
+    max-height: 3.8em; /* Approximately 3 lines */
+}
+
+/* Opinion text styles in modal */
+#articleOpinion {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--bs-body-color);
+    margin-bottom: 1rem;
 }
 
 /* Tab Navigation Styles */
@@ -207,6 +218,10 @@
         width: calc(50% - 1rem); /* 2 cards per row */
     }
     
+    .article-card .card {
+        height: 200px; /* Slightly taller on tablets */
+    }
+
     .article-title {
         font-size: 1rem;
     }
@@ -225,6 +240,10 @@
     .newspaper-logo {
         max-height: 14px; /* Reduced from 28px */
     }
+
+    #articleOpinion {
+        font-size: 1rem;
+    }
 }
 
 /* Desktop (lg) */
@@ -233,6 +252,10 @@
         width: calc(33.333% - 1rem); /* 3 cards per row */
     }
     
+    .article-card .card {
+        height: 220px; /* Taller on desktop */
+    }
+
     .event-title {
         font-size: 1.25rem;
     }
@@ -243,6 +266,11 @@
 
     .newspaper-logo {
         max-height: 16px; /* Reduced from 32px */
+    }
+
+    #articleOpinion {
+        font-size: 1.05rem;
+        line-height: 1.7;
     }
 }
 
