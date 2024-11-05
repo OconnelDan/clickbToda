@@ -74,7 +74,6 @@ class Articulo(db.Model):
     gpt_opinion = db.Column(db.String)
     gpt_resumen = db.Column(db.String)
     palabras_clave_embeddings = db.Column(db.String)
-    embeddings = db.Column(db.String)
 
     periodico = db.relationship('Periodico', backref='articulos')
     periodista = db.relationship('Periodista', backref='articulos')
@@ -117,7 +116,6 @@ class Evento(db.Model):
     gpt_sujeto_pasivo = db.Column(db.String(255))
     gpt_importancia = db.Column(db.Integer)
     gpt_tiene_contexto = db.Column(db.Boolean, default=False)
-    embeddings = db.Column(db.String)
     gpt_palabras_clave = db.Column(db.String(1000))
     subcategoria_id = db.Column(db.Integer, db.ForeignKey('app.subcategoria.subcategoria_id'))
 

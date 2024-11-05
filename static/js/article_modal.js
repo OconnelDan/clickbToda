@@ -19,21 +19,24 @@ function initializeModal() {
         articleModal = new bootstrap.Modal(modalElement);
         console.log('Modal initialized successfully');
         
-        // Add modal events for debugging
+        // Add modal events for loading states
         modalElement.addEventListener('show.bs.modal', function() {
             console.log('Modal is about to be shown');
+            showLoading(true);
+            hideError();
         });
         
-        modalElement.addEventListener('shown.bs.modal', function() {
-            console.log('Modal is now visible');
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            console.log('Modal was hidden');
+            resetModalContent();
         });
     } catch (error) {
         console.error('Error initializing modal:', error);
+        showError('Failed to initialize article modal');
     }
 }
 
 function setupEventDelegation() {
-    // Use event delegation for dynamically loaded cards
     document.addEventListener('click', function(event) {
         const articleCard = event.target.closest('.article-card');
         if (!articleCard) return;
@@ -51,38 +54,71 @@ function setupEventDelegation() {
         
         if (!articleModal) {
             console.error('Modal not properly initialized');
+            showError('Unable to display article details');
             return;
         }
         
-        // Show modal with loading state
-        showLoading(true);
-        hideError();
+        // Show modal and fetch article details
         articleModal.show();
-        
-        // Fetch article details
         fetchArticleDetails(articleId);
     });
 }
 
+function resetModalContent() {
+    const elements = {
+        'modalNewspaperLogo': { type: 'img', value: '/static/img/default-newspaper.svg' },
+        'articleModalLabel': { type: 'text', value: '' },
+        'articleSubtitle': { type: 'text', value: '' },
+        'articleDate': { type: 'text', value: '' },
+        'articleAuthor': { type: 'text', value: '' },
+        'articleAgency': { type: 'text', value: '' },
+        'articleSummary': { type: 'text', value: '' },
+        'articleOpinion': { type: 'text', value: '' },
+        'articleKeywords': { type: 'html', value: '' },
+        'articleSources': { type: 'text', value: '' }
+    };
+    
+    for (const [id, config] of Object.entries(elements)) {
+        const element = document.getElementById(id);
+        if (element) {
+            if (config.type === 'img') {
+                element.src = config.value;
+            } else if (config.type === 'html') {
+                element.innerHTML = config.value;
+            } else {
+                element.textContent = config.value;
+            }
+        }
+    }
+    
+    hideError();
+    showLoading(false);
+}
+
 function showLoading(show) {
     console.log('Toggling loading state:', show);
-    const spinner = document.getElementById('articleLoadingSpinner');
-    const content = document.getElementById('articleContent');
-    if (!spinner || !content) {
-        console.error('Loading elements not found');
-        return;
+    const elements = {
+        'articleLoadingSpinner': show,
+        'articleContent': !show,
+        'articleErrorMessage': false
+    };
+    
+    for (const [id, visible] of Object.entries(elements)) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.classList.toggle('d-none', !visible);
+        } else {
+            console.error(`Element with id '${id}' not found`);
+        }
     }
-    spinner.classList.toggle('d-none', !show);
-    content.classList.toggle('d-none', show);
 }
 
 function hideError() {
     const errorDiv = document.getElementById('articleErrorMessage');
-    if (!errorDiv) {
-        console.error('Error message element not found');
-        return;
+    if (errorDiv) {
+        errorDiv.classList.add('d-none');
+        errorDiv.textContent = '';
     }
-    errorDiv.classList.add('d-none');
 }
 
 function showError(message) {
@@ -92,14 +128,21 @@ function showError(message) {
         console.error('Error message element not found');
         return;
     }
+    
+    showLoading(false);
     errorDiv.textContent = message;
     errorDiv.classList.remove('d-none');
 }
 
 function fetchArticleDetails(articleId) {
     console.log('Fetching article details:', articleId);
-    fetch(`/api/article/${articleId}`)
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    fetch(`/api/article/${articleId}`, { signal: controller.signal })
         .then(response => {
+            clearTimeout(timeoutId);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -107,24 +150,29 @@ function fetchArticleDetails(articleId) {
         })
         .then(article => {
             console.log('Article details received:', article);
+            if (!article || typeof article !== 'object') {
+                throw new Error('Invalid article data received');
+            }
             updateModalContent(article);
-            showLoading(false);
         })
         .catch(error => {
+            clearTimeout(timeoutId);
             console.error('Error loading article details:', error);
-            showError('Failed to load article details. Please try again.');
-            showLoading(false);
+            showError(error.name === 'AbortError' ? 
+                'Request timed out. Please try again.' : 
+                'Failed to load article details. Please try again.');
         });
 }
 
 function updateModalContent(article) {
     try {
+        // Basic article information
         const elements = {
             'modalNewspaperLogo': { type: 'img', value: article.periodico_logo || '/static/img/default-newspaper.svg' },
-            'articleModalLabel': { type: 'text', value: article.titular },
+            'articleModalLabel': { type: 'text', value: article.titular || 'No Title' },
             'articleSubtitle': { type: 'text', value: article.subtitular || '' },
-            'articleDate': { type: 'text', value: article.fecha_publicacion || '' },
-            'articleAuthor': { type: 'text', value: article.periodista || '' },
+            'articleDate': { type: 'text', value: formatDate(article.fecha_publicacion) },
+            'articleAuthor': { type: 'text', value: article.periodista || 'Unknown Author' },
             'articleAgency': { type: 'text', value: article.agencia || '' },
             'articleSummary': { type: 'text', value: article.gpt_resumen || 'No summary available' },
             'articleOpinion': { type: 'text', value: article.gpt_opinion || 'No opinion available' }
@@ -139,7 +187,7 @@ function updateModalContent(article) {
                     element.textContent = config.value;
                 }
             } else {
-                console.error(`Element with id '${id}' not found`);
+                console.warn(`Element with id '${id}' not found`);
             }
         }
         
@@ -147,9 +195,26 @@ function updateModalContent(article) {
         updateSources(article.gpt_cantidad_fuentes_citadas);
         updatePaywallWarning(article.paywall);
         updateArticleLink(article.url);
+        
+        showLoading(false);
     } catch (error) {
         console.error('Error updating modal content:', error);
         showError('Failed to display article details');
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    } catch (error) {
+        console.warn('Error formatting date:', error);
+        return dateString;
     }
 }
 
@@ -162,9 +227,11 @@ function updateKeywords(keywords) {
     
     if (keywords) {
         const badges = keywords.split(',')
-            .map(keyword => `<span class="badge bg-secondary me-1">${keyword.trim()}</span>`)
+            .map(keyword => keyword.trim())
+            .filter(keyword => keyword)
+            .map(keyword => `<span class="badge bg-secondary me-1 mb-1">${keyword}</span>`)
             .join('');
-        keywordsDiv.innerHTML = badges;
+        keywordsDiv.innerHTML = badges || '<span class="text-muted">No keywords available</span>';
     } else {
         keywordsDiv.innerHTML = '<span class="text-muted">No keywords available</span>';
     }
@@ -178,7 +245,7 @@ function updateSources(sourcesCount) {
     }
     
     sourcesDiv.textContent = sourcesCount ? 
-        `${sourcesCount} sources cited` : 
+        `${sourcesCount} source${sourcesCount !== 1 ? 's' : ''} cited` : 
         'No source information available';
 }
 
