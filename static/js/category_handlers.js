@@ -112,26 +112,17 @@ function updateSubcategoryTabs(subcategories) {
     const subcategoryTabs = document.getElementById('subcategoryTabs');
     if (!subcategoryTabs) return;
 
-    const uniqueSubcategories = new Set();
-    const filteredSubcategories = subcategories.filter(subcat => {
-        const key = `${subcat.id}-${subcat.subnombre}`;
-        if (!uniqueSubcategories.has(key)) {
-            uniqueSubcategories.add(key);
-            return true;
-        }
-        return false;
-    });
-
     subcategoryTabs.innerHTML = `
         <li class="nav-item" role="presentation">
             <button class="nav-link active" role="tab" data-subcategory-id="">
                 All
             </button>
         </li>
-        ${filteredSubcategories.map(subcategory => `
+        ${subcategories.map(subcategory => `
             <li class="nav-item" role="presentation">
                 <button class="nav-link" role="tab" data-subcategory-id="${subcategory.id}">
-                    ${subcategory.subnombre || 'Unnamed'}
+                    ${subcategory.nombre || 'Unnamed'}
+                    ${subcategory.article_count ? `<span class="badge bg-secondary ms-1">${subcategory.article_count}</span>` : ''}
                 </button>
             </li>
         `).join('')}
@@ -170,12 +161,6 @@ function showAllCategories() {
             if (!Array.isArray(data.categories)) {
                 throw new Error('Invalid response format: missing or invalid categories array');
             }
-            
-            data.categories.forEach((category, index) => {
-                if (!category.categoria_id || !category.nombre) {
-                    console.warn(`Invalid category at index ${index}:`, category);
-                }
-            });
 
             updateDisplay(data);
             hideSubcategoryTabs();
@@ -268,21 +253,21 @@ function updateDisplay(data) {
         }
 
         eventsContent.innerHTML = data.categories.map(category => `
-            <div class="category-section mb-5" data-category-id="${category.categoria_id || ''}"">
-                <h2 class="mb-3">${category.nombre || 'Unnamed Category'}</h2>
+            <div class="category-section mb-5" data-category-id="${category.categoria_id}">
+                <h2 class="mb-3">${category.nombre}</h2>
                 <div class="category-content">
-                    ${(category.subcategories || []).map(subcategory => `
+                    ${category.subcategories.map(subcategory => `
                         <div class="subcategory-section mb-4">
-                            ${subcategory.subnombre ? 
-                                `<h3 class="h4 mb-3">${subcategory.subnombre}</h3>` : 
+                            ${subcategory.nombre ? 
+                                `<h3 class="h4 mb-3">${subcategory.nombre}</h3>` : 
                                 ''}
                             <div class="events-container">
-                                ${(subcategory.events || []).map(event => `
+                                ${subcategory.events.map(event => `
                                     <div class="event-articles mb-4">
                                         <div class="row">
                                             <div class="col-md-3">
                                                 <div class="event-info">
-                                                    <h4 class="event-title">${event.titulo || 'Untitled Event'}</h4>
+                                                    <h4 class="event-title">${event.titulo}</h4>
                                                     <p class="event-description">${event.descripcion || ''}</p>
                                                     <div class="event-meta">
                                                         <small class="text-muted">${event.fecha_evento || ''}</small>
@@ -292,14 +277,14 @@ function updateDisplay(data) {
                                             <div class="col-md-9">
                                                 <div class="articles-carousel">
                                                     <div class="carousel-wrapper">
-                                                        ${(event.articles || []).map(article => `
-                                                            <div class="article-card" data-article-id="${article.id}" role="button">
+                                                        ${event.articles.map(article => `
+                                                            <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url}" role="button">
                                                                 <div class="card h-100">
                                                                     <div class="card-body">
                                                                         <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
                                                                              class="newspaper-logo mb-2" alt="Newspaper logo">
                                                                         <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
-                                                                            ${article.titular || 'No Title'}
+                                                                            ${article.titular}
                                                                         </h5>
                                                                         ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
                                                                         <div class="article-meta mt-2">
@@ -327,7 +312,6 @@ function updateDisplay(data) {
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');
             
-            // Add debug logging
             console.log('Article card initialized:', card.dataset.articleId);
         });
 

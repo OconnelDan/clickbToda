@@ -72,15 +72,31 @@ def get_subcategories():
             return jsonify([])
         
         subcategories = db.session.query(
-            Subcategoria
+            Subcategoria,
+            func.count(distinct(Evento.evento_id)).label('event_count'),
+            func.count(distinct(articulo_evento.c.articulo_id)).label('article_count')
+        ).outerjoin(
+            Evento,
+            Subcategoria.subcategoria_id == Evento.subcategoria_id
+        ).outerjoin(
+            articulo_evento,
+            Evento.evento_id == articulo_evento.c.evento_id
         ).filter(
             Subcategoria.categoria_id == category_id
+        ).group_by(
+            Subcategoria.subcategoria_id,
+            Subcategoria.nombre,
+            Subcategoria.descripcion
+        ).order_by(
+            func.count(distinct(articulo_evento.c.articulo_id)).desc()
         ).all()
         
         return jsonify([{
-            'id': subcat.subcategoria_id,
-            'nombre': subcat.nombre,
-            'descripcion': subcat.descripcion
+            'id': subcat.Subcategoria.subcategoria_id,
+            'nombre': subcat.Subcategoria.nombre,
+            'descripcion': subcat.Subcategoria.descripcion,
+            'event_count': subcat.event_count,
+            'article_count': subcat.article_count
         } for subcat in subcategories])
     except Exception as e:
         logger.error(f"Error in get_subcategories: {str(e)}")
@@ -144,6 +160,7 @@ def get_articles():
             subcategory_key = subcategory.subcategoria_id if subcategory else 'general'
             if subcategory_key not in organized_data[category.categoria_id]['subcategories']:
                 organized_data[category.categoria_id]['subcategories'][subcategory_key] = {
+                    'id': subcategory.subcategoria_id if subcategory else None,
                     'nombre': subcategory.nombre if subcategory else None,
                     'descripcion': subcategory.descripcion if subcategory else None,
                     'events': {}
@@ -177,6 +194,7 @@ def get_articles():
                     'descripcion': cat_data['descripcion'],
                     'subcategories': [
                         {
+                            'id': subcat_data['id'],
                             'nombre': subcat_data['nombre'],
                             'descripcion': subcat_data['descripcion'],
                             'events': sorted([
