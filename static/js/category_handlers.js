@@ -90,7 +90,6 @@ function fetchSubcategories(categoryId) {
             console.log('Subcategories data:', data);
             if (data && data.length > 0) {
                 updateSubcategoryTabs(data);
-                // Add fade-in animation
                 subcategoryNav.style.opacity = '0';
                 subcategoryNav.style.display = 'block';
                 setTimeout(() => {
@@ -145,33 +144,24 @@ function showAllCategories() {
     
     fetch('/api/articles')
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
             console.log('Received data structure:', data);
-            
             if (!data || typeof data !== 'object') {
                 throw new Error('Invalid response format: response is not an object');
             }
-            
             if (!Array.isArray(data.categories)) {
                 throw new Error('Invalid response format: missing or invalid categories array');
             }
             
-            data.categories.forEach((category, index) => {
-                if (!category.categoria_id || !category.nombre) {
-                    console.warn(`Invalid category at index ${index}:`, category);
-                }
-            });
-
             updateDisplay(data);
             hideSubcategoryTabs();
         })
         .catch(error => {
             console.error('Error loading events:', error);
+            showError('Failed to load articles', error);
             const eventsContent = document.getElementById('events-content');
             if (eventsContent) {
                 eventsContent.innerHTML = `
@@ -183,7 +173,6 @@ function showAllCategories() {
                     </div>
                 `;
             }
-            showError('Failed to load articles', error);
         });
 }
 
@@ -291,6 +280,11 @@ function updateDisplay(data) {
                                                                         <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
                                                                             ${article.titular || 'No Title'}
                                                                         </h5>
+                                                                        ${article.gpt_opinion ? `
+                                                                            <div class="article-opinion">
+                                                                                ${article.gpt_opinion}
+                                                                            </div>
+                                                                        ` : ''}
                                                                         ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
                                                                     </div>
                                                                 </div>
