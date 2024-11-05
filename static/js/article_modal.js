@@ -3,47 +3,39 @@ let articleModal;
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing article modal...');
-    
-    // Initialize Bootstrap modal
     const modalElement = document.getElementById('articleModal');
     if (!modalElement) {
-        console.error('Modal element not found in the DOM');
+        console.error('Modal element not found');
         return;
     }
     
     try {
-        articleModal = new bootstrap.Modal(modalElement, {
-            keyboard: true,
-            backdrop: true,
-            focus: true
-        });
+        articleModal = new bootstrap.Modal(modalElement);
         console.log('Modal initialized successfully');
+        
+        // Add card click handlers
+        document.querySelectorAll('.article-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Article card clicked:', this.dataset.articleId);
+                
+                const articleId = this.dataset.articleId;
+                if (!articleId) {
+                    console.error('No article ID found');
+                    return;
+                }
+                
+                // Show modal and loading state
+                showLoading(true);
+                hideError();
+                articleModal.show();
+                
+                // Fetch article details
+                fetchArticleDetails(articleId);
+            });
+        });
 
-        // Verify required elements exist
-        const requiredElements = [
-            'articleLoadingSpinner',
-            'articleContent',
-            'articleErrorMessage',
-            'modalNewspaperLogo',
-            'articleModalLabel',
-            'articleSubtitle',
-            'articleDate',
-            'articleAuthor',
-            'articleAgency',
-            'articleSummary',
-            'articleOpinion',
-            'articleKeywords',
-            'articleSources',
-            'articleLink',
-            'paywallWarning'
-        ];
-
-        const missingElements = requiredElements.filter(id => !document.getElementById(id));
-        if (missingElements.length > 0) {
-            console.error('Missing required modal elements:', missingElements);
-        }
-
-        // Add event listener for modal events
+        // Add modal events for debugging
         modalElement.addEventListener('show.bs.modal', function() {
             console.log('Modal is about to be shown');
         });
@@ -51,45 +43,45 @@ document.addEventListener('DOMContentLoaded', function() {
         modalElement.addEventListener('shown.bs.modal', function() {
             console.log('Modal is now visible');
         });
-
-        // Global click handler for article cards
-        document.addEventListener('click', handleArticleCardClick);
     } catch (error) {
         console.error('Error initializing modal:', error);
     }
 });
 
-function handleArticleCardClick(event) {
-    const articleCard = event.target.closest('.article-card');
-    if (!articleCard) return;
-    
-    console.log('Article card clicked:', articleCard);
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const articleId = articleCard.dataset.articleId;
-    console.log('Fetching details for article ID:', articleId);
-    
-    if (!articleId) {
-        console.error('No article ID found on clicked card');
+function showLoading(show) {
+    console.log('Toggling loading state:', show);
+    const spinner = document.getElementById('articleLoadingSpinner');
+    const content = document.getElementById('articleContent');
+    if (!spinner || !content) {
+        console.error('Loading elements not found');
         return;
     }
-    
-    if (!articleModal) {
-        console.error('Modal not properly initialized');
+    spinner.classList.toggle('d-none', !show);
+    content.classList.toggle('d-none', show);
+}
+
+function hideError() {
+    const errorDiv = document.getElementById('articleErrorMessage');
+    if (!errorDiv) {
+        console.error('Error message element not found');
         return;
     }
-    
-    // Show modal with loading state
-    showLoading(true);
-    hideError();
-    articleModal.show();
-    
-    // Fetch article details
-    fetchArticleDetails(articleId);
+    errorDiv.classList.add('d-none');
+}
+
+function showError(message) {
+    console.error('Error:', message);
+    const errorDiv = document.getElementById('articleErrorMessage');
+    if (!errorDiv) {
+        console.error('Error message element not found');
+        return;
+    }
+    errorDiv.textContent = message;
+    errorDiv.classList.remove('d-none');
 }
 
 function fetchArticleDetails(articleId) {
+    console.log('Fetching article details:', articleId);
     fetch(`/api/article/${articleId}`)
         .then(response => {
             if (!response.ok) {
@@ -109,38 +101,6 @@ function fetchArticleDetails(articleId) {
         });
 }
 
-function showLoading(show) {
-    const spinner = document.getElementById('articleLoadingSpinner');
-    const content = document.getElementById('articleContent');
-    
-    if (!spinner || !content) {
-        console.error('Loading spinner or content elements not found');
-        return;
-    }
-    
-    spinner.classList.toggle('d-none', !show);
-    content.classList.toggle('d-none', show);
-}
-
-function showError(message) {
-    const errorDiv = document.getElementById('articleErrorMessage');
-    if (!errorDiv) {
-        console.error('Error message element not found');
-        return;
-    }
-    errorDiv.textContent = message;
-    errorDiv.classList.remove('d-none');
-}
-
-function hideError() {
-    const errorDiv = document.getElementById('articleErrorMessage');
-    if (!errorDiv) {
-        console.error('Error message element not found');
-        return;
-    }
-    errorDiv.classList.add('d-none');
-}
-
 function updateModalContent(article) {
     try {
         const elements = {
@@ -153,7 +113,7 @@ function updateModalContent(article) {
             'articleSummary': { type: 'text', value: article.gpt_resumen || 'No summary available' },
             'articleOpinion': { type: 'text', value: article.gpt_opinion || 'No opinion available' }
         };
-        
+
         for (const [id, config] of Object.entries(elements)) {
             const element = document.getElementById(id);
             if (element) {
@@ -166,12 +126,11 @@ function updateModalContent(article) {
                 console.error(`Element with id '${id}' not found`);
             }
         }
-        
+
         updateKeywords(article.gpt_palabras_clave);
         updateSources(article.gpt_cantidad_fuentes_citadas);
         updatePaywallWarning(article.paywall);
         updateArticleLink(article.url);
-        
     } catch (error) {
         console.error('Error updating modal content:', error);
         showError('Failed to display article details');
