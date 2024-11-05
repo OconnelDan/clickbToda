@@ -3,9 +3,15 @@ let articleModal;
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Initializing article modal...');
+    
+    initializeModal();
+    setupEventDelegation();
+});
+
+function initializeModal() {
     const modalElement = document.getElementById('articleModal');
     if (!modalElement) {
-        console.error('Modal element not found');
+        console.error('Modal element not found in the DOM');
         return;
     }
     
@@ -13,40 +19,50 @@ document.addEventListener('DOMContentLoaded', function() {
         articleModal = new bootstrap.Modal(modalElement);
         console.log('Modal initialized successfully');
         
-        // Add card click handlers
-        document.querySelectorAll('.article-card').forEach(card => {
-            card.addEventListener('click', function(e) {
-                e.preventDefault();
-                console.log('Article card clicked:', this.dataset.articleId);
-                
-                const articleId = this.dataset.articleId;
-                if (!articleId) {
-                    console.error('No article ID found');
-                    return;
-                }
-                
-                // Show modal and loading state
-                showLoading(true);
-                hideError();
-                articleModal.show();
-                
-                // Fetch article details
-                fetchArticleDetails(articleId);
-            });
-        });
-
         // Add modal events for debugging
         modalElement.addEventListener('show.bs.modal', function() {
             console.log('Modal is about to be shown');
         });
-
+        
         modalElement.addEventListener('shown.bs.modal', function() {
             console.log('Modal is now visible');
         });
     } catch (error) {
         console.error('Error initializing modal:', error);
     }
-});
+}
+
+function setupEventDelegation() {
+    // Use event delegation for dynamically loaded cards
+    document.addEventListener('click', function(event) {
+        const articleCard = event.target.closest('.article-card');
+        if (!articleCard) return;
+        
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const articleId = articleCard.dataset.articleId;
+        console.log('Article card clicked:', articleId);
+        
+        if (!articleId) {
+            console.error('No article ID found on clicked card');
+            return;
+        }
+        
+        if (!articleModal) {
+            console.error('Modal not properly initialized');
+            return;
+        }
+        
+        // Show modal with loading state
+        showLoading(true);
+        hideError();
+        articleModal.show();
+        
+        // Fetch article details
+        fetchArticleDetails(articleId);
+    });
+}
 
 function showLoading(show) {
     console.log('Toggling loading state:', show);
@@ -113,7 +129,7 @@ function updateModalContent(article) {
             'articleSummary': { type: 'text', value: article.gpt_resumen || 'No summary available' },
             'articleOpinion': { type: 'text', value: article.gpt_opinion || 'No opinion available' }
         };
-
+        
         for (const [id, config] of Object.entries(elements)) {
             const element = document.getElementById(id);
             if (element) {
@@ -126,7 +142,7 @@ function updateModalContent(article) {
                 console.error(`Element with id '${id}' not found`);
             }
         }
-
+        
         updateKeywords(article.gpt_palabras_clave);
         updateSources(article.gpt_cantidad_fuentes_citadas);
         updatePaywallWarning(article.paywall);
