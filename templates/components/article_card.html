@@ -1,16 +1,14 @@
 <div class="article-card">
-    <a href="{{ article.url or '#' }}" target="_blank" rel="noopener noreferrer" class="card-link">
-        <div class="card h-100">
-            <div class="card-body">
-                <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
-                     class="newspaper-logo mb-2" alt="Newspaper logo">
-                <h5 class="card-title article-title {% if article.paywall %}text-muted{% endif %}">
-                    {{ article.titular }}
-                </h5>
-                {% if article.paywall %}
-                <span class="badge bg-secondary">Paywall</span>
-                {% endif %}
-            </div>
+    <div class="card h-100">
+        <div class="card-body">
+            <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
+                 class="newspaper-logo mb-2" alt="Newspaper logo">
+            <h5 class="card-title article-title {% if article.paywall %}text-muted{% endif %}">
+                {{ article.titular }}
+            </h5>
+            {% if article.paywall %}
+            <span class="badge bg-secondary">Paywall</span>
+            {% endif %}
         </div>
-    </a>
+    </div>
 </div>

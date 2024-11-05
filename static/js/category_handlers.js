@@ -3,7 +3,251 @@ document.addEventListener('DOMContentLoaded', function() {
     showAllCategories();
 });
 
-// ... [previous code remains the same until updateDisplay function] ...
+function initializeTabNavigation() {
+    const tabElements = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabElements.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(event) {
+            const categoryId = event.target.dataset.categoryId;
+            if (categoryId) {
+                fetchSubcategories(categoryId);
+                loadEventsByCategory(categoryId);
+            } else {
+                hideSubcategoryTabs();
+                showAllCategories();
+            }
+        });
+    });
+
+    // Handle subcategory clicks with animation
+    const subcategoryNav = document.querySelector('.subcategory-nav');
+    if (subcategoryNav) {
+        subcategoryNav.addEventListener('click', function(e) {
+            const tabButton = e.target.closest('[role="tab"]');
+            if (!tabButton) return;
+
+            // Animate the transition
+            const allSubcategoryTabs = subcategoryNav.querySelectorAll('[role="tab"]');
+            allSubcategoryTabs.forEach(tab => {
+                tab.classList.remove('active');
+                tab.style.transition = 'all 0.3s ease';
+            });
+            
+            tabButton.classList.add('active');
+
+            const categoryId = document.querySelector('#categoryTabs .nav-link.active').dataset.categoryId;
+            const subcategoryId = tabButton.dataset.subcategoryId;
+
+            if (categoryId && subcategoryId) {
+                loadEventsBySubcategory(categoryId, subcategoryId);
+            } else if (categoryId) {
+                loadEventsByCategory(categoryId);
+            }
+        });
+    }
+}
+
+function showLoadingIndicator(containerId) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.innerHTML = `
+            <div class="text-center my-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading content...</p>
+            </div>
+        `;
+    }
+}
+
+function showError(message, error = null) {
+    console.error('Error:', message, error);
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger alert-dismissible fade show';
+    errorDiv.innerHTML = `
+        ${message}
+        ${error ? `<br><small class="text-muted">Technical details: ${error.message || error}</small>` : ''}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    if (container) {
+        container.insertBefore(errorDiv, container.firstChild);
+        setTimeout(() => errorDiv.remove(), 5000);
+    }
+}
+
+function fetchSubcategories(categoryId) {
+    const subcategoryNav = document.querySelector('.subcategory-nav');
+    if (!subcategoryNav) return;
+
+    fetch(`/api/subcategories?category_id=${categoryId}`)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Subcategories data:', data);
+            if (data && data.length > 0) {
+                updateSubcategoryTabs(data);
+                // Add fade-in animation
+                subcategoryNav.style.opacity = '0';
+                subcategoryNav.style.display = 'block';
+                setTimeout(() => {
+                    subcategoryNav.style.transition = 'opacity 0.3s ease';
+                    subcategoryNav.style.opacity = '1';
+                }, 10);
+            } else {
+                hideSubcategoryTabs();
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching subcategories:', error);
+            hideSubcategoryTabs();
+            showError('Failed to load subcategories', error);
+        });
+}
+
+function updateSubcategoryTabs(subcategories) {
+    const subcategoryTabs = document.getElementById('subcategoryTabs');
+    if (!subcategoryTabs) return;
+
+    // Create a Set to store unique subcategory names
+    const uniqueSubcategories = new Set();
+    const filteredSubcategories = subcategories.filter(subcat => {
+        const key = `${subcat.id}-${subcat.subnombre}`;
+        if (!uniqueSubcategories.has(key)) {
+            uniqueSubcategories.add(key);
+            return true;
+        }
+        return false;
+    });
+
+    subcategoryTabs.innerHTML = `
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" role="tab" data-subcategory-id="">
+                All
+            </button>
+        </li>
+        ${filteredSubcategories.map(subcategory => `
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" role="tab" data-subcategory-id="${subcategory.id}">
+                    ${subcategory.subnombre || 'Unnamed'}
+                </button>
+            </li>
+        `).join('')}
+    `;
+}
+
+function hideSubcategoryTabs() {
+    const subcategoryNav = document.querySelector('.subcategory-nav');
+    if (subcategoryNav) {
+        subcategoryNav.style.transition = 'opacity 0.3s ease';
+        subcategoryNav.style.opacity = '0';
+        setTimeout(() => {
+            subcategoryNav.style.display = 'none';
+            subcategoryNav.innerHTML = '';
+        }, 300);
+    }
+}
+
+function showAllCategories() {
+    showLoadingIndicator('events-content');
+    
+    fetch('/api/articles')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Received data structure:', data);
+            
+            if (!data || typeof data !== 'object') {
+                throw new Error('Invalid response format: response is not an object');
+            }
+            
+            if (!Array.isArray(data.categories)) {
+                throw new Error('Invalid response format: missing or invalid categories array');
+            }
+            
+            // Validate data structure
+            data.categories.forEach((category, index) => {
+                if (!category.categoria_id || !category.nombre) {
+                    console.warn(`Invalid category at index ${index}:`, category);
+                }
+            });
+
+            updateDisplay(data);
+            hideSubcategoryTabs();
+        })
+        .catch(error => {
+            console.error('Error loading events:', error);
+            const eventsContent = document.getElementById('events-content');
+            if (eventsContent) {
+                eventsContent.innerHTML = `
+                    <div class="alert alert-warning">
+                        <h4 class="alert-heading">Unable to load articles</h4>
+                        <p>${error.message || 'An unexpected error occurred'}</p>
+                        <hr>
+                        <button onclick="showAllCategories()" class="btn btn-outline-warning">Try Again</button>
+                    </div>
+                `;
+            }
+            showError('Failed to load articles', error);
+        });
+}
+
+function loadEventsByCategory(categoryId) {
+    if (!categoryId) {
+        console.error('Invalid category ID');
+        return;
+    }
+    
+    showLoadingIndicator('events-content');
+    
+    fetch(`/api/articles?category_id=${categoryId}`)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Category events data:', data);
+            if (!data.categories) throw new Error('Invalid response format: missing categories');
+            updateDisplay(data);
+        })
+        .catch(error => {
+            console.error('Error loading category events:', error);
+            showError(`Failed to load events for category ${categoryId}`, error);
+            showAllCategories();
+        });
+}
+
+function loadEventsBySubcategory(categoryId, subcategoryId) {
+    if (!categoryId || !subcategoryId) {
+        console.error('Invalid category or subcategory ID');
+        return;
+    }
+    
+    showLoadingIndicator('events-content');
+    
+    fetch(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Subcategory events data:', data);
+            if (!data.categories) throw new Error('Invalid response format: missing categories');
+            updateDisplay(data);
+        })
+        .catch(error => {
+            console.error('Error loading subcategory events:', error);
+            showError(`Failed to load events for subcategory ${subcategoryId}`, error);
+            loadEventsByCategory(categoryId);
+        });
+}
 
 function updateDisplay(data) {
     const eventsContent = document.getElementById('events-content');
@@ -52,21 +296,19 @@ function updateDisplay(data) {
                                                     <div class="carousel-wrapper">
                                                         ${(event.articles || []).map(article => `
                                                             <div class="article-card">
-                                                                <a href="${article.url || '#'}" target="_blank" rel="noopener noreferrer" class="card-link">
-                                                                    <div class="card h-100">
-                                                                        <div class="card-body">
-                                                                            <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
-                                                                                 class="newspaper-logo mb-2" alt="Newspaper logo">
-                                                                            <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
-                                                                                ${article.titular || 'No Title'}
-                                                                            </h5>
-                                                                            ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
-                                                                            <div class="article-meta mt-2">
-                                                                                <small class="text-muted">${article.fecha_publicacion || ''}</small>
-                                                                            </div>
+                                                                <div class="card h-100">
+                                                                    <div class="card-body">
+                                                                        <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
+                                                                             class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                        <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
+                                                                            ${article.titular || 'No Title'}
+                                                                        </h5>
+                                                                        ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
+                                                                        <div class="article-meta mt-2">
+                                                                            <small class="text-muted">${article.fecha_publicacion || ''}</small>
                                                                         </div>
                                                                     </div>
-                                                                </a>
+                                                                </div>
                                                             </div>
                                                         `).join('')}
                                                     </div>
