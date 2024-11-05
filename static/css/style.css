@@ -1,4 +1,3 @@
-/* Mobile-first styles */
 .articles-carousel {
     position: relative;
     overflow: hidden;
@@ -214,6 +213,30 @@
 .nav-pills .nav-link.active {
     background: var(--bs-primary);
     color: var(--bs-light);
+}
+
+/* Modal Styles */
+.modal-content {
+    border: 3px solid rgba(var(--bs-primary-rgb), 0.2);
+    border-radius: 1rem;
+}
+
+.modal-header {
+    border-bottom: 2px solid rgba(var(--bs-primary-rgb), 0.1);
+    padding: 1.5rem;
+}
+
+.modal-header .newspaper-logo {
+    max-height: 20px;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 2px solid rgba(var(--bs-primary-rgb), 0.1);
+    padding: 1.5rem;
 }
 
 /* Tablet (md) */
