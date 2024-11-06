@@ -169,17 +169,37 @@
     transform: translateX(8rem);
 }
 
-/* Responsive Article Card Styles */
+/* Update Article Card Styles */
 .article-card {
     flex: 0 0 auto;
-    width: calc(100% - 1rem);
+    width: calc(50% - 1rem); /* Two cards visible on mobile */
     scroll-snap-align: start;
 }
 
 .article-card .card {
-    min-height: 11.25rem;
+    min-height: 180px;
     height: 100%;
     transition: all 0.2s ease-in-out;
+}
+
+/* Tablet styles */
+@media (min-width: 768px) {
+    .article-card {
+        width: calc(33.333% - 1rem); /* Three cards visible on tablet */
+    }
+    .article-card .card {
+        min-height: 200px;
+    }
+}
+
+/* Desktop styles */
+@media (min-width: 992px) {
+    .article-card {
+        width: calc(25% - 1rem); /* Four cards visible on desktop */
+    }
+    .article-card .card {
+        min-height: 220px;
+    }
 }
 
 .article-card .card-body {
