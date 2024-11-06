@@ -133,17 +133,17 @@ def get_articles():
         category_id = request.args.get('category_id')
         subcategory_id = request.args.get('subcategory_id')
         search_query = request.args.get('q')
-        time_filter = request.args.get('time_filter', 'today')
+        time_filter = request.args.get('time_filter', '24h')
         
         logger.info(f"Fetching articles with params - category: {category_id}, subcategory: {subcategory_id}, search: {search_query}, time_filter: {time_filter}")
 
-        end_date = datetime.now().date()
-        if time_filter == 'week':
-            start_date = end_date - timedelta(days=7)
-        elif time_filter == 'month':
-            start_date = end_date - timedelta(days=30)
-        else:  # today
-            start_date = end_date
+        end_date = datetime.now()
+        if time_filter == '72h':
+            start_date = end_date - timedelta(hours=72)
+        elif time_filter == '48h':
+            start_date = end_date - timedelta(hours=48)
+        else:  # 24h
+            start_date = end_date - timedelta(hours=24)
 
         base_query = db.session.query(
             Evento,

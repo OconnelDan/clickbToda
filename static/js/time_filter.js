@@ -10,19 +10,19 @@ document.addEventListener('DOMContentLoaded', function() {
         let filterDate = new Date();
         
         switch(timeRange) {
-            case 'today':
-                filterDate = currentDate;
+            case '24h':
+                filterDate.setHours(currentDate.getHours() - 24);
                 break;
-            case 'week':
-                filterDate.setDate(currentDate.getDate() - 7);
+            case '48h':
+                filterDate.setHours(currentDate.getHours() - 48);
                 break;
-            case 'month':
-                filterDate.setMonth(currentDate.getMonth() - 1);
+            case '72h':
+                filterDate.setHours(currentDate.getHours() - 72);
                 break;
         }
         
-        // Format date as YYYY-MM-DD
-        const formattedDate = filterDate.toISOString().split('T')[0];
+        // Format date as YYYY-MM-DD HH:mm:ss
+        const formattedDate = filterDate.toISOString().slice(0, 19).replace('T', ' ');
         
         // Reload articles with new date filter
         reloadArticles(formattedDate);
