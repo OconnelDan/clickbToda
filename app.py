@@ -2,10 +2,12 @@ from flask import Flask, render_template, jsonify, request, flash, redirect, url
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from sqlalchemy import func, text, desc, and_, distinct, or_, Index
+from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
 import logging
 from config import Config
 import sys
+from flask_caching import Cache
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,25 +19,28 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Configure SQLAlchemy for better performance
 app.config['SQLALCHEMY_POOL_SIZE'] = 10
 app.config['SQLALCHEMY_MAX_OVERFLOW'] = 20
 app.config['SQLALCHEMY_POOL_RECYCLE'] = 300
 app.config['SQLALCHEMY_POOL_TIMEOUT'] = 20
 
+cache = Cache(app, config={
+    'CACHE_TYPE': 'simple',
+    'CACHE_DEFAULT_TIMEOUT': 60
+})
+
 try:
     db = SQLAlchemy(app)
     with app.app_context():
         db.engine.connect()
-        
-        # Create indexes for better query performance
         with db.engine.connect() as connection:
             connection.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_articulo_updated_on ON app.articulo (updated_on);
                 CREATE INDEX IF NOT EXISTS idx_articulo_evento_ids ON app.articulo_evento (articulo_id, evento_id);
                 CREATE INDEX IF NOT EXISTS idx_evento_subcategoria ON app.evento (subcategoria_id);
+                CREATE INDEX IF NOT EXISTS idx_article_time ON app.articulo (updated_on, paywall);
+                CREATE INDEX IF NOT EXISTS idx_article_category ON app.articulo (periodico_id, updated_on);
             """))
-            
     logger.info("Database connection and indexes setup successful")
 except Exception as e:
     logger.error(f"Database connection failed: {str(e)}")
@@ -51,10 +56,154 @@ from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, a
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+def get_filtered_articles(start_date, end_date):
+    return db.session.query(
+        Articulo,
+        Periodico
+    ).join(
+        Periodico
+    ).filter(
+        Articulo.updated_on.between(start_date, end_date)
+    ).order_by(
+        desc(Articulo.updated_on)
+    ).options(
+        joinedload(Articulo.periodico)
+    )
+
+@cache.memoize(timeout=60)
+def get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date):
+    try:
+        base_query = db.session.query(
+            Evento.evento_id,
+            Evento.titulo,
+            Evento.descripcion,
+            Evento.fecha_evento,
+            Categoria.categoria_id,
+            Categoria.nombre.label('categoria_nombre'),
+            Subcategoria.subcategoria_id,
+            Subcategoria.nombre.label('subcategoria_nombre'),
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
+        ).select_from(Evento)
+
+        base_query = base_query.outerjoin(
+            Subcategoria,
+            Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).outerjoin(
+            Categoria,
+            Subcategoria.categoria_id == Categoria.categoria_id
+        ).outerjoin(
+            articulo_evento,
+            Evento.evento_id == articulo_evento.c.evento_id
+        ).outerjoin(
+            Articulo,
+            and_(
+                articulo_evento.c.articulo_id == Articulo.articulo_id,
+                Articulo.paywall.is_(False) if request.args.get('hide_paywall') else True,
+                Articulo.updated_on >= start_date,
+                Articulo.updated_on <= end_date
+            )
+        )
+
+        if category_id:
+            base_query = base_query.filter(Categoria.categoria_id == category_id)
+        if subcategory_id:
+            base_query = base_query.filter(Subcategoria.subcategoria_id == subcategory_id)
+
+        base_query = base_query.group_by(
+            Evento.evento_id,
+            Categoria.categoria_id,
+            Subcategoria.subcategoria_id
+        ).order_by(
+            Categoria.nombre.nullslast(),
+            desc('article_count'),
+            desc(Evento.fecha_evento)
+        )
+
+        events = base_query.all()
+        logger.info(f"Retrieved {len(events)} events")
+
+        organized_data = {}
+        
+        event_ids = [event.evento_id for event in events]
+        articles_query = get_filtered_articles(start_date, end_date).filter(
+            articulo_evento.c.evento_id.in_(event_ids)
+        )
+        
+        articles_by_event = {}
+        for article, periodico in articles_query:
+            event_ids = [ae.evento_id for ae in article.eventos]
+            for event_id in event_ids:
+                if event_id not in articles_by_event:
+                    articles_by_event[event_id] = []
+                articles_by_event[event_id].append((article, periodico))
+        
+        for event in events:
+            articles = articles_by_event.get(event.evento_id, [])
+            
+            if not articles:
+                continue
+
+            cat_id = event.categoria_id if event.categoria_id else 0
+            if cat_id not in organized_data:
+                organized_data[cat_id] = {
+                    'categoria_id': cat_id,
+                    'nombre': event.categoria_nombre if event.categoria_nombre else 'Uncategorized',
+                    'subcategories': {}
+                }
+
+            subcat_id = event.subcategoria_id if event.subcategoria_id else 0
+            if subcat_id not in organized_data[cat_id]['subcategories']:
+                organized_data[cat_id]['subcategories'][subcat_id] = {
+                    'subcategoria_id': subcat_id,
+                    'nombre': event.subcategoria_nombre if event.subcategoria_nombre else 'Uncategorized',
+                    'events': {}
+                }
+
+            organized_data[cat_id]['subcategories'][subcat_id]['events'][event.evento_id] = {
+                'evento_id': event.evento_id,
+                'titulo': event.titulo,
+                'descripcion': event.descripcion,
+                'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
+                'article_count': len(articles),
+                'articles': [{
+                    'id': article.articulo_id,
+                    'titular': article.titular,
+                    'paywall': article.paywall,
+                    'periodico_logo': periodico.logo_url if periodico else None,
+                    'url': article.url,
+                    'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None,
+                    'gpt_opinion': article.gpt_opinion
+                } for article, periodico in articles]
+            }
+
+        return {
+            'categories': [
+                {
+                    'categoria_id': cat_data['categoria_id'],
+                    'nombre': cat_data['nombre'],
+                    'subcategories': [
+                        {
+                            'subcategoria_id': subcat_data['subcategoria_id'],
+                            'nombre': subcat_data['nombre'],
+                            'events': sorted(
+                                list(subcat_data['events'].values()),
+                                key=lambda x: (x['article_count'], x['fecha_evento'] or ''),
+                                reverse=True
+                            )
+                        }
+                        for subcat_id, subcat_data in cat_data['subcategories'].items()
+                    ]
+                }
+                for cat_id, cat_data in organized_data.items()
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error in get_cached_articles: {str(e)}")
+        raise
+
 @app.route('/')
 def index():
     try:
-        # Use caching for category counts
         categories = db.session.query(
             Categoria,
             func.count(distinct(Evento.evento_id)).label('event_count')
@@ -84,7 +233,6 @@ def get_article_details(article_id):
     try:
         logger.info(f"Fetching details for article ID: {article_id}")
         
-        # Use a single optimized query with specific column selection
         article = db.session.query(
             Articulo.articulo_id,
             Articulo.titular,
@@ -134,7 +282,6 @@ def get_article_details(article_id):
             'agencia': article.agencia
         }
         
-        logger.info(f"Successfully retrieved article details for ID: {article_id}")
         return jsonify(response_data)
     except Exception as e:
         logger.error(f"Error fetching article details: {str(e)}")
@@ -147,7 +294,6 @@ def get_subcategories():
         if not category_id:
             return jsonify([])
         
-        # Add caching for subcategories
         subcategories = db.session.query(
             Subcategoria.subcategoria_id.label('id'),
             Subcategoria.nombre
@@ -168,169 +314,15 @@ def get_articles():
     try:
         category_id = request.args.get('category_id')
         subcategory_id = request.args.get('subcategory_id')
-        search_query = request.args.get('q')
         time_filter = request.args.get('time_filter', '24h')
         
-        logger.info(f"Fetching articles with params - category: {category_id}, subcategory: {subcategory_id}, search: {search_query}, time_filter: {time_filter}")
-
         end_date = datetime.now()
-        if time_filter == '72h':
-            start_date = end_date - timedelta(hours=72)
-        elif time_filter == '48h':
-            start_date = end_date - timedelta(hours=48)
-        else:  # 24h
-            start_date = end_date - timedelta(hours=24)
-
-        # Optimize query with specific column selection
-        base_query = db.session.query(
-            Evento.evento_id,
-            Evento.titulo,
-            Evento.descripcion,
-            Evento.fecha_evento,
-            Categoria.categoria_id,
-            Categoria.nombre.label('categoria_nombre'),
-            Subcategoria.subcategoria_id,
-            Subcategoria.nombre.label('subcategoria_nombre'),
-            func.count(distinct(Articulo.articulo_id)).label('article_count')
-        ).select_from(Evento)
-
-        base_query = base_query.outerjoin(
-            Subcategoria,
-            Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).outerjoin(
-            Categoria,
-            Subcategoria.categoria_id == Categoria.categoria_id
-        ).outerjoin(
-            articulo_evento,
-            Evento.evento_id == articulo_evento.c.evento_id
-        ).outerjoin(
-            Articulo,
-            and_(
-                articulo_evento.c.articulo_id == Articulo.articulo_id,
-                Articulo.paywall.is_(False) if request.args.get('hide_paywall') else True,
-                Articulo.updated_on >= start_date,
-                Articulo.updated_on <= end_date
-            )
-        )
-
-        if category_id:
-            base_query = base_query.filter(Categoria.categoria_id == category_id)
-        if subcategory_id:
-            base_query = base_query.filter(Subcategoria.subcategoria_id == subcategory_id)
-        if search_query:
-            base_query = base_query.filter(Articulo.titular.ilike(f'%{search_query}%'))
-
-        base_query = base_query.group_by(
-            Evento.evento_id,
-            Categoria.categoria_id,
-            Subcategoria.subcategoria_id
-        ).order_by(
-            Categoria.nombre.nullslast(),
-            desc('article_count'),
-            desc(Evento.fecha_evento)
-        )
-
-        events = base_query.all()
-        logger.info(f"Retrieved {len(events)} events")
-
-        organized_data = {}
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        # Batch load articles for all events
-        event_ids = [event.evento_id for event in events]
-        articles_query = db.session.query(
-            Articulo,
-            Periodico,
-            articulo_evento.c.evento_id
-        ).join(
-            articulo_evento,
-            Articulo.articulo_id == articulo_evento.c.articulo_id
-        ).join(
-            Periodico,
-            Articulo.periodico_id == Periodico.periodico_id
-        ).filter(
-            articulo_evento.c.evento_id.in_(event_ids),
-            Articulo.updated_on >= start_date,
-            Articulo.updated_on <= end_date
-        ).order_by(
-            desc(Articulo.updated_on)
-        )
-        
-        # Create a dictionary for quick article lookup
-        articles_by_event = {}
-        for article, periodico, event_id in articles_query:
-            if event_id not in articles_by_event:
-                articles_by_event[event_id] = []
-            articles_by_event[event_id].append((article, periodico))
-        
-        for event in events:
-            articles = articles_by_event.get(event.evento_id, [])
-            
-            if not articles:
-                continue
-
-            cat_id = event.categoria_id if event.categoria_id else 0
-            if cat_id not in organized_data:
-                organized_data[cat_id] = {
-                    'categoria_id': cat_id,
-                    'nombre': event.categoria_nombre if event.categoria_nombre else 'Uncategorized',
-                    'subcategories': {}
-                }
-
-            subcat_id = event.subcategoria_id if event.subcategoria_id else 0
-            if subcat_id not in organized_data[cat_id]['subcategories']:
-                organized_data[cat_id]['subcategories'][subcat_id] = {
-                    'subcategoria_id': subcat_id,
-                    'nombre': event.subcategoria_nombre if event.subcategoria_nombre else 'Uncategorized',
-                    'events': {}
-                }
-
-            organized_data[cat_id]['subcategories'][subcat_id]['events'][event.evento_id] = {
-                'evento_id': event.evento_id,
-                'titulo': event.titulo,
-                'descripcion': event.descripcion,
-                'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
-                'article_count': len(articles),
-                'articles': [{
-                    'id': article.articulo_id,
-                    'titular': article.titular,
-                    'paywall': article.paywall,
-                    'periodico_logo': periodico.logo_url if periodico else None,
-                    'url': article.url,
-                    'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None,
-                    'gpt_opinion': article.gpt_opinion
-                } for article, periodico in articles]
-            }
-
-        response_data = {
-            'categories': [
-                {
-                    'categoria_id': cat_data['categoria_id'],
-                    'nombre': cat_data['nombre'],
-                    'subcategories': [
-                        {
-                            'subcategoria_id': subcat_data['subcategoria_id'],
-                            'nombre': subcat_data['nombre'],
-                            'events': sorted(
-                                list(subcat_data['events'].values()),
-                                key=lambda x: (x['article_count'], x['fecha_evento'] or ''),
-                                reverse=True
-                            )
-                        }
-                        for subcat_id, subcat_data in cat_data['subcategories'].items()
-                    ]
-                }
-                for cat_id, cat_data in organized_data.items()
-            ]
-        }
-
-        return jsonify(response_data)
-
+        return jsonify(get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date))
     except Exception as e:
-        logger.error(f"Error fetching articles: {str(e)}")
-        return jsonify({
-            'error': 'Failed to load articles',
-            'details': str(e)
-        }), 500
+        logger.error(f"Error in get_articles: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

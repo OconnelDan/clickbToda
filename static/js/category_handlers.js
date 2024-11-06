@@ -44,15 +44,15 @@ function initializeTabNavigation() {
     }
 }
 
-function showLoadingIndicator(containerId) {
-    const container = document.getElementById(containerId);
-    if (container) {
-        container.innerHTML = `
+function showLoadingState() {
+    const eventsContent = document.getElementById('events-content');
+    if (eventsContent) {
+        eventsContent.innerHTML = `
             <div class="text-center my-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <p class="mt-2">Loading content...</p>
+                <p class="mt-2">Loading articles...</p>
             </div>
         `;
     }
@@ -107,7 +107,6 @@ function fetchSubcategories(categoryId) {
     fetchWithRetry(`/api/subcategories?category_id=${categoryId}`)
         .then(response => response.json())
         .then(subcategories => {
-            // Get subcategories with events
             return fetchWithRetry(`/api/articles?category_id=${categoryId}`)
                 .then(response => response.json())
                 .then(data => {
@@ -118,7 +117,6 @@ function fetchSubcategories(categoryId) {
                         }
                     });
 
-                    // Filter and render only subcategories with events
                     const filteredSubcats = subcategories.filter(subcat => 
                         subcatsWithEvents.has(subcat.id)
                     );
@@ -170,7 +168,7 @@ function hideSubcategoryTabs() {
 }
 
 function showAllCategories() {
-    showLoadingIndicator('events-content');
+    showLoadingState();
     
     fetchWithRetry('/api/articles')
         .then(response => {
@@ -178,7 +176,6 @@ function showAllCategories() {
             return response.json();
         })
         .then(data => {
-            console.log('Received data structure:', data);
             if (!data || typeof data !== 'object') {
                 throw new Error('Invalid response format: response is not an object');
             }
@@ -212,7 +209,7 @@ function loadEventsByCategory(categoryId) {
         return;
     }
     
-    showLoadingIndicator('events-content');
+    showLoadingState();
     
     fetchWithRetry(`/api/articles?category_id=${categoryId}`)
         .then(response => {
@@ -220,7 +217,6 @@ function loadEventsByCategory(categoryId) {
             return response.json();
         })
         .then(data => {
-            console.log('Category events data:', data);
             if (!data.categories) throw new Error('Invalid response format: missing categories');
             updateDisplay(data);
         })
@@ -237,7 +233,7 @@ function loadEventsBySubcategory(categoryId, subcategoryId) {
         return;
     }
     
-    showLoadingIndicator('events-content');
+    showLoadingState();
     
     fetchWithRetry(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`)
         .then(response => {
@@ -245,7 +241,6 @@ function loadEventsBySubcategory(categoryId, subcategoryId) {
             return response.json();
         })
         .then(data => {
-            console.log('Subcategory events data:', data);
             if (!data.categories) throw new Error('Invalid response format: missing categories');
             updateDisplay(data);
         })
@@ -258,21 +253,25 @@ function loadEventsBySubcategory(categoryId, subcategoryId) {
 
 function updateDisplay(data) {
     const eventsContent = document.getElementById('events-content');
-    if (!eventsContent) {
-        console.error('Events content container not found');
-        return;
-    }
+    if (!eventsContent) return;
 
     try {
-        console.log('Updating display with data:', data);
+        if (!data || !data.categories) {
+            showLoadingState();
+            return;
+        }
         
-        if (!data.categories || !Array.isArray(data.categories) || data.categories.length === 0) {
+        if (data.categories.length === 0) {
             eventsContent.innerHTML = `
                 <div class="alert alert-info">
-                    <h4 class="alert-heading">No Content Available</h4>
-                    <p>No articles found for the selected criteria.</p>
+                    <h4 class="alert-heading">Loading Content...</h4>
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Please wait while we fetch the latest articles...</p>
                 </div>
             `;
+            setTimeout(() => reloadArticles(), 2000);
             return;
         }
 
@@ -347,14 +346,7 @@ function updateDisplay(data) {
         initializeCarousels();
     } catch (error) {
         console.error('Error updating display:', error);
-        showError('Failed to render content', error);
-        eventsContent.innerHTML = `
-            <div class="alert alert-danger">
-                <h4 class="alert-heading">Error Displaying Content</h4>
-                <p>An error occurred while trying to display the content. Please try refreshing the page.</p>
-                <hr>
-                <button onclick="location.reload()" class="btn btn-outline-danger">Refresh Page</button>
-            </div>
-        `;
+        showError('Error loading content. Retrying...');
+        setTimeout(() => reloadArticles(), 2000);
     }
 }
