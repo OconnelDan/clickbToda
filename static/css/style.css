@@ -22,6 +22,72 @@
     display: none;
 }
 
+/* Category Navigation Styles */
+.nav-tabs-wrapper {
+    position: relative;
+    overflow: hidden;
+    margin: 0 2rem;
+}
+
+.nav-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+    transition: transform 0.3s ease;
+}
+
+.nav-tabs .nav-item {
+    float: none;
+    display: inline-block;
+}
+
+.nav-tabs .nav-link {
+    white-space: nowrap;
+    padding: 0.5rem 1rem;
+}
+
+/* Scroll Button Styles */
+.nav-tabs-wrapper .scroll-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bs-primary);
+    border: none;
+    border-radius: 50%;
+    color: var(--bs-light);
+    opacity: 1;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs-wrapper .scroll-button.left {
+    left: -2rem;
+}
+
+.nav-tabs-wrapper .scroll-button.right {
+    right: -2rem;
+}
+
+.nav-tabs-wrapper .scroll-button:hover {
+    background: rgba(var(--bs-primary-rgb), 1);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.nav-tabs-wrapper .scroll-button:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+/* Rest of existing styles */
 .article-card {
     flex: 0 0 auto;
     width: calc(100% - 1rem);
@@ -141,50 +207,4 @@
 
 .toggle-slider input[type="radio"]#72h:checked ~ .slider {
     transform: translateX(8rem);
-}
-
-/* Scroll Button Styles */
-.scroll-button {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 10;
-    background: rgba(var(--bs-primary-rgb), 0.9);
-    border: none;
-    color: var(--bs-light);
-    padding: 0.75rem;
-    border-radius: 50%;
-    width: 2rem;
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    opacity: 0;
-    pointer-events: none;
-    font-size: 1rem;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.scroll-button.visible {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.scroll-button.left {
-    left: 0.5rem;
-}
-
-.scroll-button.right {
-    right: 0.5rem;
-}
-
-.scroll-button:hover {
-    background: rgba(var(--bs-primary-rgb), 1);
-    transform: translateY(-50%) scale(1.1);
-}
-
-.scroll-button:active {
-    transform: translateY(-50%) scale(0.95);
 }
