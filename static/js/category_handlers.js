@@ -58,35 +58,57 @@ function showLoadingIndicator(containerId) {
     }
 }
 
-function showError(message, error = null) {
+function showError(message, error = null, retryCallback = null) {
     console.error('Error:', message, error);
     const errorDiv = document.createElement('div');
     errorDiv.className = 'alert alert-danger alert-dismissible fade show';
     errorDiv.innerHTML = `
         ${message}
         ${error ? `<br><small class="text-muted">Technical details: ${error.message || error}</small>` : ''}
+        ${retryCallback ? '<button class="btn btn-outline-danger btn-sm ms-3" onclick="retryCallback()">Retry</button>' : ''}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     
     const container = document.querySelector('.container');
     if (container) {
         container.insertBefore(errorDiv, container.firstChild);
-        setTimeout(() => errorDiv.remove(), 5000);
+        if (!retryCallback) {
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
     }
+}
+
+function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
+    return new Promise((resolve, reject) => {
+        const attempt = async (attemptNumber) => {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                resolve(response);
+            } catch (error) {
+                console.error(`Attempt ${attemptNumber} failed:`, error);
+                if (attemptNumber < retries) {
+                    setTimeout(() => attempt(attemptNumber + 1), delay);
+                } else {
+                    reject(error);
+                }
+            }
+        };
+        attempt(1);
+    });
 }
 
 function fetchSubcategories(categoryId) {
     const subcategoryNav = document.querySelector('.subcategory-nav');
     if (!subcategoryNav) return;
 
-    fetch(`/api/subcategories?category_id=${categoryId}`)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-        })
+    fetchWithRetry(`/api/subcategories?category_id=${categoryId}`)
+        .then(response => response.json())
         .then(subcategories => {
             // Get subcategories with events
-            fetch(`/api/articles?category_id=${categoryId}`)
+            return fetchWithRetry(`/api/articles?category_id=${categoryId}`)
                 .then(response => response.json())
                 .then(data => {
                     const subcatsWithEvents = new Set();
@@ -114,6 +136,7 @@ function fetchSubcategories(categoryId) {
         .catch(error => {
             console.error('Error fetching subcategories:', error);
             hideSubcategoryTabs();
+            showError('Error loading subcategories', error, () => fetchSubcategories(categoryId));
         });
 }
 
@@ -136,7 +159,6 @@ function updateSubcategoryTabs(subcategories) {
         `).join('')}
     `;
 
-    // Initialize scroll buttons for subcategory nav
     initializeScrollButtons();
 }
 
@@ -150,7 +172,7 @@ function hideSubcategoryTabs() {
 function showAllCategories() {
     showLoadingIndicator('events-content');
     
-    fetch('/api/articles')
+    fetchWithRetry('/api/articles')
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -169,7 +191,7 @@ function showAllCategories() {
         })
         .catch(error => {
             console.error('Error loading events:', error);
-            showError('Failed to load articles', error);
+            showError('Failed to load articles', error, showAllCategories);
             const eventsContent = document.getElementById('events-content');
             if (eventsContent) {
                 eventsContent.innerHTML = `
@@ -192,7 +214,7 @@ function loadEventsByCategory(categoryId) {
     
     showLoadingIndicator('events-content');
     
-    fetch(`/api/articles?category_id=${categoryId}`)
+    fetchWithRetry(`/api/articles?category_id=${categoryId}`)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -204,7 +226,7 @@ function loadEventsByCategory(categoryId) {
         })
         .catch(error => {
             console.error('Error loading category events:', error);
-            showError(`Failed to load events for category ${categoryId}`, error);
+            showError(`Failed to load events for category ${categoryId}`, error, () => loadEventsByCategory(categoryId));
             showAllCategories();
         });
 }
@@ -217,7 +239,7 @@ function loadEventsBySubcategory(categoryId, subcategoryId) {
     
     showLoadingIndicator('events-content');
     
-    fetch(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`)
+    fetchWithRetry(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -229,7 +251,7 @@ function loadEventsBySubcategory(categoryId, subcategoryId) {
         })
         .catch(error => {
             console.error('Error loading subcategory events:', error);
-            showError(`Failed to load events for subcategory ${subcategoryId}`, error);
+            showError(`Failed to load events for subcategory ${subcategoryId}`, error, () => loadEventsBySubcategory(categoryId, subcategoryId));
             loadEventsByCategory(categoryId);
         });
 }
@@ -254,8 +276,14 @@ function updateDisplay(data) {
             return;
         }
 
-        eventsContent.innerHTML = data.categories.map(category => `
-            <div class="category-section mb-5" data-category-id="${category.categoria_id || ''}"">
+        const fragment = document.createDocumentFragment();
+        
+        data.categories.forEach(category => {
+            const categorySection = document.createElement('div');
+            categorySection.className = 'category-section mb-5';
+            categorySection.dataset.categoryId = category.categoria_id || '';
+            
+            categorySection.innerHTML = `
                 <h2 class="mb-3">${category.nombre || 'Unnamed Category'}</h2>
                 <div class="category-content">
                     ${(category.subcategories || []).map(subcategory => `
@@ -280,7 +308,7 @@ function updateDisplay(data) {
                                                 <div class="articles-carousel">
                                                     <div class="carousel-wrapper">
                                                         ${(event.articles || []).map(article => `
-                                                            <div class="article-card" data-article-id="${article.id}" role="button">
+                                                            <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url || ''}" role="button">
                                                                 <div class="card h-100">
                                                                     <div class="card-body">
                                                                         <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
@@ -289,9 +317,6 @@ function updateDisplay(data) {
                                                                             ${article.titular || 'No Title'}
                                                                         </h5>
                                                                         ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
-                                                                        <div class="article-opinion mt-2">
-                                                                            ${article.gpt_opinion || ''}
-                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -306,8 +331,13 @@ function updateDisplay(data) {
                         </div>
                     `).join('')}
                 </div>
-            </div>
-        `).join('');
+            `;
+            
+            fragment.appendChild(categorySection);
+        });
+        
+        eventsContent.innerHTML = '';
+        eventsContent.appendChild(fragment);
 
         document.querySelectorAll('.article-card').forEach(card => {
             card.style.cursor = 'pointer';
