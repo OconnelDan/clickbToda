@@ -1,25 +1,4 @@
 /* Base mobile styles (up to 767px) */
-:root {
-    --viewport-scale: 2.0;
-    font-size: calc(16px * var(--viewport-scale));
-}
-
-/* Tablet styles */
-@media (min-width: 768px) and (max-width: 991px) {
-    :root {
-        --viewport-scale: 1.5;
-        font-size: calc(16px * var(--viewport-scale));
-    }
-}
-
-/* Desktop styles */
-@media (min-width: 992px) {
-    :root {
-        --viewport-scale: 1.0;
-        font-size: 16px;
-    }
-}
-
 .articles-carousel {
     position: relative;
     overflow: hidden;
@@ -234,30 +213,6 @@
 .nav-pills .nav-link.active {
     background: var(--bs-primary);
     color: var(--bs-light);
-}
-
-/* Modal Styles */
-.modal-content {
-    border: 3px solid rgba(var(--bs-primary-rgb), 0.2);
-    border-radius: 1rem;
-}
-
-.modal-header {
-    border-bottom: 2px solid rgba(var(--bs-primary-rgb), 0.1);
-    padding: 1.5rem;
-}
-
-.modal-header .newspaper-logo {
-    max-height: 1.25rem;
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.modal-footer {
-    border-top: 2px solid rgba(var(--bs-primary-rgb), 0.1);
-    padding: 1.5rem;
 }
 
 /* Time Filter Styles */
