@@ -1,10 +1,28 @@
 document.addEventListener('DOMContentLoaded', function() {
     const timeFilter = document.querySelector('.toggle-slider');
     const eventsContent = document.getElementById('events-content');
+    
     if (!timeFilter) return;
+
+    // Initialize the slider position based on checked input
+    const checkedInput = timeFilter.querySelector('input[type="radio"]:checked');
+    if (checkedInput) {
+        const slider = timeFilter.querySelector('.slider');
+        const transform = getSliderTransform(checkedInput.id);
+        if (slider && transform !== null) {
+            slider.style.transform = `translateX(${transform})`;
+        }
+    }
 
     timeFilter.addEventListener('change', function(e) {
         if (!e.target.matches('input[type="radio"]')) return;
+        
+        // Update slider position
+        const slider = timeFilter.querySelector('.slider');
+        const transform = getSliderTransform(e.target.id);
+        if (slider && transform !== null) {
+            slider.style.transform = `translateX(${transform})`;
+        }
         
         // Show loading state
         if (eventsContent) {
@@ -41,3 +59,12 @@ document.addEventListener('DOMContentLoaded', function() {
         reloadArticles(formattedDate);
     });
 });
+
+function getSliderTransform(inputId) {
+    switch(inputId) {
+        case '24h': return '0';
+        case '48h': return '4rem';
+        case '72h': return '8rem';
+        default: return null;
+    }
+}
