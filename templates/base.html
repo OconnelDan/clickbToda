@@ -11,6 +11,23 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">News App</a>
+            
+            <!-- Add time filter toggle here -->
+            <div class="time-filter-nav">
+                <div class="toggle-slider-small">
+                    <input type="radio" id="24h" name="timeFilter" value="24h" checked>
+                    <label for="24h">24h</label>
+                    
+                    <input type="radio" id="48h" name="timeFilter" value="48h">
+                    <label for="48h">48h</label>
+                    
+                    <input type="radio" id="72h" name="timeFilter" value="72h">
+                    <label for="72h">72h</label>
+                    
+                    <div class="slider"></div>
+                </div>
+            </div>
+
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -45,7 +62,6 @@
             {% endif %}
         {% endwith %}
         
-        {% include "components/time_filter.html" %}
         {% block content %}{% endblock %}
     </div>
 
