@@ -133,17 +133,17 @@ def get_articles():
         category_id = request.args.get('category_id')
         subcategory_id = request.args.get('subcategory_id')
         search_query = request.args.get('q')
-        time_filter = request.args.get('time_filter', '24h')
+        time_filter = request.args.get('time_filter', 'today')
         
         logger.info(f"Fetching articles with params - category: {category_id}, subcategory: {subcategory_id}, search: {search_query}, time_filter: {time_filter}")
 
-        # Calculate start_date based on time filter
-        if time_filter == '72h':
-            start_date = datetime.now() - timedelta(hours=72)
-        elif time_filter == '48h':
-            start_date = datetime.now() - timedelta(hours=48)
-        else:  # 24h default
-            start_date = datetime.now() - timedelta(hours=24)
+        end_date = datetime.now().date()
+        if time_filter == 'week':
+            start_date = end_date - timedelta(days=7)
+        elif time_filter == 'month':
+            start_date = end_date - timedelta(days=30)
+        else:  # today
+            start_date = end_date
 
         base_query = db.session.query(
             Evento,
@@ -166,7 +166,8 @@ def get_articles():
             and_(
                 articulo_evento.c.articulo_id == Articulo.articulo_id,
                 Articulo.paywall.is_(False) if request.args.get('hide_paywall') else True,
-                Articulo.updated_on >= start_date  # Use updated_on instead of fecha_publicacion
+                Articulo.fecha_publicacion >= start_date,
+                Articulo.fecha_publicacion <= end_date
             )
         )
 
@@ -204,9 +205,10 @@ def get_articles():
                 Articulo.periodico_id == Periodico.periodico_id
             ).filter(
                 articulo_evento.c.evento_id == event.evento_id,
-                Articulo.updated_on >= start_date  # Use updated_on instead of fecha_publicacion
+                Articulo.fecha_publicacion >= start_date,
+                Articulo.fecha_publicacion <= end_date
             ).order_by(
-                desc(Articulo.updated_on)  # Order by updated_on
+                desc(Articulo.fecha_publicacion)
             ).all()
 
             if not articles:
