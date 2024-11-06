@@ -138,6 +138,8 @@ def get_articles():
         logger.info(f"Fetching articles with params - category: {category_id}, subcategory: {subcategory_id}, search: {search_query}, time_filter: {time_filter}")
 
         end_date = datetime.now()
+        start_date = None
+
         if time_filter == '72h':
             start_date = end_date - timedelta(hours=72)
         elif time_filter == '48h':
@@ -166,8 +168,8 @@ def get_articles():
             and_(
                 articulo_evento.c.articulo_id == Articulo.articulo_id,
                 Articulo.paywall.is_(False) if request.args.get('hide_paywall') else True,
-                Articulo.fecha_publicacion >= start_date,
-                Articulo.fecha_publicacion <= end_date
+                Articulo.updated_on >= start_date,
+                Articulo.updated_on <= end_date
             )
         )
 
@@ -205,10 +207,10 @@ def get_articles():
                 Articulo.periodico_id == Periodico.periodico_id
             ).filter(
                 articulo_evento.c.evento_id == event.evento_id,
-                Articulo.fecha_publicacion >= start_date,
-                Articulo.fecha_publicacion <= end_date
+                Articulo.updated_on >= start_date,
+                Articulo.updated_on <= end_date
             ).order_by(
-                desc(Articulo.fecha_publicacion)
+                desc(Articulo.updated_on)
             ).all()
 
             if not articles:
