@@ -48,9 +48,17 @@
 .nav-tabs .nav-link {
     white-space: nowrap;
     padding: 0.5rem 1rem;
+    transition: all 0.3s ease;
 }
 
-/* Scroll Button Styles */
+/* Update active tab styles */
+.nav-tabs .nav-link.active {
+    background-color: var(--bs-primary);
+    color: var(--bs-light);
+    border: none;
+}
+
+/* Update scroll button visibility */
 .nav-tabs-wrapper .scroll-button {
     position: absolute;
     top: 50%;
@@ -65,9 +73,17 @@
     border: none;
     border-radius: 50%;
     color: var(--bs-light);
-    opacity: 1;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
     cursor: pointer;
-    transition: all 0.3s ease;
+}
+
+.nav-tabs-wrapper .scroll-button.visible {
+    opacity: 1;
+}
+
+.nav-tabs-wrapper:hover .scroll-button {
+    opacity: 1;
 }
 
 .nav-tabs-wrapper .scroll-button.left {
@@ -79,12 +95,7 @@
 }
 
 .nav-tabs-wrapper .scroll-button:hover {
-    background: rgba(var(--bs-primary-rgb), 1);
     transform: translateY(-50%) scale(1.1);
-}
-
-.nav-tabs-wrapper .scroll-button:active {
-    transform: translateY(-50%) scale(0.95);
 }
 
 /* Rest of existing styles */
