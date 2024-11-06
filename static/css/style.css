@@ -128,7 +128,7 @@
     width: 4rem;
     background: var(--bs-primary);
     border-radius: 1.5rem;
-    transition: transform 0.2s ease;
+    transition: transform 0.3s ease;
 }
 
 .toggle-slider input[type="radio"]#48h:checked ~ .slider {
@@ -163,4 +163,24 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-/* Rest of your existing styles... */
+.scroll-button.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.scroll-button.left {
+    left: 0.5rem;
+}
+
+.scroll-button.right {
+    right: 0.5rem;
+}
+
+.scroll-button:hover {
+    background: rgba(var(--bs-primary-rgb), 1);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.scroll-button:active {
+    transform: translateY(-50%) scale(0.95);
+}

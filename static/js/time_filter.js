@@ -1,9 +1,22 @@
 document.addEventListener('DOMContentLoaded', function() {
     const timeFilter = document.querySelector('.toggle-slider');
+    const eventsContent = document.getElementById('events-content');
     if (!timeFilter) return;
 
     timeFilter.addEventListener('change', function(e) {
         if (!e.target.matches('input[type="radio"]')) return;
+        
+        // Show loading state
+        if (eventsContent) {
+            eventsContent.innerHTML = `
+                <div class="text-center my-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading articles...</p>
+                </div>
+            `;
+        }
         
         const timeRange = e.target.value;
         const currentDate = new Date();
