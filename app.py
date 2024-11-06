@@ -204,29 +204,73 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
 @app.route('/')
 def index():
     try:
+        time_filter = request.args.get('time_filter', '24h')
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+
         categories = db.session.query(
             Categoria,
-            func.count(distinct(Evento.evento_id)).label('event_count')
-        ).outerjoin(
-            Subcategoria,
-            Categoria.categoria_id == Subcategoria.categoria_id
-        ).outerjoin(
-            Evento,
-            Evento.subcategoria_id == Subcategoria.subcategoria_id
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
+        ).join(
+            Subcategoria
+        ).join(
+            Evento
+        ).join(
+            articulo_evento
+        ).join(
+            Articulo,
+            and_(
+                articulo_evento.c.articulo_id == Articulo.articulo_id,
+                Articulo.updated_on.between(start_date, end_date)
+            )
         ).group_by(
-            Categoria.categoria_id,
-            Categoria.nombre
+            Categoria.categoria_id
         ).order_by(
-            desc('event_count')
+            desc('article_count')
         ).all()
-        
-        logger.info(f"Retrieved {len(categories)} categories")
+
         return render_template('index.html', 
                            categories=categories,
                            selected_date=datetime.now().date())
     except Exception as e:
         logger.error(f"Error in index route: {str(e)}")
         return render_template('index.html', categories=[], selected_date=datetime.now().date())
+
+@app.route('/api/categories')
+def get_categories():
+    try:
+        time_filter = request.args.get('time_filter', '24h')
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        categories = db.session.query(
+            Categoria,
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
+        ).join(
+            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
+        ).join(
+            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).join(
+            articulo_evento, Evento.evento_id == articulo_evento.c.evento_id
+        ).join(
+            Articulo, and_(
+                articulo_evento.c.articulo_id == Articulo.articulo_id,
+                Articulo.updated_on.between(start_date, end_date)
+            )
+        ).group_by(
+            Categoria.categoria_id
+        ).order_by(
+            desc('article_count')
+        ).all()
+        
+        return jsonify([{
+            'categoria_id': cat.Categoria.categoria_id,
+            'nombre': cat.Categoria.nombre,
+            'article_count': cat.article_count
+        } for cat in categories])
+    except Exception as e:
+        logger.error(f"Error in get_categories: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/article/<int:article_id>')
 def get_article_details(article_id):
