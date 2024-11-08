@@ -1,4 +1,10 @@
 /* Base mobile styles (up to 767px) */
+:root {
+    --nav-height: 3.5rem;
+    --subnav-height: 2.75rem;
+    --total-nav-height: calc(var(--nav-height) + var(--subnav-height));
+}
+
 .articles-carousel {
     position: relative;
     overflow: hidden;
@@ -24,19 +30,24 @@
 
 /* Category Navigation Styles */
 .category-nav {
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 1020;
+    left: 0;
+    right: 0;
+    z-index: 1030;
     background: var(--bs-body-bg);
-    padding: 0.5rem 0;
+    padding: 0.25rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-bottom: 1rem;
+    height: var(--nav-height);
+    display: flex;
+    align-items: center;
 }
 
 .nav-tabs-wrapper, .nav-pills-wrapper {
     position: relative;
     overflow: hidden;
     padding: 0 2.5rem;
+    width: 100%;
 }
 
 .nav-tabs, .nav-pills {
@@ -110,13 +121,22 @@
 
 /* Subcategory nav styles */
 .subcategory-nav {
-    position: sticky;
-    top: 3.5rem;
-    z-index: 1019;
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    z-index: 1029;
     background: var(--bs-body-bg);
-    padding: 0.25rem 0;
+    padding: 0.15rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-top: 0.5rem;
+    height: var(--subnav-height);
+    display: flex;
+    align-items: center;
+}
+
+/* Main content padding to account for fixed navs */
+#events-content {
+    padding-top: var(--total-nav-height);
 }
 
 /* Unified heading styles */
@@ -150,7 +170,7 @@
     }
     
     .carousel-wrapper {
-        -webkit-overflow-scrolling: touch;  /* Ensure smooth scrolling on iOS */
+        -webkit-overflow-scrolling: touch;
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
     }
@@ -158,10 +178,11 @@
     /* Make navigation more compact on mobile */
     .category-nav {
         padding: 0.25rem 0;
+        height: var(--nav-height);
     }
 
     .subcategory-nav {
-        top: 2.75rem;
+        height: var(--subnav-height);
         padding: 0.15rem 0;
     }
 
@@ -169,6 +190,12 @@
     .nav-pills .nav-link {
         padding: 0.25rem 0.5rem;
         font-size: 0.85rem;
+    }
+
+    /* Adjust spacing for fixed navigation */
+    :root {
+        --nav-height: 2.75rem;
+        --subnav-height: 2.25rem;
     }
 }
 

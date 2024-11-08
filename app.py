@@ -99,10 +99,10 @@ def get_navigation():
                     c.nombre AS categoria_nombre, 
                     s.subcategoria_id, 
                     s.nombre AS subcategoria_nombre, 
-                    COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)) AS cuenta_articulos_subcategoria,
-                    SUM(COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval))) OVER (
-                        PARTITION BY c.categoria_id
-                    ) AS cuenta_articulos_categoria
+                    COUNT(DISTINCT a.articulo_id) FILTER (
+                        WHERE a.articulo_id IS NOT NULL 
+                        AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
+                    ) AS cuenta_articulos_subcategoria
                 FROM 
                     app.categoria c
                     LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
@@ -114,13 +114,27 @@ def get_navigation():
                     c.nombre, 
                     s.subcategoria_id, 
                     s.nombre
+            ),
+            CategoryTotals AS (
+                SELECT
+                    categoria_id,
+                    SUM(cuenta_articulos_subcategoria) as cuenta_articulos_categoria
+                FROM
+                    ArticleCounts
+                GROUP BY
+                    categoria_id
             )
-            SELECT *
-            FROM ArticleCounts
-            WHERE cuenta_articulos_categoria > 0
+            SELECT 
+                ac.*,
+                ct.cuenta_articulos_categoria
+            FROM 
+                ArticleCounts ac
+                JOIN CategoryTotals ct ON ac.categoria_id = ct.categoria_id
+            WHERE 
+                ct.cuenta_articulos_categoria > 0
             ORDER BY 
-                cuenta_articulos_categoria DESC NULLS LAST,
-                categoria_nombre
+                ct.cuenta_articulos_categoria DESC,
+                ac.cuenta_articulos_subcategoria DESC NULLS LAST
         ''')
         
         result = db.session.execute(query, {'hours': hours})
