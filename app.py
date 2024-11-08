@@ -131,9 +131,14 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
         logger.info(f"Retrieved {len(events)} events")
 
         organized_data = {}
+        
+        # Get all event IDs first
         event_ids = [event.evento_id for event in events]
+        
+        # Fetch articles in a single query with proper joins
         articles_query = get_filtered_articles(start_date, end_date, event_ids)
         
+        # Organize articles by event
         articles_by_event = {}
         for article, periodico in articles_query.all():
             for event in article.eventos:
@@ -212,6 +217,7 @@ def index():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
+        # Pre-fetch initial data for faster loading
         initial_data = get_cached_articles(None, None, time_filter, start_date, end_date)
         
         categories = [
@@ -242,30 +248,27 @@ def get_navigation():
         
         query = text('''
             SELECT 
-                c.categoria_id,
-                c.nombre AS categoria_nombre,
-                s.subcategoria_id,
-                s.nombre AS subcategoria_nombre,
-                e.titulo,
-                COUNT(a.titular) AS cuenta_articulos_subcategoria,
-                SUM(COUNT(a.titular)) OVER (PARTITION BY c.categoria_id) AS cuenta_articulos_categoria
+                c.categoria_id, 
+                c.nombre AS categoria_nombre, 
+                s.subcategoria_id, 
+                s.nombre AS subcategoria_nombre, 
+                COUNT(DISTINCT a.articulo_id) AS cuenta_articulos_subcategoria, 
+                SUM(COUNT(DISTINCT a.articulo_id)) OVER (PARTITION BY c.categoria_id) AS cuenta_articulos_categoria
             FROM 
-                app.articulo a
-                LEFT JOIN app.articulo_evento ae ON a.articulo_id = ae.articulo_id
-                LEFT JOIN app.evento e ON ae.evento_id = e.evento_id
-                LEFT JOIN app.subcategoria s ON e.subcategoria_id = s.subcategoria_id
-                LEFT JOIN app.categoria c ON c.categoria_id = s.categoria_id
-            WHERE 
-                a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
+                app.categoria c
+                LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
+                LEFT JOIN app.evento e ON e.subcategoria_id = s.subcategoria_id
+                LEFT JOIN app.articulo_evento ae ON e.evento_id = ae.evento_id
+                LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id 
+                    AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
             GROUP BY 
-                c.categoria_id,
-                c.nombre,
-                s.subcategoria_id,
-                s.nombre,
-                e.titulo
+                c.categoria_id, 
+                c.nombre, 
+                s.subcategoria_id, 
+                s.nombre
             ORDER BY 
-                cuenta_articulos_categoria DESC,
-                cuenta_articulos_subcategoria DESC
+                cuenta_articulos_categoria DESC NULLS LAST,
+                cuenta_articulos_subcategoria DESC NULLS LAST
         ''')
         
         result = db.session.execute(query, {'hours': hours})
@@ -284,7 +287,7 @@ def get_navigation():
                     'subcategories': []
                 }
             
-            if row.subcategoria_id and row.subcategoria_id not in [s['subcategoria_id'] for s in current_category['subcategories']]:
+            if row.subcategoria_id:
                 current_category['subcategories'].append({
                     'subcategoria_id': row.subcategoria_id,
                     'nombre': row.subcategoria_nombre,
