@@ -1,3 +1,8 @@
+document.addEventListener('DOMContentLoaded', function() {
+    initializeTabNavigation();
+    loadDefaultCategory();
+});
+
 function initializeTabNavigation() {
     const categoryTabs = document.getElementById('categoryTabs');
     const subcategoryTabs = document.getElementById('subcategoryTabs');
@@ -5,6 +10,7 @@ function initializeTabNavigation() {
     if (!categoryTabs || !subcategoryTabs) return;
     
     let selectedCategoryId = null;
+    let lastLoadedCategoryId = null;
     
     // Add touch scrolling for navigation bars
     [categoryTabs, subcategoryTabs].forEach(container => {
@@ -28,67 +34,130 @@ function initializeTabNavigation() {
         });
     });
     
+    // Category tab click handler
     categoryTabs.addEventListener('click', function(e) {
         const tabButton = e.target.closest('[data-bs-toggle="tab"]');
         if (!tabButton) return;
         
         selectedCategoryId = tabButton.dataset.categoryId;
-        if (!selectedCategoryId) {
-            subcategoryTabs.innerHTML = '';
-            return;
-        }
+        if (selectedCategoryId === lastLoadedCategoryId) return;
+        lastLoadedCategoryId = selectedCategoryId;
         
-        fetch(`/api/subcategories?category_id=${selectedCategoryId}`)
-            .then(response => response.json())
-            .then(subcategories => {
-                subcategoryTabs.innerHTML = subcategories.map(subcat => `
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" 
-                                data-bs-toggle="pill"
-                                data-subcategory-id="${subcat.id}"
-                                type="button">
-                            ${subcat.nombre}
-                            <span class="badge bg-secondary ms-1">${subcat.article_count || 0}</span>
-                        </button>
-                    </li>
-                `).join('');
-                
-                // Initialize subcategory click handlers
-                subcategoryTabs.querySelectorAll('[data-subcategory-id]').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const subcategoryId = this.dataset.subcategoryId;
-                        loadArticlesForCategoryAndSubcategory(selectedCategoryId, subcategoryId);
-                    });
-                });
-            })
-            .catch(error => console.error('Error loading subcategories:', error));
+        showLoadingState();
+        loadCategoryContent(selectedCategoryId);
     });
 }
 
-function loadArticlesForCategoryAndSubcategory(categoryId, subcategoryId) {
-    const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
-    const eventsContent = document.getElementById('events-content');
-    
-    if (eventsContent) {
-        eventsContent.innerHTML = `
-            <div class="text-center my-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mt-2">Loading articles...</p>
-            </div>
-        `;
+function loadDefaultCategory() {
+    const defaultCategoryTab = document.querySelector('#categoryTabs .nav-link.active');
+    if (defaultCategoryTab && defaultCategoryTab.dataset.categoryId) {
+        loadCategoryContent(defaultCategoryTab.dataset.categoryId);
     }
+}
+
+function loadCategoryContent(categoryId) {
+    const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
+    const subcategoryTabs = document.getElementById('subcategoryTabs');
     
-    fetch(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}&time_filter=${timeFilter}`)
+    // Clear existing subcategories
+    subcategoryTabs.innerHTML = '';
+    
+    // Fetch subcategories and articles simultaneously
+    Promise.all([
+        fetch(`/api/subcategories?category_id=${categoryId}`).then(r => r.json()),
+        fetch(`/api/articles?category_id=${categoryId}&time_filter=${timeFilter}`).then(r => r.json())
+    ])
+    .then(([subcategories, articlesData]) => {
+        updateSubcategoryTabs(subcategories);
+        updateDisplay(articlesData);
+        hideLoadingState();
+    })
+    .catch(error => {
+        console.error('Error loading category content:', error);
+        showError('Failed to load category content');
+        hideLoadingState();
+    });
+}
+
+function updateSubcategoryTabs(subcategories) {
+    const subcategoryTabs = document.getElementById('subcategoryTabs');
+    if (!subcategoryTabs) return;
+    
+    subcategoryTabs.innerHTML = subcategories.map(subcat => `
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" 
+                    data-bs-toggle="pill"
+                    data-subcategory-id="${subcat.id}"
+                    type="button">
+                ${subcat.nombre}
+                <span class="badge bg-secondary ms-1">${subcat.article_count || 0}</span>
+            </button>
+        </li>
+    `).join('');
+    
+    // Initialize subcategory click handlers
+    subcategoryTabs.querySelectorAll('[data-subcategory-id]').forEach(button => {
+        button.addEventListener('click', function() {
+            const subcategoryId = this.dataset.subcategoryId;
+            loadArticlesForSubcategory(subcategoryId);
+        });
+    });
+}
+
+function loadArticlesForSubcategory(subcategoryId) {
+    const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
+    showLoadingState();
+    
+    fetch(`/api/articles?subcategory_id=${subcategoryId}&time_filter=${timeFilter}`)
         .then(response => response.json())
         .then(data => {
             updateDisplay(data);
+            hideLoadingState();
         })
         .catch(error => {
-            console.error('Error loading articles:', error);
+            console.error('Error loading subcategory articles:', error);
             showError('Failed to load articles');
+            hideLoadingState();
         });
+}
+
+function showLoadingState() {
+    const eventsContent = document.getElementById('events-content');
+    if (!eventsContent) return;
+    
+    eventsContent.innerHTML = `
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading content...</p>
+        </div>
+    `;
+}
+
+function hideLoadingState() {
+    const loadingDiv = document.querySelector('#events-content .text-center');
+    if (loadingDiv) {
+        loadingDiv.remove();
+    }
+}
+
+function showError(message, error = null, retryCallback = null) {
+    console.error('Error:', message, error);
+    const eventsContent = document.getElementById('events-content');
+    if (!eventsContent) return;
+
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger alert-dismissible fade show';
+    errorDiv.innerHTML = `
+        <h4 class="alert-heading">${message}</h4>
+        ${error ? `<p class="text-muted">Technical details: ${error.message || error}</p>` : ''}
+        ${retryCallback ? '<button class="btn btn-outline-danger btn-sm mt-2" onclick="retryCallback()">Retry</button>' : ''}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    eventsContent.innerHTML = '';
+    eventsContent.appendChild(errorDiv);
 }
 
 function updateDisplay(data) {
@@ -175,15 +244,10 @@ function updateDisplay(data) {
         eventsContent.innerHTML = '';
         eventsContent.appendChild(fragment);
 
+        // Initialize article cards
         document.querySelectorAll('.article-card').forEach(card => {
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');
-            card.addEventListener('click', function() {
-                const url = this.dataset.articleUrl;
-                if (url) {
-                    window.open(url, '_blank');
-                }
-            });
         });
         
         initializeCarousels();
@@ -194,25 +258,3 @@ function updateDisplay(data) {
         showError('Failed to update display', error);
     }
 }
-
-function showError(message, error = null, retryCallback = null) {
-    console.error('Error:', message, error);
-    const eventsContent = document.getElementById('events-content');
-    if (!eventsContent) return;
-
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'alert alert-danger alert-dismissible fade show';
-    errorDiv.innerHTML = `
-        <h4 class="alert-heading">${message}</h4>
-        ${error ? `<p class="text-muted">Technical details: ${error.message || error}</p>` : ''}
-        ${retryCallback ? '<button class="btn btn-outline-danger btn-sm mt-2" onclick="retryCallback()">Retry</button>' : ''}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    eventsContent.innerHTML = '';
-    eventsContent.appendChild(errorDiv);
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    initializeTabNavigation();
-});
