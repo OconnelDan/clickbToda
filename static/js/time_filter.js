@@ -24,9 +24,39 @@ document.addEventListener('DOMContentLoaded', function() {
             slider.style.transform = `translateX(${transform})`;
         }
         
-        const selectedFilter = e.target.value;
-        updateCategoryData(selectedFilter);
-        reloadArticles();
+        // Show loading state
+        if (eventsContent) {
+            eventsContent.innerHTML = `
+                <div class="text-center my-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading articles...</p>
+                </div>
+            `;
+        }
+        
+        const timeRange = e.target.value;
+        const currentDate = new Date();
+        let filterDate = new Date();
+        
+        switch(timeRange) {
+            case '24h':
+                filterDate.setHours(currentDate.getHours() - 24);
+                break;
+            case '48h':
+                filterDate.setHours(currentDate.getHours() - 48);
+                break;
+            case '72h':
+                filterDate.setHours(currentDate.getHours() - 72);
+                break;
+        }
+        
+        // Format date as YYYY-MM-DD HH:mm:ss
+        const formattedDate = filterDate.toISOString().slice(0, 19).replace('T', ' ');
+        
+        // Reload articles with new date filter
+        reloadArticles(formattedDate);
     });
 });
 
@@ -37,95 +67,4 @@ function getSliderTransform(inputId) {
         case '72h': return '8rem';
         default: return null;
     }
-}
-
-function updateCategoryData(timeFilter) {
-    // Show loading state
-    const categoryTabs = document.getElementById('categoryTabs');
-    if (!categoryTabs) return;
-    
-    categoryTabs.innerHTML = `
-        <div class="text-center">
-            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                <span class="visually-hidden">Loading categories...</span>
-            </div>
-        </div>
-    `;
-    
-    fetch(`/api/categories/hierarchy?time_filter=${timeFilter}`)
-        .then(response => response.json())
-        .then(categories => {
-            categoryTabs.innerHTML = `
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="all-categories-tab" 
-                            data-bs-toggle="tab" data-bs-target="#all-categories" 
-                            type="button" role="tab">
-                        All Categories
-                    </button>
-                </li>
-                ${categories.map(cat => `
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="category-${cat.categoria_id}-tab" 
-                                data-bs-toggle="tab" data-bs-target="#category-${cat.categoria_id}" 
-                                type="button" role="tab" data-category-id="${cat.categoria_id}">
-                            ${cat.nombre}
-                            <span class="badge bg-secondary ms-1">${cat.article_count}</span>
-                        </button>
-                    </li>
-                `).join('')}
-            `;
-            
-            // Re-initialize category click handlers
-            initializeSubcategoryHandlers();
-        })
-        .catch(error => {
-            console.error('Error updating category data:', error);
-            categoryTabs.innerHTML = `
-                <div class="alert alert-danger">
-                    Failed to load categories. Please try again.
-                </div>
-            `;
-        });
-}
-
-function reloadArticles() {
-    const activeTab = document.querySelector('#categoryTabs .nav-link.active');
-    const categoryId = activeTab ? activeTab.dataset.categoryId : null;
-    const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
-    
-    // Show loading state
-    document.getElementById('events-content').innerHTML = `
-        <div class="text-center my-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2">Loading articles...</p>
-        </div>
-    `;
-    
-    let url = '/api/articles';
-    const params = new URLSearchParams();
-    
-    if (categoryId) params.append('category_id', categoryId);
-    params.append('time_filter', timeFilter);
-    
-    if (params.toString()) url += `?${params.toString()}`;
-    
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch articles');
-            return response.json();
-        })
-        .then(data => {
-            updateDisplay(data);
-            initializeCarousels();
-        })
-        .catch(error => {
-            console.error('Error loading articles:', error);
-            document.getElementById('events-content').innerHTML = `
-                <div class="alert alert-danger">
-                    Failed to load articles. Please try again.
-                </div>
-            `;
-        });
 }
