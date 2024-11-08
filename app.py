@@ -122,7 +122,6 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
             Categoria.categoria_id,
             Subcategoria.subcategoria_id
         ).order_by(
-            Categoria.nombre.nullslast(),
             desc('article_count'),
             desc(Evento.fecha_evento)
         )
@@ -157,7 +156,8 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                 organized_data[cat_id] = {
                     'categoria_id': cat_id,
                     'nombre': event.categoria_nombre if event.categoria_nombre else 'Uncategorized',
-                    'subcategories': {}
+                    'subcategories': {},
+                    'article_count': 0  # Initialize article count for category
                 }
 
             subcat_id = event.subcategoria_id if event.subcategoria_id else 0
@@ -165,7 +165,8 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                 organized_data[cat_id]['subcategories'][subcat_id] = {
                     'subcategoria_id': subcat_id,
                     'nombre': event.subcategoria_nombre if event.subcategoria_nombre else 'Uncategorized',
-                    'events': {}
+                    'events': {},
+                    'article_count': 0  # Initialize article count for subcategory
                 }
 
             organized_data[cat_id]['subcategories'][subcat_id]['events'][event.evento_id] = {
@@ -184,26 +185,42 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                     'gpt_opinion': article.gpt_opinion
                 } for article, periodico in articles]
             }
+            
+            # Update article counts
+            organized_data[cat_id]['article_count'] += len(articles)
+            organized_data[cat_id]['subcategories'][subcat_id]['article_count'] += len(articles)
+
+        # Sort categories by article count
+        sorted_categories = sorted(
+            organized_data.values(),
+            key=lambda x: x['article_count'],
+            reverse=True
+        )
 
         return {
             'categories': [
                 {
                     'categoria_id': cat_data['categoria_id'],
                     'nombre': cat_data['nombre'],
-                    'subcategories': [
-                        {
-                            'subcategoria_id': subcat_data['subcategoria_id'],
-                            'nombre': subcat_data['nombre'],
-                            'events': sorted(
-                                list(subcat_data['events'].values()),
-                                key=lambda x: (x['article_count'], x['fecha_evento'] or ''),
-                                reverse=True
-                            )
-                        }
-                        for subcat_id, subcat_data in cat_data['subcategories'].items()
-                    ]
+                    'subcategories': sorted(
+                        [
+                            {
+                                'subcategoria_id': subcat_data['subcategoria_id'],
+                                'nombre': subcat_data['nombre'],
+                                'events': sorted(
+                                    list(subcat_data['events'].values()),
+                                    key=lambda x: x['article_count'],
+                                    reverse=True
+                                ),
+                                'article_count': subcat_data['article_count']
+                            }
+                            for subcat_data in cat_data['subcategories'].values()
+                        ],
+                        key=lambda x: x['article_count'],
+                        reverse=True
+                    )
                 }
-                for cat_id, cat_data in organized_data.items()
+                for cat_data in sorted_categories
             ]
         }
     except Exception as e:
@@ -220,7 +237,8 @@ def index():
         # Pre-fetch initial data for faster loading
         initial_data = get_cached_articles(None, None, time_filter, start_date, end_date)
         
-        categories = [
+        # Sort categories by article count
+        categories = sorted([
             {
                 'Categoria': Categoria(categoria_id=cat['categoria_id'], nombre=cat['nombre']),
                 'article_count': sum(
@@ -230,7 +248,7 @@ def index():
                 )
             }
             for cat in initial_data.get('categories', [])
-        ]
+        ], key=lambda x: x['article_count'], reverse=True)
 
         return render_template('index.html', 
                            categories=categories,
@@ -274,10 +292,8 @@ def get_navigation():
             FROM ArticleCounts
             WHERE cuenta_articulos_categoria > 0
             ORDER BY 
-                cuenta_articulos_categoria DESC NULLS LAST,
-                categoria_nombre,
-                cuenta_articulos_subcategoria DESC NULLS LAST,
-                subcategoria_nombre
+                cuenta_articulos_categoria DESC,
+                cuenta_articulos_subcategoria DESC NULLS LAST
         ''')
         
         result = db.session.execute(query, {'hours': hours})
@@ -415,24 +431,3 @@ def register():
         
         if User.query.filter_by(email=email).first():
             flash('Email already registered')
-            return redirect(url_for('register'))
-            
-        user = User(nombre=nombre, email=email)
-        user.set_password(password)
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        login_user(user)
-        return redirect(url_for('index'))
-        
-    return render_template('auth/register.html')
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('index'))
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
