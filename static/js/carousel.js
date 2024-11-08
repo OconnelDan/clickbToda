@@ -74,6 +74,7 @@ function initializeScrollButtons() {
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => {
                 requestAnimationFrame(updateButtons);
+                updateEventDetails(wrapper);
             }, 100);
         });
 
@@ -94,6 +95,13 @@ function initializeCarousels() {
         let touchEndX = 0;
         let isSwiping = false;
         let startScrollLeft = 0;
+        let currentIndex = 0;
+        
+        // Initialize event details if available
+        const eventDetailsSection = wrapper.querySelector('.event-details-mobile');
+        if (eventDetailsSection) {
+            updateEventDetails(wrapper);
+        }
         
         wrapper.addEventListener('touchstart', e => {
             touchStartX = e.touches[0].clientX;
@@ -123,6 +131,14 @@ function initializeCarousels() {
                     left: diff > 0 ? scrollAmount : -scrollAmount,
                     behavior: 'smooth'
                 });
+                
+                // Update current index and event details
+                const direction = diff > 0 ? 1 : -1;
+                currentIndex = Math.max(0, Math.min(
+                    currentIndex + direction,
+                    wrapper.children.length - 1
+                ));
+                updateEventDetails(wrapper);
             }
             
             isSwiping = false;
@@ -146,6 +162,44 @@ function initializeCarousels() {
             subtree: true 
         });
     });
+}
+
+function updateEventDetails(wrapper) {
+    const eventDetailsSection = wrapper.querySelector('.event-details-mobile');
+    if (!eventDetailsSection) return;
+
+    const articles = wrapper.querySelectorAll('.article-card');
+    if (!articles.length) return;
+
+    // Calculate which article is most visible
+    const wrapperRect = wrapper.getBoundingClientRect();
+    let mostVisibleArticle = null;
+    let maxVisibleArea = 0;
+
+    articles.forEach(article => {
+        const rect = article.getBoundingClientRect();
+        const visibleWidth = Math.min(rect.right, wrapperRect.right) - Math.max(rect.left, wrapperRect.left);
+        if (visibleWidth > maxVisibleArea) {
+            maxVisibleArea = visibleWidth;
+            mostVisibleArticle = article;
+        }
+    });
+
+    if (mostVisibleArticle) {
+        const eventArticlesDiv = mostVisibleArticle.closest('.event-articles');
+        if (eventArticlesDiv) {
+            const eventInfo = eventArticlesDiv.querySelector('.event-info');
+            if (eventInfo) {
+                const title = eventInfo.querySelector('.event-title');
+                const description = eventInfo.querySelector('.event-description');
+                const date = eventInfo.querySelector('.event-meta small');
+
+                eventDetailsSection.querySelector('.event-title').textContent = title ? title.textContent : '';
+                eventDetailsSection.querySelector('.event-description').textContent = description ? description.textContent : '';
+                eventDetailsSection.querySelector('.event-date').textContent = date ? date.textContent : '';
+            }
+        }
+    }
 }
 
 function reloadArticles(date) {

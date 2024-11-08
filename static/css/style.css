@@ -22,6 +22,42 @@
     display: none;
 }
 
+/* Event Details Mobile Styles */
+.event-details-mobile {
+    background: var(--bs-body-bg);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: opacity 0.3s ease;
+}
+
+.event-details-mobile .event-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--bs-primary);
+}
+
+.event-details-mobile .event-description {
+    font-size: 0.9rem;
+    color: var(--bs-secondary);
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.event-details-mobile .event-meta {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+}
+
+/* Hide event details on desktop */
+@media (min-width: 768px) {
+    .event-details-mobile {
+        display: none;
+    }
+}
+
 /* Category Navigation Styles */
 .category-nav {
     position: sticky;
