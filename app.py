@@ -56,155 +56,6 @@ from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, a
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-@app.route('/')
-def index():
-    try:
-        time_filter = request.args.get('time_filter', '24h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
-        # Pre-fetch initial data for faster loading
-        initial_data = get_cached_articles(None, None, time_filter, start_date, end_date)
-        
-        categories = [
-            {
-                'Categoria': Categoria(categoria_id=cat['categoria_id'], nombre=cat['nombre']),
-                'article_count': sum(
-                    len(event['articles']) 
-                    for subcat in cat.get('subcategories', [])
-                    for event in subcat.get('events', [])
-                )
-            }
-            for cat in initial_data.get('categories', [])
-        ]
-
-        return render_template('index.html', 
-                           categories=categories,
-                           initial_data=initial_data,
-                           selected_date=datetime.now().date())
-    except Exception as e:
-        logger.error(f"Error in index route: {str(e)}")
-        return render_template('index.html', categories=[], selected_date=datetime.now().date())
-
-@app.route('/api/navigation')
-def get_navigation():
-    try:
-        time_filter = request.args.get('time_filter', '24h')
-        hours = int(time_filter[:-1])
-        
-        query = text('''
-            WITH ArticleCounts AS (
-                SELECT 
-                    c.categoria_id, 
-                    c.nombre AS categoria_nombre, 
-                    s.subcategoria_id, 
-                    s.nombre AS subcategoria_nombre, 
-                    COUNT(DISTINCT a.articulo_id) FILTER (
-                        WHERE a.articulo_id IS NOT NULL 
-                        AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
-                    ) AS cuenta_articulos_subcategoria
-                FROM 
-                    app.categoria c
-                    LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
-                    LEFT JOIN app.evento e ON e.subcategoria_id = s.subcategoria_id
-                    LEFT JOIN app.articulo_evento ae ON e.evento_id = ae.evento_id
-                    LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id
-                GROUP BY 
-                    c.categoria_id, 
-                    c.nombre, 
-                    s.subcategoria_id, 
-                    s.nombre
-            ),
-            CategoryTotals AS (
-                SELECT
-                    categoria_id,
-                    SUM(cuenta_articulos_subcategoria) as cuenta_articulos_categoria
-                FROM
-                    ArticleCounts
-                GROUP BY
-                    categoria_id
-            )
-            SELECT 
-                ac.*,
-                ct.cuenta_articulos_categoria
-            FROM 
-                ArticleCounts ac
-                JOIN CategoryTotals ct ON ac.categoria_id = ct.categoria_id
-            WHERE 
-                ct.cuenta_articulos_categoria > 0
-            ORDER BY 
-                ct.cuenta_articulos_categoria DESC,
-                ac.cuenta_articulos_subcategoria DESC NULLS LAST
-        ''')
-        
-        result = db.session.execute(query, {'hours': hours})
-        
-        navigation = []
-        current_category = None
-        
-        for row in result:
-            if current_category is None or current_category['categoria_id'] != row.categoria_id:
-                if current_category is not None:
-                    navigation.append(current_category)
-                current_category = {
-                    'categoria_id': row.categoria_id,
-                    'nombre': row.categoria_nombre,
-                    'article_count': row.cuenta_articulos_categoria,
-                    'subcategories': []
-                }
-            
-            if row.subcategoria_id:
-                current_category['subcategories'].append({
-                    'subcategoria_id': row.subcategoria_id,
-                    'nombre': row.subcategoria_nombre,
-                    'article_count': row.cuenta_articulos_subcategoria
-                })
-        
-        if current_category is not None:
-            navigation.append(current_category)
-            
-        return jsonify(navigation)
-    except Exception as e:
-        logger.error(f"Error in get_navigation: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/subcategories')
-def get_subcategories():
-    try:
-        category_id = request.args.get('category_id')
-        if not category_id:
-            return jsonify([])
-        
-        subcategories = db.session.query(
-            Subcategoria.subcategoria_id.label('id'),
-            Subcategoria.nombre
-        ).filter_by(
-            categoria_id=category_id
-        ).all()
-        
-        return jsonify([{
-            'id': subcat.id,
-            'nombre': subcat.nombre
-        } for subcat in subcategories])
-    except Exception as e:
-        logger.error(f"Error in get_subcategories: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/articles')
-def get_articles():
-    try:
-        category_id = request.args.get('category_id')
-        subcategory_id = request.args.get('subcategory_id')
-        time_filter = request.args.get('time_filter', '24h')
-        
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        return jsonify(get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date))
-    except Exception as e:
-        logger.error(f"Error in get_articles: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
 def get_filtered_articles(start_date, end_date, event_ids=None):
     query = db.session.query(
         Articulo,
@@ -358,6 +209,144 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
     except Exception as e:
         logger.error(f"Error in get_cached_articles: {str(e)}")
         raise
+
+@app.route('/')
+def index():
+    try:
+        time_filter = request.args.get('time_filter', '24h')
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+
+        # Pre-fetch initial data for faster loading
+        initial_data = get_cached_articles(None, None, time_filter, start_date, end_date)
+        
+        categories = [
+            {
+                'Categoria': Categoria(categoria_id=cat['categoria_id'], nombre=cat['nombre']),
+                'article_count': sum(
+                    len(event['articles']) 
+                    for subcat in cat.get('subcategories', [])
+                    for event in subcat.get('events', [])
+                )
+            }
+            for cat in initial_data.get('categories', [])
+        ]
+
+        return render_template('index.html', 
+                           categories=categories,
+                           initial_data=initial_data,
+                           selected_date=datetime.now().date())
+    except Exception as e:
+        logger.error(f"Error in index route: {str(e)}")
+        return render_template('index.html', categories=[], selected_date=datetime.now().date())
+
+@app.route('/api/navigation')
+def get_navigation():
+    try:
+        time_filter = request.args.get('time_filter', '24h')
+        hours = int(time_filter[:-1])
+        
+        query = text('''
+            WITH ArticleCounts AS (
+                SELECT 
+                    c.categoria_id, 
+                    c.nombre AS categoria_nombre, 
+                    s.subcategoria_id, 
+                    s.nombre AS subcategoria_nombre, 
+                    COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL) AS cuenta_articulos_subcategoria,
+                    SUM(COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL)) OVER (
+                        PARTITION BY c.categoria_id
+                    ) AS cuenta_articulos_categoria
+                FROM 
+                    app.categoria c
+                    LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
+                    LEFT JOIN app.evento e ON e.subcategoria_id = s.subcategoria_id
+                    LEFT JOIN app.articulo_evento ae ON e.evento_id = ae.evento_id
+                    LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id 
+                        AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
+                GROUP BY 
+                    c.categoria_id, 
+                    c.nombre, 
+                    s.subcategoria_id, 
+                    s.nombre
+            )
+            SELECT *
+            FROM ArticleCounts
+            WHERE cuenta_articulos_categoria > 0
+            ORDER BY 
+                cuenta_articulos_categoria DESC NULLS LAST,
+                categoria_nombre,
+                cuenta_articulos_subcategoria DESC NULLS LAST,
+                subcategoria_nombre
+        ''')
+        
+        result = db.session.execute(query, {'hours': hours})
+        
+        navigation = []
+        current_category = None
+        
+        for row in result:
+            if current_category is None or current_category['categoria_id'] != row.categoria_id:
+                if current_category is not None:
+                    navigation.append(current_category)
+                current_category = {
+                    'categoria_id': row.categoria_id,
+                    'nombre': row.categoria_nombre,
+                    'article_count': row.cuenta_articulos_categoria,
+                    'subcategories': []
+                }
+            
+            if row.subcategoria_id:
+                current_category['subcategories'].append({
+                    'subcategoria_id': row.subcategoria_id,
+                    'nombre': row.subcategoria_nombre,
+                    'article_count': row.cuenta_articulos_subcategoria
+                })
+        
+        if current_category is not None:
+            navigation.append(current_category)
+            
+        return jsonify(navigation)
+    except Exception as e:
+        logger.error(f"Error in get_navigation: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/subcategories')
+def get_subcategories():
+    try:
+        category_id = request.args.get('category_id')
+        if not category_id:
+            return jsonify([])
+        
+        subcategories = db.session.query(
+            Subcategoria.subcategoria_id.label('id'),
+            Subcategoria.nombre
+        ).filter_by(
+            categoria_id=category_id
+        ).all()
+        
+        return jsonify([{
+            'id': subcat.id,
+            'nombre': subcat.nombre
+        } for subcat in subcategories])
+    except Exception as e:
+        logger.error(f"Error in get_subcategories: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/articles')
+def get_articles():
+    try:
+        category_id = request.args.get('category_id')
+        subcategory_id = request.args.get('subcategory_id')
+        time_filter = request.args.get('time_filter', '24h')
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        return jsonify(get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date))
+    except Exception as e:
+        logger.error(f"Error in get_articles: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/article/<int:article_id>')
 @cache.memoize(timeout=60)
