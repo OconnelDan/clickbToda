@@ -253,8 +253,8 @@ def get_navigation():
                     c.nombre AS categoria_nombre, 
                     s.subcategoria_id, 
                     s.nombre AS subcategoria_nombre, 
-                    COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)) AS cuenta_articulos_subcategoria,
-                    COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)) OVER (
+                    COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL) AS cuenta_articulos_subcategoria,
+                    SUM(COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL)) OVER (
                         PARTITION BY c.categoria_id
                     ) AS cuenta_articulos_categoria
                 FROM 
@@ -262,7 +262,8 @@ def get_navigation():
                     LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
                     LEFT JOIN app.evento e ON e.subcategoria_id = s.subcategoria_id
                     LEFT JOIN app.articulo_evento ae ON e.evento_id = ae.evento_id
-                    LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id
+                    LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id 
+                        AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
                 GROUP BY 
                     c.categoria_id, 
                     c.nombre, 
@@ -274,8 +275,8 @@ def get_navigation():
             WHERE cuenta_articulos_categoria > 0
             ORDER BY 
                 cuenta_articulos_categoria DESC NULLS LAST,
-                cuenta_articulos_subcategoria DESC NULLS LAST,
                 categoria_nombre,
+                cuenta_articulos_subcategoria DESC NULLS LAST,
                 subcategoria_nombre
         ''')
         
@@ -299,10 +300,8 @@ def get_navigation():
                 current_category['subcategories'].append({
                     'subcategoria_id': row.subcategoria_id,
                     'nombre': row.subcategoria_nombre,
-                    'article_count': row.cuenta_articulos_subcategoria or 0
+                    'article_count': row.cuenta_articulos_subcategoria
                 })
-                # Sort subcategories by article count after adding new one
-                current_category['subcategories'].sort(key=lambda x: (-x['article_count'], x['nombre']))
         
         if current_category is not None:
             navigation.append(current_category)
