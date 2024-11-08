@@ -252,24 +252,23 @@ def get_navigation():
                 c.nombre AS categoria_nombre, 
                 s.subcategoria_id, 
                 s.nombre AS subcategoria_nombre, 
-                COUNT(a.titular) AS cuenta_articulos_subcategoria, 
-                SUM(COUNT(a.titular)) OVER (PARTITION BY c.categoria_id) AS cuenta_articulos_categoria
+                COUNT(DISTINCT a.articulo_id) AS cuenta_articulos_subcategoria, 
+                SUM(COUNT(DISTINCT a.articulo_id)) OVER (PARTITION BY c.categoria_id) AS cuenta_articulos_categoria
             FROM 
-                app.articulo a
-                LEFT JOIN app.articulo_evento ae ON a.articulo_id = ae.articulo_id
-                LEFT JOIN app.evento e ON ae.evento_id = e.evento_id
-                LEFT JOIN app.subcategoria s ON e.subcategoria_id = s.subcategoria_id
-                LEFT JOIN app.categoria c ON c.categoria_id = s.categoria_id
-            WHERE 
-                a.updated_on >= NOW() - INTERVAL :hours HOUR
+                app.categoria c
+                LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
+                LEFT JOIN app.evento e ON e.subcategoria_id = s.subcategoria_id
+                LEFT JOIN app.articulo_evento ae ON e.evento_id = ae.evento_id
+                LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id 
+                    AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
             GROUP BY 
                 c.categoria_id, 
                 c.nombre, 
                 s.subcategoria_id, 
                 s.nombre
             ORDER BY 
-                cuenta_articulos_categoria DESC, 
-                cuenta_articulos_subcategoria DESC
+                cuenta_articulos_categoria DESC NULLS LAST,
+                cuenta_articulos_subcategoria DESC NULLS LAST
         ''')
         
         result = db.session.execute(query, {'hours': hours})
@@ -284,7 +283,7 @@ def get_navigation():
                 current_category = {
                     'categoria_id': row.categoria_id,
                     'nombre': row.categoria_nombre,
-                    'article_count': row.cuenta_articulos_categoria,
+                    'article_count': row.cuenta_articulos_categoria or 0,
                     'subcategories': []
                 }
             
@@ -292,7 +291,7 @@ def get_navigation():
                 current_category['subcategories'].append({
                     'subcategoria_id': row.subcategoria_id,
                     'nombre': row.subcategoria_nombre,
-                    'article_count': row.cuenta_articulos_subcategoria
+                    'article_count': row.cuenta_articulos_subcategoria or 0
                 })
         
         if current_category is not None:
