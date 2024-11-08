@@ -108,6 +108,37 @@
     right: 0.5rem;
 }
 
+/* Laptop view (992px and above) - Triangle shaped navigation buttons */
+@media (min-width: 992px) {
+    .scroll-button {
+        width: 2.5rem;
+        height: 2.5rem;
+        clip-path: polygon(20% 0%, 100% 50%, 20% 100%, 0% 100%, 60% 50%, 0% 0%);
+        border-radius: 0.5rem;
+        background: var(--bs-primary);
+        transition: all 0.3s ease;
+    }
+
+    .scroll-button:hover {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.1);
+        background: var(--bs-primary-dark, var(--bs-primary));
+    }
+
+    .scroll-button.left {
+        left: 1rem;
+        transform: translateY(-50%) rotate(180deg);
+    }
+
+    .scroll-button.right {
+        right: 1rem;
+    }
+
+    .scroll-button.left:hover {
+        transform: translateY(-50%) rotate(180deg) scale(1.1);
+    }
+}
+
 /* Subcategory nav styles */
 .subcategory-nav {
     position: sticky;
