@@ -1,7 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize carousels and scroll buttons
     initializeCarousels();
     initializeScrollButtons();
     
+    // Date selector handler
     const dateSelector = document.getElementById('dateSelector');
     if (dateSelector) {
         dateSelector.addEventListener('change', function() {
@@ -12,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initializeScrollButtons() {
     document.querySelectorAll('.articles-carousel, .nav-tabs-wrapper, .nav-pills-wrapper').forEach(container => {
+        // Add scroll buttons if not present
         if (!container.querySelector('.scroll-button.left')) {
             const leftButton = document.createElement('button');
             leftButton.className = 'scroll-button left';
@@ -46,31 +49,38 @@ function initializeScrollButtons() {
             rightBtn.style.display = hasOverflow ? 'flex' : 'none';
         };
 
+        const scroll = (direction) => {
+            const isCategory = wrapper.classList.contains('nav-tabs') || wrapper.classList.contains('nav-pills');
+            const scrollAmount = isCategory ? 200 : wrapper.clientWidth * 0.8;
+            
+            wrapper.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
+        };
+
+        // Button click handlers
         container.querySelectorAll('.scroll-button').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const direction = btn.dataset.direction;
-                const scrollAmount = wrapper.clientWidth * 0.8;
-                wrapper.scrollBy({
-                    left: direction === 'left' ? -scrollAmount : scrollAmount,
-                    behavior: 'smooth'
-                });
+                scroll(btn.dataset.direction);
             });
         });
 
+        // Scroll event listener with debouncing
         let scrollTimeout;
         wrapper.addEventListener('scroll', () => {
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => {
-                requestAnimationFrame(() => {
-                    updateButtons();
-                });
+                requestAnimationFrame(updateButtons);
             }, 100);
         });
 
+        // Initial check
         updateButtons();
-        
+
+        // Resize observer for responsive updates
         const resizeObserver = new ResizeObserver(() => {
             requestAnimationFrame(updateButtons);
         });
@@ -85,69 +95,48 @@ function initializeCarousels() {
         let isSwiping = false;
         let startScrollLeft = 0;
         
-        const articlesSection = wrapper.querySelector('.articles-section');
-        if (!articlesSection) return;
-        
-        // Touch events for articles section
-        articlesSection.addEventListener('touchstart', e => {
+        wrapper.addEventListener('touchstart', e => {
             touchStartX = e.touches[0].clientX;
-            startScrollLeft = articlesSection.scrollLeft;
+            startScrollLeft = wrapper.scrollLeft;
             isSwiping = true;
-            articlesSection.style.scrollBehavior = 'auto';
+            wrapper.style.scrollBehavior = 'auto';  // Disable smooth scrolling during swipe
         }, { passive: true });
         
-        articlesSection.addEventListener('touchmove', e => {
+        wrapper.addEventListener('touchmove', e => {
             if (!isSwiping) return;
             const touchCurrentX = e.touches[0].clientX;
             const diff = touchStartX - touchCurrentX;
-            articlesSection.scrollLeft = startScrollLeft + diff;
+            wrapper.scrollLeft = startScrollLeft + diff;
         }, { passive: true });
         
-        articlesSection.addEventListener('touchend', e => {
+        wrapper.addEventListener('touchend', e => {
             if (!isSwiping) return;
             
             touchEndX = e.changedTouches[0].clientX;
             const diff = touchStartX - touchEndX;
             
-            if (Math.abs(diff) > 50) {
-                const carouselItems = articlesSection.querySelectorAll('.carousel-item');
-                const itemWidth = carouselItems[0]?.offsetWidth || 0;
-                const direction = diff > 0 ? 1 : -1;
-                
-                articlesSection.style.scrollBehavior = 'smooth';
-                articlesSection.scrollBy({
-                    left: direction * itemWidth,
+            // Determine scroll direction based on swipe
+            if (Math.abs(diff) > 50) {  // Minimum swipe distance
+                const scrollAmount = wrapper.clientWidth * 0.8;
+                wrapper.style.scrollBehavior = 'smooth';  // Re-enable smooth scrolling
+                wrapper.scrollBy({
+                    left: diff > 0 ? scrollAmount : -scrollAmount,
                     behavior: 'smooth'
                 });
             }
             
             isSwiping = false;
         });
+        
+        // Prevent click events during swipe
+        wrapper.addEventListener('click', e => {
+            if (Math.abs(touchStartX - touchEndX) > 10) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
 
-        // Initialize event details touch events
-        const eventArticles = wrapper.querySelectorAll('.event-articles');
-        eventArticles.forEach(eventArticle => {
-            let articleTouchStartX = 0;
-            let articleStartScrollLeft = 0;
-            
-            eventArticle.addEventListener('touchstart', e => {
-                articleTouchStartX = e.touches[0].clientX;
-                articleStartScrollLeft = eventArticle.scrollLeft;
-                eventArticle.style.scrollBehavior = 'auto';
-            }, { passive: true });
-            
-            eventArticle.addEventListener('touchmove', e => {
-                const touchCurrentX = e.touches[0].clientX;
-                const diff = articleTouchStartX - touchCurrentX;
-                eventArticle.scrollLeft = articleStartScrollLeft + diff;
-            }, { passive: true });
-            
-            eventArticle.addEventListener('touchend', () => {
-                eventArticle.style.scrollBehavior = 'smooth';
-            });
-        });
-
-        // Observer for content changes
+        // Reinitialize scroll buttons after content changes
         const observer = new MutationObserver(() => {
             initializeScrollButtons();
         });

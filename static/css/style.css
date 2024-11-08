@@ -22,94 +22,6 @@
     display: none;
 }
 
-/* Mobile Carousel Layout */
-.mobile-carousel-layout {
-    width: 100%;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-}
-
-.articles-section {
-    display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    scroll-snap-type: x mandatory;
-}
-
-.carousel-item {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    gap: 1rem;
-    scroll-snap-align: start;
-    width: 100%;
-}
-
-/* Event Details Mobile Styles */
-.event-details-mobile {
-    flex: 0 0 80vw;
-    width: 80vw;
-    background: var(--bs-body-bg);
-    padding: 1rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: opacity 0.3s ease;
-    scroll-snap-align: start;
-}
-
-.event-articles {
-    display: flex;
-    gap: 1rem;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    padding: 0.5rem;
-}
-
-.event-details-mobile .event-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--bs-primary);
-}
-
-.event-details-mobile .event-description {
-    font-size: 0.9rem;
-    color: var(--bs-secondary);
-    margin-bottom: 0.5rem;
-    line-height: 1.4;
-    max-height: 6em;
-    overflow-y: auto;
-}
-
-.event-details-mobile .event-meta {
-    font-size: 0.8rem;
-    color: var(--bs-secondary);
-}
-
-/* Hide event details on desktop */
-@media (min-width: 768px) {
-    .mobile-carousel-layout {
-        display: none;
-    }
-}
-
-/* Article Card Styles for Mobile Layout */
-@media (max-width: 767px) {
-    .article-card {
-        flex: 0 0 40vw;
-        width: 40vw;
-        scroll-snap-align: start;
-    }
-    
-    .articles-carousel {
-        padding: 0;
-    }
-    
-    .carousel-wrapper {
-        padding: 0 1rem;
-    }
-}
-
 /* Category Navigation Styles */
 .category-nav {
     position: sticky;
@@ -150,6 +62,7 @@
     font-size: 0.9rem;
 }
 
+/* Update active tab styles */
 .nav-tabs .nav-link.active {
     background-color: var(--bs-primary);
     color: var(--bs-light);
@@ -159,6 +72,103 @@
 .nav-pills .nav-link.active {
     background-color: var(--bs-primary);
     color: var(--bs-light);
+}
+
+/* Scroll button styles */
+.scroll-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bs-primary);
+    border: none;
+    border-radius: 50%;
+    color: var(--bs-light);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s ease-in-out;
+    opacity: 0.8;
+}
+
+.scroll-button:hover {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.scroll-button.left {
+    left: 0.5rem;
+}
+
+.scroll-button.right {
+    right: 0.5rem;
+}
+
+/* Subcategory nav styles */
+.subcategory-nav {
+    position: sticky;
+    top: 3.5rem;
+    z-index: 1019;
+    background: var(--bs-body-bg);
+    padding: 0.25rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-top: 0.5rem;
+}
+
+/* Unified heading styles */
+.category-section h2,
+.subcategory-section h3 {
+    color: var(--bs-primary);
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+}
+
+.category-section h2 {
+    font-size: 1.75rem;
+}
+
+.subcategory-section h3 {
+    font-size: 1.5rem;
+}
+
+/* Hide scroll buttons on mobile and tablet */
+@media (max-width: 991px) {
+    .scroll-button {
+        display: none !important;
+    }
+    
+    .articles-carousel,
+    .nav-tabs-wrapper,
+    .nav-pills-wrapper {
+        padding: 0;  /* Remove padding since buttons are hidden */
+    }
+    
+    .carousel-wrapper {
+        -webkit-overflow-scrolling: touch;  /* Ensure smooth scrolling on iOS */
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+    }
+
+    /* Make navigation more compact on mobile */
+    .category-nav {
+        padding: 0.25rem 0;
+    }
+
+    .subcategory-nav {
+        top: 2.75rem;
+        padding: 0.15rem 0;
+    }
+
+    .nav-tabs .nav-link, .nav-pills .nav-link {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
+    }
 }
 
 /* Article Card Styles */
@@ -235,32 +245,4 @@
     padding: 0.5rem;
     background: rgba(var(--bs-secondary-rgb), 0.1);
     border-radius: 0.25rem;
-}
-
-/* Hide scroll buttons on mobile and tablet */
-@media (max-width: 991px) {
-    .scroll-button {
-        display: none !important;
-    }
-    
-    .articles-carousel,
-    .nav-tabs-wrapper,
-    .nav-pills-wrapper {
-        padding: 0;
-    }
-    
-    .carousel-wrapper {
-        -webkit-overflow-scrolling: touch;
-        scroll-snap-type: x mandatory;
-        scroll-behavior: smooth;
-    }
-
-    .category-nav {
-        padding: 0.25rem 0;
-    }
-
-    .nav-tabs .nav-link, .nav-pills .nav-link {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.85rem;
-    }
 }
