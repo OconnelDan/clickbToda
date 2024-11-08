@@ -74,8 +74,9 @@
     color: var(--bs-light);
 }
 
-/* Update scroll button transitions */
-.nav-tabs-wrapper .scroll-button, .nav-pills-wrapper .scroll-button {
+/* Scroll button styles */
+.nav-tabs-wrapper .scroll-button,
+.nav-pills-wrapper .scroll-button {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -131,18 +132,12 @@
     background: var(--bs-body-bg);
     padding: 0.25rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
     margin-top: 0.5rem;
-}
-
-.subcategory-nav.visible {
     opacity: 1;
     visibility: visible;
+    display: block;
 }
 
-/* Rest of the existing styles remain unchanged */
 /* Unified heading styles */
 .category-section h2,
 .subcategory-section h3 {

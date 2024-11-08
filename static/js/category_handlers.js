@@ -1,4 +1,37 @@
-// Keep existing code until updateDisplay function
+function initializeTabNavigation() {
+    const categoryTabs = document.getElementById('categoryTabs');
+    const subcategoryTabs = document.getElementById('subcategoryTabs');
+    
+    if (!categoryTabs || !subcategoryTabs) return;
+    
+    categoryTabs.addEventListener('click', function(e) {
+        const tabButton = e.target.closest('[data-bs-toggle="tab"]');
+        if (!tabButton) return;
+        
+        const categoryId = tabButton.dataset.categoryId;
+        if (!categoryId) {
+            subcategoryTabs.innerHTML = '';
+            return;
+        }
+        
+        fetch(`/api/subcategories?category_id=${categoryId}`)
+            .then(response => response.json())
+            .then(subcategories => {
+                subcategoryTabs.innerHTML = subcategories.map(subcat => `
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" 
+                                data-bs-toggle="pill"
+                                data-subcategory-id="${subcat.id}"
+                                type="button">
+                            ${subcat.nombre}
+                        </button>
+                    </li>
+                `).join('');
+            })
+            .catch(error => console.error('Error loading subcategories:', error));
+    });
+}
+
 function updateDisplay(data) {
     const eventsContent = document.getElementById('events-content');
     if (!eventsContent) return;
@@ -99,6 +132,7 @@ function updateDisplay(data) {
         
         initializeCarousels();
         initializeScrollButtons();
+        initializeTabNavigation();
         
     } catch (error) {
         console.error('Error updating display:', error);
@@ -123,3 +157,7 @@ function showError(message, error = null, retryCallback = null) {
     eventsContent.innerHTML = '';
     eventsContent.appendChild(errorDiv);
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeTabNavigation();
+});
