@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from sqlalchemy import func, text, desc, and_, distinct, or_, Index
+from sqlalchemy import func, text, desc, and_, or_, distinct, Index
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
 import logging
@@ -240,40 +240,67 @@ def index():
         logger.error(f"Error in index route: {str(e)}")
         return render_template('index.html', categories=[], selected_date=datetime.now().date())
 
-@app.route('/api/categories')
-def get_categories():
+@app.route('/api/navigation')
+def get_navigation():
     try:
         time_filter = request.args.get('time_filter', '24h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        hours = int(time_filter[:-1])
         
-        categories = db.session.query(
-            Categoria,
-            func.count(distinct(Articulo.articulo_id)).label('article_count')
-        ).join(
-            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
-        ).join(
-            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).join(
-            articulo_evento, Evento.evento_id == articulo_evento.c.evento_id
-        ).join(
-            Articulo, and_(
-                articulo_evento.c.articulo_id == Articulo.articulo_id,
-                Articulo.updated_on.between(start_date, end_date)
-            )
-        ).group_by(
-            Categoria.categoria_id
-        ).order_by(
-            desc('article_count')
-        ).all()
+        query = text('''
+            SELECT 
+                c.categoria_id, 
+                c.nombre AS categoria_nombre, 
+                s.subcategoria_id, 
+                s.nombre AS subcategoria_nombre, 
+                COUNT(a.titular) AS cuenta_articulos_subcategoria, 
+                SUM(COUNT(a.titular)) OVER (PARTITION BY c.categoria_id) AS cuenta_articulos_categoria
+            FROM 
+                app.articulo a
+                LEFT JOIN app.articulo_evento ae ON a.articulo_id = ae.articulo_id
+                LEFT JOIN app.evento e ON ae.evento_id = e.evento_id
+                LEFT JOIN app.subcategoria s ON e.subcategoria_id = s.subcategoria_id
+                LEFT JOIN app.categoria c ON c.categoria_id = s.categoria_id
+            WHERE 
+                a.updated_on >= NOW() - INTERVAL :hours HOUR
+            GROUP BY 
+                c.categoria_id, 
+                c.nombre, 
+                s.subcategoria_id, 
+                s.nombre
+            ORDER BY 
+                cuenta_articulos_categoria DESC, 
+                cuenta_articulos_subcategoria DESC
+        ''')
         
-        return jsonify([{
-            'categoria_id': cat.Categoria.categoria_id,
-            'nombre': cat.Categoria.nombre,
-            'article_count': cat.article_count
-        } for cat in categories])
+        result = db.session.execute(query, {'hours': hours})
+        
+        navigation = []
+        current_category = None
+        
+        for row in result:
+            if current_category is None or current_category['categoria_id'] != row.categoria_id:
+                if current_category is not None:
+                    navigation.append(current_category)
+                current_category = {
+                    'categoria_id': row.categoria_id,
+                    'nombre': row.categoria_nombre,
+                    'article_count': row.cuenta_articulos_categoria,
+                    'subcategories': []
+                }
+            
+            if row.subcategoria_id:
+                current_category['subcategories'].append({
+                    'subcategoria_id': row.subcategoria_id,
+                    'nombre': row.subcategoria_nombre,
+                    'article_count': row.cuenta_articulos_subcategoria
+                })
+        
+        if current_category is not None:
+            navigation.append(current_category)
+            
+        return jsonify(navigation)
     except Exception as e:
-        logger.error(f"Error in get_categories: {str(e)}")
+        logger.error(f"Error in get_navigation: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/subcategories')
@@ -296,6 +323,21 @@ def get_subcategories():
         } for subcat in subcategories])
     except Exception as e:
         logger.error(f"Error in get_subcategories: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/articles')
+def get_articles():
+    try:
+        category_id = request.args.get('category_id')
+        subcategory_id = request.args.get('subcategory_id')
+        time_filter = request.args.get('time_filter', '24h')
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        return jsonify(get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date))
+    except Exception as e:
+        logger.error(f"Error in get_articles: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/article/<int:article_id>')
@@ -341,21 +383,6 @@ def get_article_details(article_id):
             'error': 'Failed to load article details',
             'details': str(e)
         }), 500
-
-@app.route('/api/articles')
-def get_articles():
-    try:
-        category_id = request.args.get('category_id')
-        subcategory_id = request.args.get('subcategory_id')
-        time_filter = request.args.get('time_filter', '24h')
-        
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        return jsonify(get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date))
-    except Exception as e:
-        logger.error(f"Error in get_articles: {str(e)}")
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

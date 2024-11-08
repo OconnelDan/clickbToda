@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     initializeTabNavigation();
+    updateNavigation();
     showAllCategories();
 });
 
@@ -42,6 +43,51 @@ function initializeTabNavigation() {
             }
         });
     }
+}
+
+function updateNavigation() {
+    const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
+    
+    fetchWithRetry(`/api/navigation?time_filter=${timeFilter}`)
+        .then(response => response.json())
+        .then(navigation => {
+            const categoryTabs = document.getElementById('categoryTabs');
+            if (!categoryTabs) return;
+            
+            // Keep "All Categories" tab
+            const allCategoriesTab = categoryTabs.querySelector('li:first-child');
+            categoryTabs.innerHTML = '';
+            if (allCategoriesTab) categoryTabs.appendChild(allCategoriesTab);
+            
+            navigation.forEach(category => {
+                const li = document.createElement('li');
+                li.className = 'nav-item';
+                li.setAttribute('role', 'presentation');
+                
+                li.innerHTML = `
+                    <button class="nav-link" 
+                            id="category-${category.categoria_id}-tab"
+                            data-bs-toggle="tab" 
+                            data-bs-target="#category-${category.categoria_id}"
+                            type="button" 
+                            role="tab"
+                            data-category-id="${category.categoria_id}"
+                            aria-controls="category-${category.categoria_id}"
+                            aria-selected="false">
+                        ${category.nombre}
+                        <span class="badge bg-secondary ms-1">${category.article_count}</span>
+                    </button>
+                `;
+                categoryTabs.appendChild(li);
+            });
+            
+            initializeTabNavigation();
+            initializeScrollButtons();
+        })
+        .catch(error => {
+            console.error('Error updating navigation:', error);
+            showError('Failed to update navigation');
+        });
 }
 
 function showLoadingState() {
