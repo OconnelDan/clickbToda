@@ -6,18 +6,38 @@
             {% else %}
             <div class="mobile-carousel-layout d-md-none">
                 <div class="articles-section">
-                    <div class="event-group">
+                    {% for event in category.subcategories|map(attribute='events')|sum(start=[]) %}
+                    <div class="carousel-item">
                         <div class="event-details-mobile">
-                            <h4 class="event-title"></h4>
-                            <p class="event-description"></p>
+                            <h4 class="event-title">{{ event.titulo }}</h4>
+                            <p class="event-description">{{ event.descripcion }}</p>
                             <div class="event-meta">
-                                <small class="text-muted event-date"></small>
+                                <small class="text-muted event-date">{{ event.fecha_evento }}</small>
                             </div>
                         </div>
                         <div class="event-articles">
-                            <!-- Articles will be dynamically added here -->
+                            {% for article in event.articles %}
+                            <div class="article-card" data-article-id="{{ article.id }}" data-article-url="{{ article.url }}" role="button">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <img src="{{ article.periodico_logo or '/static/img/default-newspaper.svg' }}" 
+                                             class="newspaper-logo mb-2" alt="Newspaper logo">
+                                        <h5 class="card-title article-title {{ 'text-muted' if article.paywall }}">
+                                            {{ article.titular }}
+                                        </h5>
+                                        {% if article.gpt_opinion %}
+                                        <div class="article-opinion">{{ article.gpt_opinion }}</div>
+                                        {% endif %}
+                                        {% if article.paywall %}
+                                        <span class="badge bg-secondary">Paywall</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
+                    {% endfor %}
                 </div>
             </div>
             {% endif %}

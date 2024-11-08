@@ -65,7 +65,6 @@ function initializeScrollButtons() {
             scrollTimeout = setTimeout(() => {
                 requestAnimationFrame(() => {
                     updateButtons();
-                    updateEventDetails(wrapper);
                 });
             }, 100);
         });
@@ -87,44 +86,66 @@ function initializeCarousels() {
         let startScrollLeft = 0;
         
         const articlesSection = wrapper.querySelector('.articles-section');
-        if (articlesSection) {
-            // Initialize event details
-            updateEventDetails(wrapper);
+        if (!articlesSection) return;
+        
+        // Touch events for articles section
+        articlesSection.addEventListener('touchstart', e => {
+            touchStartX = e.touches[0].clientX;
+            startScrollLeft = articlesSection.scrollLeft;
+            isSwiping = true;
+            articlesSection.style.scrollBehavior = 'auto';
+        }, { passive: true });
+        
+        articlesSection.addEventListener('touchmove', e => {
+            if (!isSwiping) return;
+            const touchCurrentX = e.touches[0].clientX;
+            const diff = touchStartX - touchCurrentX;
+            articlesSection.scrollLeft = startScrollLeft + diff;
+        }, { passive: true });
+        
+        articlesSection.addEventListener('touchend', e => {
+            if (!isSwiping) return;
             
-            // Touch events for articles section
-            articlesSection.addEventListener('touchstart', e => {
-                touchStartX = e.touches[0].clientX;
-                startScrollLeft = articlesSection.scrollLeft;
-                isSwiping = true;
-                articlesSection.style.scrollBehavior = 'auto';
+            touchEndX = e.changedTouches[0].clientX;
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > 50) {
+                const carouselItems = articlesSection.querySelectorAll('.carousel-item');
+                const itemWidth = carouselItems[0]?.offsetWidth || 0;
+                const direction = diff > 0 ? 1 : -1;
+                
+                articlesSection.style.scrollBehavior = 'smooth';
+                articlesSection.scrollBy({
+                    left: direction * itemWidth,
+                    behavior: 'smooth'
+                });
+            }
+            
+            isSwiping = false;
+        });
+
+        // Initialize event details touch events
+        const eventArticles = wrapper.querySelectorAll('.event-articles');
+        eventArticles.forEach(eventArticle => {
+            let articleTouchStartX = 0;
+            let articleStartScrollLeft = 0;
+            
+            eventArticle.addEventListener('touchstart', e => {
+                articleTouchStartX = e.touches[0].clientX;
+                articleStartScrollLeft = eventArticle.scrollLeft;
+                eventArticle.style.scrollBehavior = 'auto';
             }, { passive: true });
             
-            articlesSection.addEventListener('touchmove', e => {
-                if (!isSwiping) return;
+            eventArticle.addEventListener('touchmove', e => {
                 const touchCurrentX = e.touches[0].clientX;
-                const diff = touchStartX - touchCurrentX;
-                articlesSection.scrollLeft = startScrollLeft + diff;
+                const diff = articleTouchStartX - touchCurrentX;
+                eventArticle.scrollLeft = articleStartScrollLeft + diff;
             }, { passive: true });
             
-            articlesSection.addEventListener('touchend', e => {
-                if (!isSwiping) return;
-                
-                touchEndX = e.changedTouches[0].clientX;
-                const diff = touchStartX - touchEndX;
-                
-                if (Math.abs(diff) > 50) {
-                    const scrollAmount = articlesSection.clientWidth * 0.8;
-                    articlesSection.style.scrollBehavior = 'smooth';
-                    articlesSection.scrollBy({
-                        left: diff > 0 ? scrollAmount : -scrollAmount,
-                        behavior: 'smooth'
-                    });
-                }
-                
-                isSwiping = false;
-                updateEventDetails(wrapper);
+            eventArticle.addEventListener('touchend', () => {
+                eventArticle.style.scrollBehavior = 'smooth';
             });
-        }
+        });
 
         // Observer for content changes
         const observer = new MutationObserver(() => {
@@ -136,47 +157,6 @@ function initializeCarousels() {
             subtree: true 
         });
     });
-}
-
-function updateEventDetails(wrapper) {
-    const eventDetailsSection = wrapper.querySelector('.event-details-mobile');
-    if (!eventDetailsSection) return;
-
-    const articlesSection = wrapper.querySelector('.articles-section');
-    if (!articlesSection) return;
-
-    const articles = articlesSection.querySelectorAll('.article-card');
-    if (!articles.length) return;
-
-    // Calculate which article is most visible
-    const sectionRect = articlesSection.getBoundingClientRect();
-    let mostVisibleArticle = null;
-    let maxVisibleArea = 0;
-
-    articles.forEach(article => {
-        const rect = article.getBoundingClientRect();
-        const visibleWidth = Math.min(rect.right, sectionRect.right) - Math.max(rect.left, sectionRect.left);
-        if (visibleWidth > maxVisibleArea) {
-            maxVisibleArea = visibleWidth;
-            mostVisibleArticle = article;
-        }
-    });
-
-    if (mostVisibleArticle) {
-        const eventArticlesDiv = mostVisibleArticle.closest('.event-articles');
-        if (eventArticlesDiv) {
-            const eventInfo = eventArticlesDiv.querySelector('.event-info');
-            if (eventInfo) {
-                const title = eventInfo.querySelector('.event-title');
-                const description = eventInfo.querySelector('.event-description');
-                const date = eventInfo.querySelector('.event-meta small');
-
-                eventDetailsSection.querySelector('.event-title').textContent = title ? title.textContent : '';
-                eventDetailsSection.querySelector('.event-description').textContent = description ? description.textContent : '';
-                eventDetailsSection.querySelector('.event-date').textContent = date ? date.textContent : '';
-            }
-        }
-    }
 }
 
 function reloadArticles(date) {
