@@ -23,6 +23,13 @@
 }
 
 /* Category Navigation Styles */
+.category-nav {
+    z-index: 1020;
+    padding-bottom: 1rem;
+    margin-top: -1rem;
+    border-bottom: 1px solid rgba(var(--bs-secondary-rgb), 0.2);
+}
+
 .nav-tabs-wrapper, .nav-pills-wrapper {
     position: relative;
     overflow: hidden;
@@ -132,6 +139,11 @@
     margin-bottom: 1.5rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid var(--bs-primary);
+    position: sticky;
+    top: 160px;
+    background: var(--bs-body-bg);
+    z-index: 1010;
+    padding-top: 1rem;
 }
 
 .category-section h2 {
@@ -140,6 +152,7 @@
 
 .subcategory-section h3 {
     font-size: 1.5rem;
+    top: 220px;
 }
 
 /* Time filter styles */
@@ -231,6 +244,12 @@
     .article-card .card {
         min-height: 200px;
     }
+    .category-section h2 {
+        top: 140px;
+    }
+    .subcategory-section h3 {
+        top: 200px;
+    }
 }
 
 /* Desktop styles */
@@ -240,6 +259,12 @@
     }
     .article-card .card {
         min-height: 220px;
+    }
+    .category-section h2 {
+        top: 120px;
+    }
+    .subcategory-section h3 {
+        top: 180px;
     }
 }
 
