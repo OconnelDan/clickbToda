@@ -299,6 +299,7 @@ def get_subcategories():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/article/<int:article_id>')
+@cache.memoize(timeout=60)
 def get_article_details(article_id):
     try:
         logger.info(f"Fetching details for article ID: {article_id}")
@@ -328,6 +329,9 @@ def get_article_details(article_id):
             Articulo.periodista_id == Periodista.periodista_id
         ).filter(
             Articulo.articulo_id == article_id
+        ).options(
+            joinedload(Articulo.periodico),
+            joinedload(Articulo.periodista)
         ).first()
 
         if not article:
@@ -355,7 +359,11 @@ def get_article_details(article_id):
         return jsonify(response_data)
     except Exception as e:
         logger.error(f"Error fetching article details: {str(e)}")
-        return jsonify({'error': 'Failed to load article details', 'details': str(e)}), 500
+        db.session.rollback()
+        return jsonify({
+            'error': 'Failed to load article details',
+            'details': str(e)
+        }), 500
 
 @app.route('/api/articles')
 def get_articles():

@@ -121,26 +121,34 @@ function hideError() {
     }
 }
 
-function showError(message) {
-    console.error('Error:', message);
+function showError(message, error = null, retryCallback = null) {
+    console.error('Error:', message, error);
     const errorDiv = document.getElementById('articleErrorMessage');
-    if (!errorDiv) {
-        console.error('Error message element not found');
-        return;
-    }
+    if (!errorDiv) return;
     
     showLoading(false);
-    errorDiv.textContent = message;
+    errorDiv.innerHTML = `
+        ${message}
+        ${error ? `<br><small class="text-muted">Details: ${error.message || error}</small>` : ''}
+        ${retryCallback ? `<button class="btn btn-outline-primary btn-sm ms-3" onclick="window.retryCallback = ${retryCallback}; window.retryCallback();">Retry</button>` : ''}
+    `;
     errorDiv.classList.remove('d-none');
 }
 
-function fetchArticleDetails(articleId) {
+function fetchArticleDetails(articleId, retryCount = 0) {
     console.log('Fetching article details:', articleId);
     
+    const maxRetries = 3;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     
-    fetch(`/api/article/${articleId}`, { signal: controller.signal })
+    fetch(`/api/article/${articleId}`, { 
+        signal: controller.signal,
+        headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+        }
+    })
         .then(response => {
             clearTimeout(timeoutId);
             if (!response.ok) {
@@ -158,9 +166,19 @@ function fetchArticleDetails(articleId) {
         .catch(error => {
             clearTimeout(timeoutId);
             console.error('Error loading article details:', error);
-            showError(error.name === 'AbortError' ? 
-                'Request timed out. Please try again.' : 
-                'Failed to load article details. Please try again.');
+            
+            if (retryCount < maxRetries) {
+                console.log(`Retrying... Attempt ${retryCount + 1} of ${maxRetries}`);
+                setTimeout(() => {
+                    fetchArticleDetails(articleId, retryCount + 1);
+                }, 1000 * (retryCount + 1)); // Exponential backoff
+            } else {
+                showError(
+                    'Failed to load article details. Please try again.',
+                    error,
+                    () => fetchArticleDetails(articleId)
+                );
+            }
         });
 }
 
