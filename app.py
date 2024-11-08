@@ -286,6 +286,42 @@ def get_articles():
         logger.error(f"Error in get_articles: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/subcategories')
+def get_subcategories():
+    try:
+        category_id = request.args.get('category_id')
+        if not category_id:
+            return jsonify([])
+            
+        subcategories = db.session.query(
+            Subcategoria,
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
+        ).join(
+            Evento,
+            Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).join(
+            articulo_evento,
+            Evento.evento_id == articulo_evento.c.evento_id
+        ).join(
+            Articulo,
+            articulo_evento.c.articulo_id == Articulo.articulo_id
+        ).filter(
+            Subcategoria.categoria_id == category_id
+        ).group_by(
+            Subcategoria.subcategoria_id
+        ).order_by(
+            desc('article_count')
+        ).all()
+        
+        return jsonify([{
+            'subcategoria_id': sub.Subcategoria.subcategoria_id,
+            'nombre': sub.Subcategoria.nombre,
+            'article_count': sub.article_count
+        } for sub in subcategories])
+    except Exception as e:
+        logger.error(f"Error in get_subcategories: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/article/<int:article_id>')
 @cache.memoize(timeout=60)
 def get_article_details(article_id):
