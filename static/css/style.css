@@ -117,9 +117,6 @@
     padding: 0.25rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-top: 0.5rem;
-    opacity: 1;
-    visibility: visible;
-    display: block;
 }
 
 /* Unified heading styles */
@@ -140,60 +137,38 @@
     font-size: 1.5rem;
 }
 
-/* Time filter styles */
-.time-filter {
-    position: relative;
-    padding: 1rem;
-    background: rgba(var(--bs-primary-rgb), 0.1);
-    border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
-}
+/* Hide scroll buttons on mobile and tablet */
+@media (max-width: 991px) {
+    .scroll-button {
+        display: none !important;
+    }
+    
+    .articles-carousel,
+    .nav-tabs-wrapper,
+    .nav-pills-wrapper {
+        padding: 0;  /* Remove padding since buttons are hidden */
+    }
+    
+    .carousel-wrapper {
+        -webkit-overflow-scrolling: touch;  /* Ensure smooth scrolling on iOS */
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+    }
 
-.toggle-slider {
-    position: relative;
-    display: flex;
-    justify-content: space-between;
-    background: rgba(var(--bs-dark-rgb), 0.2);
-    border-radius: 2rem;
-    padding: 0.25rem;
-    margin: 0 auto;
-    max-width: 300px;
-}
+    /* Make navigation more compact on mobile */
+    .category-nav {
+        padding: 0.25rem 0;
+    }
 
-.toggle-slider input[type="radio"] {
-    display: none;
-}
+    .subcategory-nav {
+        top: 2.75rem;
+        padding: 0.15rem 0;
+    }
 
-.toggle-slider label {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 4rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: color 0.3s ease-in-out;
-    margin: 0;
-    color: var(--bs-body-color);
-    user-select: none;
-}
-
-.toggle-slider input[type="radio"]:checked + label {
-    color: var(--bs-light);
-}
-
-.toggle-slider .slider {
-    position: absolute;
-    z-index: 0;
-    left: 0.25rem;
-    top: 0.25rem;
-    bottom: 0.25rem;
-    width: 4rem;
-    background: var(--bs-primary);
-    border-radius: 1.5rem;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    .nav-tabs .nav-link, .nav-pills .nav-link {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
+    }
 }
 
 /* Article Card Styles */

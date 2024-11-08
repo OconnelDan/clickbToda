@@ -6,6 +6,28 @@ function initializeTabNavigation() {
     
     let selectedCategoryId = null;
     
+    // Add touch scrolling for navigation bars
+    [categoryTabs, subcategoryTabs].forEach(container => {
+        let touchStartX = 0;
+        let startScrollLeft = 0;
+        
+        container.addEventListener('touchstart', e => {
+            touchStartX = e.touches[0].clientX;
+            startScrollLeft = container.scrollLeft;
+            container.style.scrollBehavior = 'auto';
+        }, { passive: true });
+        
+        container.addEventListener('touchmove', e => {
+            const touchCurrentX = e.touches[0].clientX;
+            const diff = touchStartX - touchCurrentX;
+            container.scrollLeft = startScrollLeft + diff;
+        }, { passive: true });
+        
+        container.addEventListener('touchend', () => {
+            container.style.scrollBehavior = 'smooth';
+        });
+    });
+    
     categoryTabs.addEventListener('click', function(e) {
         const tabButton = e.target.closest('[data-bs-toggle="tab"]');
         if (!tabButton) return;

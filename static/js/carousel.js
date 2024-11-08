@@ -77,43 +77,64 @@ function initializeScrollButtons() {
             }, 100);
         });
 
+        // Initial check
+        updateButtons();
+
         // Resize observer for responsive updates
         const resizeObserver = new ResizeObserver(() => {
             requestAnimationFrame(updateButtons);
         });
         resizeObserver.observe(wrapper);
-        
-        // Initial check
-        updateButtons();
     });
 }
 
 function initializeCarousels() {
     document.querySelectorAll('.carousel-wrapper').forEach(wrapper => {
-        // Add touch event listeners for mobile swipe
         let touchStartX = 0;
         let touchEndX = 0;
         let isSwiping = false;
+        let startScrollLeft = 0;
         
         wrapper.addEventListener('touchstart', e => {
             touchStartX = e.touches[0].clientX;
+            startScrollLeft = wrapper.scrollLeft;
             isSwiping = true;
+            wrapper.style.scrollBehavior = 'auto';  // Disable smooth scrolling during swipe
         }, { passive: true });
         
         wrapper.addEventListener('touchmove', e => {
             if (!isSwiping) return;
-            touchEndX = e.touches[0].clientX;
-            // Prevent vertical scroll while swiping horizontally
-            if (Math.abs(touchEndX - touchStartX) > 10) {
-                e.preventDefault();
-            }
-        }, { passive: false });
+            const touchCurrentX = e.touches[0].clientX;
+            const diff = touchStartX - touchCurrentX;
+            wrapper.scrollLeft = startScrollLeft + diff;
+        }, { passive: true });
         
-        wrapper.addEventListener('touchend', () => {
+        wrapper.addEventListener('touchend', e => {
             if (!isSwiping) return;
-            handleSwipe(wrapper, touchStartX, touchEndX);
+            
+            touchEndX = e.changedTouches[0].clientX;
+            const diff = touchStartX - touchEndX;
+            
+            // Determine scroll direction based on swipe
+            if (Math.abs(diff) > 50) {  // Minimum swipe distance
+                const scrollAmount = wrapper.clientWidth * 0.8;
+                wrapper.style.scrollBehavior = 'smooth';  // Re-enable smooth scrolling
+                wrapper.scrollBy({
+                    left: diff > 0 ? scrollAmount : -scrollAmount,
+                    behavior: 'smooth'
+                });
+            }
+            
             isSwiping = false;
         });
+        
+        // Prevent click events during swipe
+        wrapper.addEventListener('click', e => {
+            if (Math.abs(touchStartX - touchEndX) > 10) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
 
         // Reinitialize scroll buttons after content changes
         const observer = new MutationObserver(() => {
@@ -125,19 +146,6 @@ function initializeCarousels() {
             subtree: true 
         });
     });
-}
-
-function handleSwipe(wrapper, startX, endX) {
-    const SWIPE_THRESHOLD = 50;
-    const difference = startX - endX;
-    
-    if (Math.abs(difference) > SWIPE_THRESHOLD) {
-        const scrollAmount = wrapper.clientWidth * 0.8;
-        wrapper.scrollBy({ 
-            left: difference > 0 ? scrollAmount : -scrollAmount, 
-            behavior: 'smooth' 
-        });
-    }
 }
 
 function reloadArticles(date) {
