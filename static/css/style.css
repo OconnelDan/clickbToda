@@ -28,11 +28,10 @@
     top: 0;
     z-index: 1020;
     background: var(--bs-body-bg);
-    padding: 0.15rem 0;
+    padding: 0.25rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-bottom: 0;
     transition: all 0.3s ease;
-    backdrop-filter: blur(8px);
 }
 
 .nav-tabs-wrapper, .nav-pills-wrapper {
@@ -59,9 +58,9 @@
 
 .nav-tabs .nav-link, .nav-pills .nav-link {
     white-space: nowrap;
-    padding: 0.2rem 0.5rem;
+    padding: 0.25rem 0.75rem;
     transition: all 0.3s ease;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
 }
 
 /* Update active tab styles */
@@ -82,8 +81,8 @@
     top: 50%;
     transform: translateY(-50%);
     z-index: 10;
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 2rem;
+    height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -92,7 +91,7 @@
     border-radius: 50%;
     color: var(--bs-light);
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 1rem;
     transition: all 0.2s ease-in-out;
     opacity: 0.8;
 }
@@ -103,24 +102,23 @@
 }
 
 .scroll-button.left {
-    left: 0.25rem;
+    left: 0.5rem;
 }
 
 .scroll-button.right {
-    right: 0.25rem;
+    right: 0.5rem;
 }
 
 /* Subcategory nav styles */
 .subcategory-nav {
     position: sticky;
-    top: 2.5rem;
+    top: 2.75rem;
     z-index: 1019;
     background: var(--bs-body-bg);
-    padding: 0.15rem 0;
+    padding: 0.25rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-top: 0;
     transition: all 0.3s ease;
-    backdrop-filter: blur(8px);
 }
 
 /* Unified heading styles */
@@ -161,23 +159,23 @@
 
     /* Make navigation more compact on mobile */
     .category-nav {
-        padding: 0.1rem 0;
+        padding: 0.15rem 0;
     }
 
     .subcategory-nav {
-        top: 2.25rem;
-        padding: 0.1rem 0;
+        top: 2.5rem;
+        padding: 0.15rem 0;
     }
 
     .nav-tabs .nav-link, .nav-pills .nav-link {
-        padding: 0.15rem 0.4rem;
-        font-size: 0.8rem;
+        padding: 0.2rem 0.5rem;
+        font-size: 0.85rem;
     }
 
     /* Optimize badge display */
     .nav-tabs .badge, .nav-pills .badge {
-        font-size: 0.65rem;
-        padding: 0.15em 0.35em;
+        font-size: 0.7rem;
+        padding: 0.2em 0.4em;
     }
 }
 
