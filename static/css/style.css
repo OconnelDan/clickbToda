@@ -25,9 +25,12 @@
 /* Mobile Carousel Layout */
 .mobile-carousel-layout {
     display: flex;
+    flex-direction: row;
     width: 100%;
     gap: 1rem;
     scroll-snap-align: start;
+    position: relative;
+    overflow: hidden;
 }
 
 /* Event Details Mobile Styles */
@@ -40,8 +43,9 @@
     transition: opacity 0.3s ease;
     height: fit-content;
     position: sticky;
+    left: 0;
     top: 0;
-    margin-bottom: 1rem;
+    z-index: 10;
 }
 
 .articles-section {
@@ -53,6 +57,7 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
     padding-bottom: 1rem;
+    margin-left: auto;
 }
 
 .articles-section::-webkit-scrollbar {
@@ -71,6 +76,8 @@
     color: var(--bs-secondary);
     margin-bottom: 0.5rem;
     line-height: 1.4;
+    max-height: 6em;
+    overflow-y: auto;
 }
 
 .event-details-mobile .event-meta {
@@ -90,6 +97,15 @@
     .article-card {
         flex: 0 0 calc(100% - 1rem);
         width: calc(100% - 1rem);
+        scroll-snap-align: start;
+    }
+    
+    .articles-carousel {
+        padding: 0;
+    }
+    
+    .carousel-wrapper {
+        padding: 0 1rem;
     }
 }
 
