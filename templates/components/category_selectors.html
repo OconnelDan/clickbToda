@@ -17,10 +17,18 @@
                         type="button" role="tab" data-category-id="{{ category.Categoria.categoria_id }}"
                         aria-controls="category-{{ category.Categoria.categoria_id }}" aria-selected="false">
                     {{ category.Categoria.nombre }}
-                    <span class="badge bg-secondary ms-1">{{ category.event_count }}</span>
+                    <span class="badge bg-secondary ms-1">{{ category.article_count }}</span>
                 </button>
             </li>
             {% endfor %}
         </ul>
+    </div>
+    <div class="subcategory-nav">
+        <div class="nav-pills-wrapper">
+            <button class="scroll-button left" data-direction="left">←</button>
+            <button class="scroll-button right" data-direction="right">→</button>
+            <ul class="nav nav-pills" id="subcategoryTabs" role="tablist">
+            </ul>
+        </div>
     </div>
 </div>

@@ -23,13 +23,13 @@
 }
 
 /* Category Navigation Styles */
-.nav-tabs-wrapper {
+.nav-tabs-wrapper, .nav-pills-wrapper {
     position: relative;
     overflow: hidden;
     margin: 0 2rem;
 }
 
-.nav-tabs {
+.nav-tabs, .nav-pills {
     display: flex;
     flex-wrap: nowrap;
     width: 100%;
@@ -40,12 +40,12 @@
     transition: transform 0.3s ease;
 }
 
-.nav-tabs .nav-item {
+.nav-tabs .nav-item, .nav-pills .nav-item {
     float: none;
     display: inline-block;
 }
 
-.nav-tabs .nav-link {
+.nav-tabs .nav-link, .nav-pills .nav-link {
     white-space: nowrap;
     padding: 0.5rem 1rem;
     transition: all 0.3s ease;
@@ -58,8 +58,13 @@
     border: none;
 }
 
+.nav-pills .nav-link.active {
+    background-color: var(--bs-primary);
+    color: var(--bs-light);
+}
+
 /* Update scroll button transitions */
-.nav-tabs-wrapper .scroll-button {
+.nav-tabs-wrapper .scroll-button, .nav-pills-wrapper .scroll-button {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -79,29 +84,47 @@
     cursor: pointer;
 }
 
-.nav-tabs-wrapper .scroll-button.visible {
+.nav-tabs-wrapper .scroll-button.visible,
+.nav-pills-wrapper .scroll-button.visible {
     opacity: 1;
     visibility: visible;
 }
 
-.nav-tabs-wrapper:hover .scroll-button {
+.nav-tabs-wrapper:hover .scroll-button,
+.nav-pills-wrapper:hover .scroll-button {
     opacity: 1;
     visibility: visible;
 }
 
-.nav-tabs-wrapper .scroll-button.left {
+.nav-tabs-wrapper .scroll-button.left,
+.nav-pills-wrapper .scroll-button.left {
     left: -2rem;
 }
 
-.nav-tabs-wrapper .scroll-button.right {
+.nav-tabs-wrapper .scroll-button.right,
+.nav-pills-wrapper .scroll-button.right {
     right: -2rem;
 }
 
-.nav-tabs-wrapper .scroll-button:hover {
+.nav-tabs-wrapper .scroll-button:hover,
+.nav-pills-wrapper .scroll-button:hover {
     transform: translateY(-50%) scale(1.1);
 }
 
-/* Time Filter Styles */
+/* Subcategory nav styles */
+.subcategory-nav {
+    margin-top: 1rem;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+}
+
+.subcategory-nav.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Rest of the existing styles... */
 .time-filter {
     position: relative;
     padding: 1rem;
@@ -169,10 +192,10 @@
     transform: translateX(8rem);
 }
 
-/* Update Article Card Styles */
+/* Article Card Styles */
 .article-card {
     flex: 0 0 auto;
-    width: calc(50% - 1rem); /* Two cards visible on mobile */
+    width: calc(50% - 1rem);
     scroll-snap-align: start;
 }
 
@@ -185,7 +208,7 @@
 /* Tablet styles */
 @media (min-width: 768px) {
     .article-card {
-        width: calc(33.333% - 1rem); /* Three cards visible on tablet */
+        width: calc(33.333% - 1rem);
     }
     .article-card .card {
         min-height: 200px;
@@ -195,7 +218,7 @@
 /* Desktop styles */
 @media (min-width: 992px) {
     .article-card {
-        width: calc(25% - 1rem); /* Four cards visible on desktop */
+        width: calc(25% - 1rem);
     }
     .article-card .card {
         min-height: 220px;
