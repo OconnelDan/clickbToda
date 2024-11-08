@@ -122,8 +122,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
             Categoria.categoria_id,
             Subcategoria.subcategoria_id
         ).order_by(
-            desc('article_count'),
-            desc(Evento.fecha_evento)
+            desc('article_count')
         )
 
         events = base_query.all()
@@ -134,7 +133,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
         # Get all event IDs first
         event_ids = [event.evento_id for event in events]
         
-        # Fetch articles in a single query with proper joins
+        # Fetch articles in a single query
         articles_query = get_filtered_articles(start_date, end_date, event_ids)
         
         # Organize articles by event
@@ -157,7 +156,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                     'categoria_id': cat_id,
                     'nombre': event.categoria_nombre if event.categoria_nombre else 'Uncategorized',
                     'subcategories': {},
-                    'article_count': 0  # Initialize article count for category
+                    'article_count': 0
                 }
 
             subcat_id = event.subcategoria_id if event.subcategoria_id else 0
@@ -166,7 +165,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                     'subcategoria_id': subcat_id,
                     'nombre': event.subcategoria_nombre if event.subcategoria_nombre else 'Uncategorized',
                     'events': {},
-                    'article_count': 0  # Initialize article count for subcategory
+                    'article_count': 0
                 }
 
             organized_data[cat_id]['subcategories'][subcat_id]['events'][event.evento_id] = {
@@ -270,18 +269,19 @@ def get_navigation():
                     c.categoria_id, 
                     c.nombre AS categoria_nombre, 
                     s.subcategoria_id, 
-                    s.nombre AS subcategoria_nombre, 
-                    COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL) AS cuenta_articulos_subcategoria,
-                    SUM(COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL)) OVER (
+                    s.nombre AS subcategoria_nombre,
+                    COUNT(DISTINCT a.articulo_id) AS cuenta_articulos_subcategoria,
+                    SUM(COUNT(DISTINCT a.articulo_id)) OVER (
                         PARTITION BY c.categoria_id
                     ) AS cuenta_articulos_categoria
                 FROM 
                     app.categoria c
-                    LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
-                    LEFT JOIN app.evento e ON e.subcategoria_id = s.subcategoria_id
-                    LEFT JOIN app.articulo_evento ae ON e.evento_id = ae.evento_id
-                    LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id 
-                        AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
+                LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
+                LEFT JOIN app.evento e ON e.subcategoria_id = s.subcategoria_id
+                LEFT JOIN app.articulo_evento ae ON e.evento_id = ae.evento_id
+                LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id 
+                    AND a.updated_on >= CURRENT_TIMESTAMP - (:hours || ' hours')::interval
+                    AND a.updated_on <= CURRENT_TIMESTAMP
                 GROUP BY 
                     c.categoria_id, 
                     c.nombre, 
@@ -431,3 +431,24 @@ def register():
         
         if User.query.filter_by(email=email).first():
             flash('Email already registered')
+            return redirect(url_for('register'))
+            
+        user = User(nombre=nombre, email=email)
+        user.set_password(password)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        login_user(user)
+        return redirect(url_for('index'))
+        
+    return render_template('auth/register.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
