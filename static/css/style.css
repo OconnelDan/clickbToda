@@ -1,4 +1,11 @@
 /* Base mobile styles (up to 767px) */
+:root {
+    --nav-height-mobile: 2.5rem;
+    --nav-height-desktop: 3rem;
+    --subnav-height-mobile: 2rem;
+    --subnav-height-desktop: 2.5rem;
+}
+
 .articles-carousel {
     position: relative;
     overflow: hidden;
@@ -24,19 +31,27 @@
 
 /* Category Navigation Styles */
 .category-nav {
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 1020;
+    left: 0;
+    right: 0;
+    z-index: 1030;
     background: var(--bs-body-bg);
-    padding: 0.5rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+/* Add padding to body to prevent content from being hidden under fixed nav */
+body {
+    padding-top: calc(var(--nav-height-mobile) + var(--subnav-height-mobile));
 }
 
 .nav-tabs-wrapper, .nav-pills-wrapper {
     position: relative;
     overflow: hidden;
     padding: 0 2.5rem;
+    height: var(--nav-height-mobile);
 }
 
 .nav-tabs, .nav-pills {
@@ -48,18 +63,24 @@
     padding: 0;
     white-space: nowrap;
     transition: transform 0.3s ease;
+    height: 100%;
 }
 
 .nav-tabs .nav-item, .nav-pills .nav-item {
     float: none;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
 }
 
 .nav-tabs .nav-link, .nav-pills .nav-link {
     white-space: nowrap;
-    padding: 0.35rem 0.75rem;
+    padding: 0.25rem 0.5rem;
     transition: all 0.3s ease;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
 }
 
 /* Update active tab styles */
@@ -80,8 +101,8 @@
     top: 50%;
     transform: translateY(-50%);
     z-index: 10;
-    width: 2rem;
-    height: 2rem;
+    width: 1.5rem;
+    height: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -90,7 +111,7 @@
     border-radius: 50%;
     color: var(--bs-light);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.8rem;
     transition: all 0.2s ease-in-out;
     opacity: 0.8;
 }
@@ -101,22 +122,24 @@
 }
 
 .scroll-button.left {
-    left: 0.5rem;
+    left: 0.25rem;
 }
 
 .scroll-button.right {
-    right: 0.5rem;
+    right: 0.25rem;
 }
 
 /* Subcategory nav styles */
 .subcategory-nav {
-    position: sticky;
-    top: 3.5rem;
-    z-index: 1019;
+    position: fixed;
+    top: var(--nav-height-mobile);
+    left: 0;
+    right: 0;
+    z-index: 1029;
     background: var(--bs-body-bg);
-    padding: 0.25rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-top: 0.5rem;
+    padding: 0;
+    height: var(--subnav-height-mobile);
 }
 
 /* Unified heading styles */
@@ -146,28 +169,40 @@
     .articles-carousel,
     .nav-tabs-wrapper,
     .nav-pills-wrapper {
-        padding: 0;  /* Remove padding since buttons are hidden */
+        padding: 0;
     }
     
     .carousel-wrapper {
-        -webkit-overflow-scrolling: touch;  /* Ensure smooth scrolling on iOS */
+        -webkit-overflow-scrolling: touch;
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
     }
 
     /* Make navigation more compact on mobile */
-    .category-nav {
-        padding: 0.25rem 0;
+    .nav-tabs .nav-link, .nav-pills .nav-link {
+        padding: 0.15rem 0.35rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Desktop styles */
+@media (min-width: 992px) {
+    body {
+        padding-top: calc(var(--nav-height-desktop) + var(--subnav-height-desktop));
+    }
+
+    .nav-tabs-wrapper, .nav-pills-wrapper {
+        height: var(--nav-height-desktop);
     }
 
     .subcategory-nav {
-        top: 2.75rem;
-        padding: 0.15rem 0;
+        top: var(--nav-height-desktop);
+        height: var(--subnav-height-desktop);
     }
 
     .nav-tabs .nav-link, .nav-pills .nav-link {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.85rem;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.9rem;
     }
 }
 
