@@ -2,7 +2,7 @@
 .articles-carousel {
     position: relative;
     overflow: hidden;
-    padding: 0 2.5rem;
+    padding: 0 1rem;  /* Reduced side padding */
 }
 
 .carousel-wrapper {
@@ -11,8 +11,8 @@
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    gap: 1rem;
-    padding-bottom: 1rem;
+    gap: 0.5rem;  /* Reduced gap between cards */
+    padding-bottom: 0.75rem;  /* Slightly reduced bottom padding */
     scrollbar-width: none;
     -ms-overflow-style: none;
     position: relative;
@@ -146,11 +146,11 @@
     .articles-carousel,
     .nav-tabs-wrapper,
     .nav-pills-wrapper {
-        padding: 0;  /* Remove padding since buttons are hidden */
+        padding: 0 0.5rem;  /* Added minimal padding */
     }
     
     .carousel-wrapper {
-        -webkit-overflow-scrolling: touch;  /* Ensure smooth scrolling on iOS */
+        -webkit-overflow-scrolling: touch;
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
     }
@@ -174,12 +174,12 @@
 /* Article Card Styles */
 .article-card {
     flex: 0 0 auto;
-    width: calc(50% - 1rem);
+    width: calc(85% - 0.5rem);  /* Increased width for mobile, reduced gap compensation */
     scroll-snap-align: start;
 }
 
 .article-card .card {
-    min-height: 180px;
+    min-height: 160px;  /* Slightly reduced min-height */
     height: 100%;
     transition: all 0.2s ease-in-out;
 }
@@ -187,7 +187,7 @@
 /* Tablet styles */
 @media (min-width: 768px) {
     .article-card {
-        width: calc(33.333% - 1rem);
+        width: calc(33.333% - 0.5rem);
     }
     .article-card .card {
         min-height: 200px;
@@ -202,10 +202,14 @@
     .article-card .card {
         min-height: 220px;
     }
+    
+    .carousel-wrapper {
+        gap: 1rem;  /* Restore larger gap for desktop */
+    }
 }
 
 .article-card .card-body {
-    padding: 1.25rem;
+    padding: 1rem;  /* Slightly reduced padding */
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
