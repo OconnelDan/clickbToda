@@ -9,9 +9,6 @@ function initializeTabNavigation() {
     
     if (!categoryTabs || !subcategoryTabs) return;
     
-    let selectedCategoryId = null;
-    let lastLoadedCategoryId = null;
-    
     // Add touch scrolling for navigation bars
     [categoryTabs, subcategoryTabs].forEach(container => {
         let touchStartX = 0;
@@ -39,30 +36,39 @@ function initializeTabNavigation() {
         const tabButton = e.target.closest('[data-bs-toggle="tab"]');
         if (!tabButton) return;
         
-        selectedCategoryId = tabButton.dataset.categoryId;
-        if (!selectedCategoryId) return;
+        const categoryId = tabButton.dataset.categoryId;
+        if (!categoryId) return;
         
         // Remove active class from all tabs and add to selected
         categoryTabs.querySelectorAll('.nav-link').forEach(tab => tab.classList.remove('active'));
         tabButton.classList.add('active');
         
         showLoadingState();
-        loadCategoryContent(selectedCategoryId);
+        loadCategoryContent(categoryId);
     });
 }
 
 function loadDefaultCategory() {
-    const categoryTabs = document.querySelectorAll('#categoryTabs .nav-link');
-    if (categoryTabs.length > 0) {
-        // Remove active class from any previously active tabs
-        categoryTabs.forEach(tab => tab.classList.remove('active'));
-        // Set the first category as active
-        categoryTabs[0].classList.add('active');
-        // Load content for the first category
-        const categoryId = categoryTabs[0].dataset.categoryId;
-        if (categoryId) {
-            loadCategoryContent(categoryId);
+    try {
+        const categoryTabs = document.querySelectorAll('#categoryTabs .nav-link');
+        if (categoryTabs.length > 0) {
+            // Remove active class from any previously active tabs
+            categoryTabs.forEach(tab => tab.classList.remove('active'));
+            // Set the first category as active
+            categoryTabs[0].classList.add('active');
+            // Load content for the first category
+            const categoryId = categoryTabs[0].dataset.categoryId;
+            if (categoryId) {
+                loadCategoryContent(categoryId);
+            } else {
+                throw new Error('No category ID found on first tab');
+            }
+        } else {
+            throw new Error('No categories available');
         }
+    } catch (error) {
+        console.error('Error loading default category:', error);
+        showError('Failed to load initial content. Please refresh the page.');
     }
 }
 
@@ -94,6 +100,9 @@ function loadCategoryContent(categoryId) {
         })
     ])
     .then(([subcategories, articlesData]) => {
+        if (!articlesData || !articlesData.categories) {
+            throw new Error('Invalid response format');
+        }
         updateSubcategoryTabs(subcategories);
         updateDisplay(articlesData);
         hideLoadingState();
