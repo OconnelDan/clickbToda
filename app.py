@@ -40,8 +40,6 @@ try:
                 CREATE INDEX IF NOT EXISTS idx_evento_subcategoria ON app.evento (subcategoria_id);
                 CREATE INDEX IF NOT EXISTS idx_article_time ON app.articulo (updated_on, paywall);
                 CREATE INDEX IF NOT EXISTS idx_article_category ON app.articulo (periodico_id, updated_on);
-                CREATE INDEX IF NOT EXISTS idx_article_event_count ON app.articulo_evento (evento_id);
-                CREATE INDEX IF NOT EXISTS idx_subcategory_category ON app.subcategoria (categoria_id);
             """))
     logger.info("Database connection and indexes setup successful")
 except Exception as e:
@@ -58,31 +56,31 @@ from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, a
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+def get_filtered_articles(start_date, end_date, event_ids=None):
+    query = db.session.query(
+        Articulo,
+        Periodico
+    ).join(
+        Periodico,
+        Articulo.periodico_id == Periodico.periodico_id
+    ).filter(
+        Articulo.updated_on.between(start_date, end_date)
+    )
+    
+    if event_ids:
+        query = query.join(
+            articulo_evento,
+            and_(
+                Articulo.articulo_id == articulo_evento.c.articulo_id,
+                articulo_evento.c.evento_id.in_(event_ids)
+            )
+        )
+    
+    return query.order_by(desc(Articulo.updated_on))
+
 @cache.memoize(timeout=60)
 def get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date):
     try:
-        # First, get counts for all categories
-        category_counts = db.session.query(
-            Categoria.categoria_id,
-            func.count(distinct(Articulo.articulo_id)).label('article_count')
-        ).join(
-            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
-        ).join(
-            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).join(
-            articulo_evento, Evento.evento_id == articulo_evento.c.evento_id
-        ).join(
-            Articulo, and_(
-                articulo_evento.c.articulo_id == Articulo.articulo_id,
-                Articulo.updated_on.between(start_date, end_date)
-            )
-        ).group_by(
-            Categoria.categoria_id
-        ).order_by(
-            desc('article_count')
-        ).subquery()
-
-        # Main query with article counts and proper sorting
         base_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,
@@ -124,6 +122,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
             Categoria.categoria_id,
             Subcategoria.subcategoria_id
         ).order_by(
+            Categoria.nombre.nullslast(),
             desc('article_count'),
             desc(Evento.fecha_evento)
         )
@@ -137,21 +136,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
         event_ids = [event.evento_id for event in events]
         
         # Fetch articles in a single query with proper joins
-        articles_query = db.session.query(
-            Articulo,
-            Periodico
-        ).join(
-            Periodico,
-            Articulo.periodico_id == Periodico.periodico_id
-        ).join(
-            articulo_evento,
-            and_(
-                Articulo.articulo_id == articulo_evento.c.articulo_id,
-                articulo_evento.c.evento_id.in_(event_ids)
-            )
-        ).filter(
-            Articulo.updated_on.between(start_date, end_date)
-        ).order_by(desc(Articulo.updated_on))
+        articles_query = get_filtered_articles(start_date, end_date, event_ids)
         
         # Organize articles by event
         articles_by_event = {}
@@ -172,8 +157,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                 organized_data[cat_id] = {
                     'categoria_id': cat_id,
                     'nombre': event.categoria_nombre if event.categoria_nombre else 'Uncategorized',
-                    'subcategories': {},
-                    'article_count': 0
+                    'subcategories': {}
                 }
 
             subcat_id = event.subcategoria_id if event.subcategoria_id else 0
@@ -181,21 +165,15 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                 organized_data[cat_id]['subcategories'][subcat_id] = {
                     'subcategoria_id': subcat_id,
                     'nombre': event.subcategoria_nombre if event.subcategoria_nombre else 'Uncategorized',
-                    'events': {},
-                    'article_count': 0
+                    'events': {}
                 }
-
-            # Update article counts
-            article_count = len(articles)
-            organized_data[cat_id]['article_count'] += article_count
-            organized_data[cat_id]['subcategories'][subcat_id]['article_count'] += article_count
 
             organized_data[cat_id]['subcategories'][subcat_id]['events'][event.evento_id] = {
                 'evento_id': event.evento_id,
                 'titulo': event.titulo,
                 'descripcion': event.descripcion,
                 'fecha_evento': event.fecha_evento.strftime('%Y-%m-%d') if event.fecha_evento else None,
-                'article_count': article_count,
+                'article_count': len(articles),
                 'articles': [{
                     'id': article.articulo_id,
                     'titular': article.titular,
@@ -204,27 +182,18 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                     'url': article.url,
                     'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None,
                     'gpt_opinion': article.gpt_opinion
-                } for article, periodico in sorted(articles, key=lambda x: x[0].updated_on, reverse=True)]
+                } for article, periodico in articles]
             }
-
-        # Sort categories by article count
-        sorted_categories = sorted(
-            organized_data.values(),
-            key=lambda x: x['article_count'],
-            reverse=True
-        )
 
         return {
             'categories': [
                 {
                     'categoria_id': cat_data['categoria_id'],
                     'nombre': cat_data['nombre'],
-                    'article_count': cat_data['article_count'],
-                    'subcategories': sorted([
+                    'subcategories': [
                         {
                             'subcategoria_id': subcat_data['subcategoria_id'],
                             'nombre': subcat_data['nombre'],
-                            'article_count': subcat_data['article_count'],
                             'events': sorted(
                                 list(subcat_data['events'].values()),
                                 key=lambda x: (x['article_count'], x['fecha_evento'] or ''),
@@ -232,9 +201,9 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                             )
                         }
                         for subcat_id, subcat_data in cat_data['subcategories'].items()
-                    ], key=lambda x: x['article_count'], reverse=True)
+                    ]
                 }
-                for cat_data in sorted_categories
+                for cat_id, cat_data in organized_data.items()
             ]
         }
     except Exception as e:
@@ -251,17 +220,17 @@ def index():
         # Pre-fetch initial data for faster loading
         initial_data = get_cached_articles(None, None, time_filter, start_date, end_date)
         
-        # Get categories with article counts for the navigation
         categories = [
             {
                 'Categoria': Categoria(categoria_id=cat['categoria_id'], nombre=cat['nombre']),
-                'article_count': cat['article_count']
+                'article_count': sum(
+                    len(event['articles']) 
+                    for subcat in cat.get('subcategories', [])
+                    for event in subcat.get('events', [])
+                )
             }
             for cat in initial_data.get('categories', [])
         ]
-
-        # Sort categories by article count
-        categories.sort(key=lambda x: x['article_count'], reverse=True)
 
         return render_template('index.html', 
                            categories=categories,
@@ -271,19 +240,62 @@ def index():
         logger.error(f"Error in index route: {str(e)}")
         return render_template('index.html', categories=[], selected_date=datetime.now().date())
 
-@app.route('/api/articles')
-def get_articles():
+@app.route('/api/categories')
+def get_categories():
     try:
-        category_id = request.args.get('category_id')
-        subcategory_id = request.args.get('subcategory_id')
         time_filter = request.args.get('time_filter', '24h')
-        
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        return jsonify(get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date))
+        categories = db.session.query(
+            Categoria,
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
+        ).join(
+            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
+        ).join(
+            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).join(
+            articulo_evento, Evento.evento_id == articulo_evento.c.evento_id
+        ).join(
+            Articulo, and_(
+                articulo_evento.c.articulo_id == Articulo.articulo_id,
+                Articulo.updated_on.between(start_date, end_date)
+            )
+        ).group_by(
+            Categoria.categoria_id
+        ).order_by(
+            desc('article_count')
+        ).all()
+        
+        return jsonify([{
+            'categoria_id': cat.Categoria.categoria_id,
+            'nombre': cat.Categoria.nombre,
+            'article_count': cat.article_count
+        } for cat in categories])
     except Exception as e:
-        logger.error(f"Error in get_articles: {str(e)}")
+        logger.error(f"Error in get_categories: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/subcategories')
+def get_subcategories():
+    try:
+        category_id = request.args.get('category_id')
+        if not category_id:
+            return jsonify([])
+        
+        subcategories = db.session.query(
+            Subcategoria.subcategoria_id.label('id'),
+            Subcategoria.nombre
+        ).filter_by(
+            categoria_id=category_id
+        ).all()
+        
+        return jsonify([{
+            'id': subcat.id,
+            'nombre': subcat.nombre
+        } for subcat in subcategories])
+    except Exception as e:
+        logger.error(f"Error in get_subcategories: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/article/<int:article_id>')
@@ -329,6 +341,21 @@ def get_article_details(article_id):
             'error': 'Failed to load article details',
             'details': str(e)
         }), 500
+
+@app.route('/api/articles')
+def get_articles():
+    try:
+        category_id = request.args.get('category_id')
+        subcategory_id = request.args.get('subcategory_id')
+        time_filter = request.args.get('time_filter', '24h')
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        return jsonify(get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date))
+    except Exception as e:
+        logger.error(f"Error in get_articles: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
