@@ -2,8 +2,7 @@
 .articles-carousel {
     position: relative;
     overflow: hidden;
-    padding: 0;
-    margin: 0 -1rem; /* Negative margin to allow full-width scrolling */
+    padding: 0 2.5rem;
 }
 
 .carousel-wrapper {
@@ -12,8 +11,8 @@
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
+    gap: 1rem;
+    padding-bottom: 1rem;
     scrollbar-width: none;
     -ms-overflow-style: none;
     position: relative;
@@ -21,22 +20,6 @@
 
 .carousel-wrapper::-webkit-scrollbar {
     display: none;
-}
-
-/* Article Card Styles */
-.article-card {
-    flex: 0 0 auto;
-    width: 85vw; /* Mobile-first: cards take most of the viewport width */
-    scroll-snap-align: center;
-    padding: 0 0.25rem;
-}
-
-.article-card .card {
-    min-height: 160px;
-    height: 100%;
-    transition: transform 0.2s ease-in-out;
-    border-radius: 0.75rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 /* Category Navigation Styles */
@@ -125,6 +108,35 @@
     right: 0.5rem;
 }
 
+/* Subcategory nav styles */
+.subcategory-nav {
+    position: sticky;
+    top: 3.5rem;
+    z-index: 1019;
+    background: var(--bs-body-bg);
+    padding: 0.25rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-top: 0.5rem;
+}
+
+/* Unified heading styles */
+.category-section h2,
+.subcategory-section h3 {
+    color: var(--bs-primary);
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+}
+
+.category-section h2 {
+    font-size: 1.75rem;
+}
+
+.subcategory-section h3 {
+    font-size: 1.5rem;
+}
+
 /* Hide scroll buttons on mobile and tablet */
 @media (max-width: 991px) {
     .scroll-button {
@@ -134,11 +146,11 @@
     .articles-carousel,
     .nav-tabs-wrapper,
     .nav-pills-wrapper {
-        padding: 0;
+        padding: 0;  /* Remove padding since buttons are hidden */
     }
     
     .carousel-wrapper {
-        -webkit-overflow-scrolling: touch;
+        -webkit-overflow-scrolling: touch;  /* Ensure smooth scrolling on iOS */
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
     }
@@ -159,18 +171,21 @@
     }
 }
 
-/* Tablet styles */
-@media (min-width: 768px) {
-    .article-card {
-        width: 45vw;
-    }
-    .article-card .card {
-        min-height: 180px;
-    }
+/* Article Card Styles */
+.article-card {
+    flex: 0 0 auto;
+    width: calc(50% - 1rem);
+    scroll-snap-align: start;
 }
 
-/* Desktop styles */
-@media (min-width: 992px) {
+.article-card .card {
+    min-height: 180px;
+    height: 100%;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Tablet styles */
+@media (min-width: 768px) {
     .article-card {
         width: calc(33.333% - 1rem);
     }
@@ -179,15 +194,18 @@
     }
 }
 
-/* Large desktop styles */
-@media (min-width: 1200px) {
+/* Desktop styles */
+@media (min-width: 992px) {
     .article-card {
         width: calc(25% - 1rem);
+    }
+    .article-card .card {
+        min-height: 220px;
     }
 }
 
 .article-card .card-body {
-    padding: 1rem;
+    padding: 1.25rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -195,6 +213,10 @@
 
 .article-card-clickable:hover {
     transform: translateY(-2px);
+}
+
+.article-card-clickable:hover .card {
+    box-shadow: 0 0.5rem 1rem rgba(var(--bs-primary-rgb), 0.15);
 }
 
 .newspaper-logo {

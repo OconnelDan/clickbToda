@@ -45,8 +45,18 @@ function initializeScrollButtons() {
             leftBtn.classList.toggle('visible', hasOverflow && !atStart);
             rightBtn.classList.toggle('visible', hasOverflow && !atEnd);
             
-            leftBtn.style.display = hasOverflow && !window.matchMedia('(max-width: 991px)').matches ? 'flex' : 'none';
-            rightBtn.style.display = hasOverflow && !window.matchMedia('(max-width: 991px)').matches ? 'flex' : 'none';
+            leftBtn.style.display = hasOverflow ? 'flex' : 'none';
+            rightBtn.style.display = hasOverflow ? 'flex' : 'none';
+        };
+
+        const scroll = (direction) => {
+            const isCategory = wrapper.classList.contains('nav-tabs') || wrapper.classList.contains('nav-pills');
+            const scrollAmount = isCategory ? 200 : wrapper.clientWidth * 0.8;
+            
+            wrapper.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
         };
 
         // Button click handlers
@@ -54,12 +64,7 @@ function initializeScrollButtons() {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const direction = btn.dataset.direction;
-                const scrollAmount = wrapper.clientWidth * 0.8;
-                wrapper.scrollBy({
-                    left: direction === 'left' ? -scrollAmount : scrollAmount,
-                    behavior: 'smooth'
-                });
+                scroll(btn.dataset.direction);
             });
         });
 
@@ -86,65 +91,41 @@ function initializeScrollButtons() {
 function initializeCarousels() {
     document.querySelectorAll('.carousel-wrapper').forEach(wrapper => {
         let touchStartX = 0;
-        let touchStartY = 0;
         let touchEndX = 0;
-        let touchEndY = 0;
-        let startTime = 0;
         let isSwiping = false;
         let startScrollLeft = 0;
-        let isScrollingVertically = false;
         
         wrapper.addEventListener('touchstart', e => {
             touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-            startTime = Date.now();
             startScrollLeft = wrapper.scrollLeft;
             isSwiping = true;
-            isScrollingVertically = false;
-            wrapper.style.scrollBehavior = 'auto';
+            wrapper.style.scrollBehavior = 'auto';  // Disable smooth scrolling during swipe
         }, { passive: true });
         
         wrapper.addEventListener('touchmove', e => {
             if (!isSwiping) return;
-            
             const touchCurrentX = e.touches[0].clientX;
-            const touchCurrentY = e.touches[0].clientY;
-            const deltaX = touchStartX - touchCurrentX;
-            const deltaY = touchStartY - touchCurrentY;
-
-            // Determine scroll direction
-            if (!isScrollingVertically && Math.abs(deltaX) > Math.abs(deltaY)) {
-                e.preventDefault(); // Prevent vertical scroll when swiping horizontally
-                wrapper.scrollLeft = startScrollLeft + deltaX;
-            } else {
-                isScrollingVertically = true;
-            }
-        }, { passive: false });
+            const diff = touchStartX - touchCurrentX;
+            wrapper.scrollLeft = startScrollLeft + diff;
+        }, { passive: true });
         
         wrapper.addEventListener('touchend', e => {
             if (!isSwiping) return;
             
             touchEndX = e.changedTouches[0].clientX;
-            touchEndY = e.changedTouches[0].clientY;
-            const deltaX = touchStartX - touchEndX;
-            const deltaY = touchStartY - touchEndY;
-            const elapsedTime = Date.now() - startTime;
+            const diff = touchStartX - touchEndX;
             
-            // Calculate swipe speed and distance
-            const speed = Math.abs(deltaX) / elapsedTime;
-            const isSwipe = Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) && speed > 0.2;
-            
-            if (isSwipe) {
-                wrapper.style.scrollBehavior = 'smooth';
-                const momentum = Math.min(speed * 500, wrapper.clientWidth);
+            // Determine scroll direction based on swipe
+            if (Math.abs(diff) > 50) {  // Minimum swipe distance
+                const scrollAmount = wrapper.clientWidth * 0.8;
+                wrapper.style.scrollBehavior = 'smooth';  // Re-enable smooth scrolling
                 wrapper.scrollBy({
-                    left: deltaX > 0 ? momentum : -momentum,
+                    left: diff > 0 ? scrollAmount : -scrollAmount,
                     behavior: 'smooth'
                 });
             }
             
             isSwiping = false;
-            wrapper.style.scrollBehavior = 'smooth';
         });
         
         // Prevent click events during swipe
