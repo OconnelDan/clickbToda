@@ -247,28 +247,46 @@ def get_navigation():
         hours = int(time_filter[:-1])
         
         query = text('''
+            WITH article_counts AS (
+                SELECT 
+                    c.categoria_id,
+                    s.subcategoria_id,
+                    COUNT(DISTINCT a.articulo_id) as article_count
+                FROM 
+                    app.categoria c
+                    LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
+                    LEFT JOIN app.evento e ON e.subcategoria_id = s.subcategoria_id
+                    LEFT JOIN app.articulo_evento ae ON e.evento_id = ae.evento_id
+                    LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id 
+                        AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
+                GROUP BY 
+                    c.categoria_id,
+                    s.subcategoria_id
+            )
             SELECT 
                 c.categoria_id, 
                 c.nombre AS categoria_nombre, 
                 s.subcategoria_id, 
                 s.nombre AS subcategoria_nombre, 
-                COUNT(DISTINCT a.articulo_id) AS cuenta_articulos_subcategoria, 
-                SUM(COUNT(DISTINCT a.articulo_id)) OVER (PARTITION BY c.categoria_id) AS cuenta_articulos_categoria
+                ac.article_count AS cuenta_articulos_subcategoria,
+                SUM(ac.article_count) OVER (PARTITION BY c.categoria_id) AS cuenta_articulos_categoria
             FROM 
                 app.categoria c
                 LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
-                LEFT JOIN app.evento e ON e.subcategoria_id = s.subcategoria_id
-                LEFT JOIN app.articulo_evento ae ON e.evento_id = ae.evento_id
-                LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id 
-                    AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
+                LEFT JOIN article_counts ac ON 
+                    ac.categoria_id = c.categoria_id AND 
+                    ac.subcategoria_id = s.subcategoria_id
             GROUP BY 
                 c.categoria_id, 
                 c.nombre, 
                 s.subcategoria_id, 
-                s.nombre
+                s.nombre,
+                ac.article_count
             ORDER BY 
                 cuenta_articulos_categoria DESC NULLS LAST,
-                cuenta_articulos_subcategoria DESC NULLS LAST
+                c.nombre,
+                cuenta_articulos_subcategoria DESC NULLS LAST,
+                s.nombre
         ''')
         
         result = db.session.execute(query, {'hours': hours})
@@ -424,6 +442,3 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('index'))
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)

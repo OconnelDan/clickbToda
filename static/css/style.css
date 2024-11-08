@@ -28,9 +28,10 @@
     top: 0;
     z-index: 1020;
     background: var(--bs-body-bg);
-    padding: 0.5rem 0;
+    padding: 0.25rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-bottom: 1rem;
+    margin-bottom: 0;
+    transition: all 0.3s ease;
 }
 
 .nav-tabs-wrapper, .nav-pills-wrapper {
@@ -57,7 +58,7 @@
 
 .nav-tabs .nav-link, .nav-pills .nav-link {
     white-space: nowrap;
-    padding: 0.35rem 0.75rem;
+    padding: 0.25rem 0.75rem;
     transition: all 0.3s ease;
     font-size: 0.9rem;
 }
@@ -111,12 +112,13 @@
 /* Subcategory nav styles */
 .subcategory-nav {
     position: sticky;
-    top: 3.5rem;
+    top: 2.75rem;
     z-index: 1019;
     background: var(--bs-body-bg);
     padding: 0.25rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-top: 0.5rem;
+    margin-top: 0;
+    transition: all 0.3s ease;
 }
 
 /* Unified heading styles */
@@ -146,28 +148,34 @@
     .articles-carousel,
     .nav-tabs-wrapper,
     .nav-pills-wrapper {
-        padding: 0;  /* Remove padding since buttons are hidden */
+        padding: 0;
     }
     
     .carousel-wrapper {
-        -webkit-overflow-scrolling: touch;  /* Ensure smooth scrolling on iOS */
+        -webkit-overflow-scrolling: touch;
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
     }
 
     /* Make navigation more compact on mobile */
     .category-nav {
-        padding: 0.25rem 0;
+        padding: 0.15rem 0;
     }
 
     .subcategory-nav {
-        top: 2.75rem;
+        top: 2.5rem;
         padding: 0.15rem 0;
     }
 
     .nav-tabs .nav-link, .nav-pills .nav-link {
-        padding: 0.25rem 0.5rem;
+        padding: 0.2rem 0.5rem;
         font-size: 0.85rem;
+    }
+
+    /* Optimize badge display */
+    .nav-tabs .badge, .nav-pills .badge {
+        font-size: 0.7rem;
+        padding: 0.2em 0.4em;
     }
 }
 
