@@ -13,8 +13,24 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeScrollButtons() {
-    // Handle both article carousels and category selectors
     document.querySelectorAll('.articles-carousel, .nav-tabs-wrapper, .nav-pills-wrapper').forEach(container => {
+        // Add scroll buttons if not present
+        if (!container.querySelector('.scroll-button.left')) {
+            const leftButton = document.createElement('button');
+            leftButton.className = 'scroll-button left';
+            leftButton.dataset.direction = 'left';
+            leftButton.innerHTML = '←';
+            container.insertBefore(leftButton, container.firstChild);
+        }
+        
+        if (!container.querySelector('.scroll-button.right')) {
+            const rightButton = document.createElement('button');
+            rightButton.className = 'scroll-button right';
+            rightButton.dataset.direction = 'right';
+            rightButton.innerHTML = '→';
+            container.appendChild(rightButton);
+        }
+
         const wrapper = container.querySelector('.carousel-wrapper, .nav-tabs, .nav-pills');
         const leftBtn = container.querySelector('.scroll-button.left');
         const rightBtn = container.querySelector('.scroll-button.right');
@@ -29,8 +45,8 @@ function initializeScrollButtons() {
             leftBtn.classList.toggle('visible', hasOverflow && !atStart);
             rightBtn.classList.toggle('visible', hasOverflow && !atEnd);
             
-            leftBtn.style.pointerEvents = hasOverflow && !atStart ? 'auto' : 'none';
-            rightBtn.style.pointerEvents = hasOverflow && !atEnd ? 'auto' : 'none';
+            leftBtn.style.display = hasOverflow ? 'flex' : 'none';
+            rightBtn.style.display = hasOverflow ? 'flex' : 'none';
         };
 
         const scroll = (direction) => {

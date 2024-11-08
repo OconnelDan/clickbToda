@@ -2,7 +2,7 @@
 .articles-carousel {
     position: relative;
     overflow: hidden;
-    padding: 1rem 0;
+    padding: 0 2.5rem;
 }
 
 .carousel-wrapper {
@@ -36,7 +36,7 @@
 .nav-tabs-wrapper, .nav-pills-wrapper {
     position: relative;
     overflow: hidden;
-    margin: 0 2rem;
+    padding: 0 2.5rem;
 }
 
 .nav-tabs, .nav-pills {
@@ -75,14 +75,13 @@
 }
 
 /* Scroll button styles */
-.nav-tabs-wrapper .scroll-button,
-.nav-pills-wrapper .scroll-button {
+.scroll-button {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
     z-index: 10;
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 2rem;
+    height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -90,38 +89,23 @@
     border: none;
     border-radius: 50%;
     color: var(--bs-light);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out, transform 0.3s ease-in-out;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 1rem;
+    transition: all 0.2s ease-in-out;
+    opacity: 0.8;
 }
 
-.nav-tabs-wrapper .scroll-button.visible,
-.nav-pills-wrapper .scroll-button.visible {
+.scroll-button:hover {
     opacity: 1;
-    visibility: visible;
-}
-
-.nav-tabs-wrapper:hover .scroll-button,
-.nav-pills-wrapper:hover .scroll-button {
-    opacity: 1;
-    visibility: visible;
-}
-
-.nav-tabs-wrapper .scroll-button.left,
-.nav-pills-wrapper .scroll-button.left {
-    left: -1.75rem;
-}
-
-.nav-tabs-wrapper .scroll-button.right,
-.nav-pills-wrapper .scroll-button.right {
-    right: -1.75rem;
-}
-
-.nav-tabs-wrapper .scroll-button:hover,
-.nav-pills-wrapper .scroll-button:hover {
     transform: translateY(-50%) scale(1.1);
+}
+
+.scroll-button.left {
+    left: 0.5rem;
+}
+
+.scroll-button.right {
+    right: 0.5rem;
 }
 
 /* Subcategory nav styles */
@@ -210,18 +194,6 @@
     background: var(--bs-primary);
     border-radius: 1.5rem;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.toggle-slider input[type="radio"]#24h:checked ~ .slider {
-    transform: translateX(0);
-}
-
-.toggle-slider input[type="radio"]#48h:checked ~ .slider {
-    transform: translateX(4rem);
-}
-
-.toggle-slider input[type="radio"]#72h:checked ~ .slider {
-    transform: translateX(8rem);
 }
 
 /* Article Card Styles */
