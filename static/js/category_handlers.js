@@ -257,8 +257,7 @@ function updateDisplay(data) {
 
     try {
         if (!data || !data.categories) {
-            showLoadingState();
-            return;
+            throw new Error('Invalid response format');
         }
         
         if (data.categories.length === 0) {
@@ -268,7 +267,6 @@ function updateDisplay(data) {
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <p class="mt-2">Please wait while we fetch the latest articles...</p>
                 </div>
             `;
             setTimeout(() => reloadArticles(), 2000);
@@ -281,6 +279,7 @@ function updateDisplay(data) {
             const categorySection = document.createElement('div');
             categorySection.className = 'category-section mb-5';
             categorySection.dataset.categoryId = category.categoria_id || '';
+            categorySection.dataset.loaded = 'true';
             
             categorySection.innerHTML = `
                 <h2 class="mb-3">${category.nombre || 'Unnamed Category'}</h2>

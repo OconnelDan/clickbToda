@@ -56,19 +56,27 @@ from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, a
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-def get_filtered_articles(start_date, end_date):
-    return db.session.query(
+def get_filtered_articles(start_date, end_date, event_ids=None):
+    query = db.session.query(
         Articulo,
         Periodico
     ).join(
-        Periodico
+        Periodico,
+        Articulo.periodico_id == Periodico.periodico_id
     ).filter(
         Articulo.updated_on.between(start_date, end_date)
-    ).order_by(
-        desc(Articulo.updated_on)
-    ).options(
-        joinedload(Articulo.periodico)
     )
+    
+    if event_ids:
+        query = query.join(
+            articulo_evento,
+            and_(
+                Articulo.articulo_id == articulo_evento.c.articulo_id,
+                articulo_evento.c.evento_id.in_(event_ids)
+            )
+        )
+    
+    return query.order_by(desc(Articulo.updated_on))
 
 @cache.memoize(timeout=60)
 def get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date):
@@ -124,19 +132,20 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
 
         organized_data = {}
         
+        # Get all event IDs first
         event_ids = [event.evento_id for event in events]
-        articles_query = get_filtered_articles(start_date, end_date).filter(
-            articulo_evento.c.evento_id.in_(event_ids)
-        )
         
+        # Fetch articles in a single query with proper joins
+        articles_query = get_filtered_articles(start_date, end_date, event_ids)
+        
+        # Organize articles by event
         articles_by_event = {}
-        for article, periodico in articles_query:
-            event_ids = [ae.evento_id for ae in article.eventos]
-            for event_id in event_ids:
-                if event_id not in articles_by_event:
-                    articles_by_event[event_id] = []
-                articles_by_event[event_id].append((article, periodico))
-        
+        for article, periodico in articles_query.all():
+            for event in article.eventos:
+                if event.evento_id not in articles_by_event:
+                    articles_by_event[event.evento_id] = []
+                articles_by_event[event.evento_id].append((article, periodico))
+
         for event in events:
             articles = articles_by_event.get(event.evento_id, [])
             
@@ -208,29 +217,24 @@ def index():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
-        categories = db.session.query(
-            Categoria,
-            func.count(distinct(Articulo.articulo_id)).label('article_count')
-        ).join(
-            Subcategoria
-        ).join(
-            Evento
-        ).join(
-            articulo_evento
-        ).join(
-            Articulo,
-            and_(
-                articulo_evento.c.articulo_id == Articulo.articulo_id,
-                Articulo.updated_on.between(start_date, end_date)
-            )
-        ).group_by(
-            Categoria.categoria_id
-        ).order_by(
-            desc('article_count')
-        ).all()
+        # Pre-fetch initial data for faster loading
+        initial_data = get_cached_articles(None, None, time_filter, start_date, end_date)
+        
+        categories = [
+            {
+                'Categoria': Categoria(categoria_id=cat['categoria_id'], nombre=cat['nombre']),
+                'article_count': sum(
+                    len(event['articles']) 
+                    for subcat in cat.get('subcategories', [])
+                    for event in subcat.get('events', [])
+                )
+            }
+            for cat in initial_data.get('categories', [])
+        ]
 
         return render_template('index.html', 
                            categories=categories,
+                           initial_data=initial_data,
                            selected_date=datetime.now().date())
     except Exception as e:
         logger.error(f"Error in index route: {str(e)}")
@@ -270,6 +274,28 @@ def get_categories():
         } for cat in categories])
     except Exception as e:
         logger.error(f"Error in get_categories: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/subcategories')
+def get_subcategories():
+    try:
+        category_id = request.args.get('category_id')
+        if not category_id:
+            return jsonify([])
+        
+        subcategories = db.session.query(
+            Subcategoria.subcategoria_id.label('id'),
+            Subcategoria.nombre
+        ).filter_by(
+            categoria_id=category_id
+        ).all()
+        
+        return jsonify([{
+            'id': subcat.id,
+            'nombre': subcat.nombre
+        } for subcat in subcategories])
+    except Exception as e:
+        logger.error(f"Error in get_subcategories: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/article/<int:article_id>')
@@ -331,28 +357,6 @@ def get_article_details(article_id):
         logger.error(f"Error fetching article details: {str(e)}")
         return jsonify({'error': 'Failed to load article details', 'details': str(e)}), 500
 
-@app.route('/api/subcategories')
-def get_subcategories():
-    try:
-        category_id = request.args.get('category_id')
-        if not category_id:
-            return jsonify([])
-        
-        subcategories = db.session.query(
-            Subcategoria.subcategoria_id.label('id'),
-            Subcategoria.nombre
-        ).filter_by(
-            categoria_id=category_id
-        ).all()
-        
-        return jsonify([{
-            'id': subcat.id,
-            'nombre': subcat.nombre
-        } for subcat in subcategories])
-    except Exception as e:
-        logger.error(f"Error in get_subcategories: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/articles')
 def get_articles():
     try:
@@ -409,3 +413,6 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
