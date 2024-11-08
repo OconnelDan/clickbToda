@@ -23,6 +23,16 @@
 }
 
 /* Category Navigation Styles */
+.category-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    background: var(--bs-body-bg);
+    padding: 0.5rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+}
+
 .nav-tabs-wrapper, .nav-pills-wrapper {
     position: relative;
     overflow: hidden;
@@ -47,8 +57,9 @@
 
 .nav-tabs .nav-link, .nav-pills .nav-link {
     white-space: nowrap;
-    padding: 0.5rem 1rem;
+    padding: 0.35rem 0.75rem;
     transition: all 0.3s ease;
+    font-size: 0.9rem;
 }
 
 /* Update active tab styles */
@@ -69,8 +80,8 @@
     top: 50%;
     transform: translateY(-50%);
     z-index: 10;
-    width: 2rem;
-    height: 2rem;
+    width: 1.75rem;
+    height: 1.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -82,6 +93,7 @@
     visibility: hidden;
     transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out, transform 0.3s ease-in-out;
     cursor: pointer;
+    font-size: 0.8rem;
 }
 
 .nav-tabs-wrapper .scroll-button.visible,
@@ -98,12 +110,12 @@
 
 .nav-tabs-wrapper .scroll-button.left,
 .nav-pills-wrapper .scroll-button.left {
-    left: -2rem;
+    left: -1.75rem;
 }
 
 .nav-tabs-wrapper .scroll-button.right,
 .nav-pills-wrapper .scroll-button.right {
-    right: -2rem;
+    right: -1.75rem;
 }
 
 .nav-tabs-wrapper .scroll-button:hover,
@@ -113,10 +125,16 @@
 
 /* Subcategory nav styles */
 .subcategory-nav {
-    margin-top: 1rem;
+    position: sticky;
+    top: 3.5rem;
+    z-index: 1019;
+    background: var(--bs-body-bg);
+    padding: 0.25rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    margin-top: 0.5rem;
 }
 
 .subcategory-nav.visible {
@@ -124,6 +142,7 @@
     visibility: visible;
 }
 
+/* Rest of the existing styles remain unchanged */
 /* Unified heading styles */
 .category-section h2,
 .subcategory-section h3 {
