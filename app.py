@@ -304,30 +304,7 @@ def get_article_details(article_id):
     try:
         logger.info(f"Fetching details for article ID: {article_id}")
         
-        article = db.session.query(
-            Articulo.articulo_id,
-            Articulo.titular,
-            Articulo.subtitular,
-            Articulo.fecha_publicacion,
-            Articulo.url,
-            Articulo.paywall,
-            Articulo.cuerpo,
-            Articulo.gpt_resumen,
-            Articulo.gpt_opinion,
-            Articulo.gpt_palabras_clave,
-            Articulo.gpt_cantidad_fuentes_citadas,
-            Articulo.agencia,
-            Periodico.logo_url,
-            Periodico.nombre.label('periodico_nombre'),
-            Periodista.nombre.label('periodista_nombre'),
-            Periodista.apellido
-        ).join(
-            Periodico,
-            Articulo.periodico_id == Periodico.periodico_id
-        ).outerjoin(
-            Periodista,
-            Articulo.periodista_id == Periodista.periodista_id
-        ).filter(
+        article = db.session.query(Articulo).filter(
             Articulo.articulo_id == article_id
         ).options(
             joinedload(Articulo.periodico),
@@ -343,9 +320,9 @@ def get_article_details(article_id):
             'titular': article.titular,
             'subtitular': article.subtitular,
             'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None,
-            'periodico_logo': article.logo_url,
-            'periodico_nombre': article.periodico_nombre,
-            'periodista': f"{article.periodista_nombre} {article.apellido}" if article.periodista_nombre else None,
+            'periodico_logo': article.periodico.logo_url if article.periodico else None,
+            'periodico_nombre': article.periodico.nombre if article.periodico else None,
+            'periodista': f"{article.periodista.nombre} {article.periodista.apellido}" if article.periodista else None,
             'url': article.url,
             'paywall': article.paywall,
             'cuerpo': article.cuerpo,
