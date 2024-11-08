@@ -360,6 +360,7 @@ function updateDisplay(data) {
                                                                         <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
                                                                             ${article.titular || 'No Title'}
                                                                         </h5>
+                                                                        ${article.gpt_opinion ? `<div class="article-opinion">${article.gpt_opinion}</div>` : ''}
                                                                         ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
                                                                     </div>
                                                                 </div>
@@ -389,9 +390,9 @@ function updateDisplay(data) {
         });
 
         initializeCarousels();
+        initializeScrollButtons();
     } catch (error) {
         console.error('Error updating display:', error);
-        showError('Error loading content. Retrying...');
-        setTimeout(() => reloadArticles(), 2000);
+        showError('Failed to update display', error);
     }
 }

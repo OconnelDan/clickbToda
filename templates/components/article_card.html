@@ -6,6 +6,9 @@
             <h5 class="card-title article-title {% if article.paywall %}text-muted{% endif %}">
                 {{ article.titular }}
             </h5>
+            {% if article.gpt_opinion %}
+            <div class="article-opinion">{{ article.gpt_opinion }}</div>
+            {% endif %}
             {% if article.paywall %}
             <span class="badge bg-secondary">Paywall</span>
             {% endif %}
