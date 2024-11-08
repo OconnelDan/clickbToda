@@ -10,14 +10,14 @@
                     All Categories
                 </button>
             </li>
-            {% for category in categories %}
+            {% for category, article_count in categories %}
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="category-{{ category.Categoria.categoria_id }}-tab" 
-                        data-bs-toggle="tab" data-bs-target="#category-{{ category.Categoria.categoria_id }}" 
-                        type="button" role="tab" data-category-id="{{ category.Categoria.categoria_id }}"
-                        aria-controls="category-{{ category.Categoria.categoria_id }}" aria-selected="false">
-                    {{ category.Categoria.nombre }}
-                    <span class="badge bg-secondary ms-1">{{ category.article_count }}</span>
+                <button class="nav-link" id="category-{{ category.categoria_id }}-tab" 
+                        data-bs-toggle="tab" data-bs-target="#category-{{ category.categoria_id }}" 
+                        type="button" role="tab" data-category-id="{{ category.categoria_id }}"
+                        aria-controls="category-{{ category.categoria_id }}" aria-selected="false">
+                    {{ category.nombre }}
+                    <span class="badge bg-secondary ms-1">{{ article_count }}</span>
                 </button>
             </li>
             {% endfor %}

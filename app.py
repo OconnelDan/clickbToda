@@ -133,22 +133,23 @@ def get_navigation():
 def index():
     try:
         time_filter = request.args.get('time_filter', '24h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        hours = int(time_filter[:-1])
         
         categories = db.session.query(
-            Categoria
+            Categoria,
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
         ).join(
-            Subcategoria
+            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
         ).join(
-            Evento
+            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
-            articulo_evento
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).join(
-            Articulo
-        ).filter(
-            Articulo.updated_on >= start_date
-        ).distinct().all()
+            Articulo, and_(
+                Articulo.articulo_id == articulo_evento.c.articulo_id,
+                Articulo.updated_on >= datetime.now() - timedelta(hours=hours)
+            )
+        ).group_by(Categoria.categoria_id).all()
         
         return render_template('index.html', 
                            categories=categories,
