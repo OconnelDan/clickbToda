@@ -4,17 +4,19 @@ function initializeTabNavigation() {
     
     if (!categoryTabs || !subcategoryTabs) return;
     
+    let selectedCategoryId = null;
+    
     categoryTabs.addEventListener('click', function(e) {
         const tabButton = e.target.closest('[data-bs-toggle="tab"]');
         if (!tabButton) return;
         
-        const categoryId = tabButton.dataset.categoryId;
-        if (!categoryId) {
+        selectedCategoryId = tabButton.dataset.categoryId;
+        if (!selectedCategoryId) {
             subcategoryTabs.innerHTML = '';
             return;
         }
         
-        fetch(`/api/subcategories?category_id=${categoryId}`)
+        fetch(`/api/subcategories?category_id=${selectedCategoryId}`)
             .then(response => response.json())
             .then(subcategories => {
                 subcategoryTabs.innerHTML = subcategories.map(subcat => `
@@ -24,12 +26,47 @@ function initializeTabNavigation() {
                                 data-subcategory-id="${subcat.id}"
                                 type="button">
                             ${subcat.nombre}
+                            <span class="badge bg-secondary ms-1">${subcat.article_count || 0}</span>
                         </button>
                     </li>
                 `).join('');
+                
+                // Initialize subcategory click handlers
+                subcategoryTabs.querySelectorAll('[data-subcategory-id]').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const subcategoryId = this.dataset.subcategoryId;
+                        loadArticlesForCategoryAndSubcategory(selectedCategoryId, subcategoryId);
+                    });
+                });
             })
             .catch(error => console.error('Error loading subcategories:', error));
     });
+}
+
+function loadArticlesForCategoryAndSubcategory(categoryId, subcategoryId) {
+    const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
+    const eventsContent = document.getElementById('events-content');
+    
+    if (eventsContent) {
+        eventsContent.innerHTML = `
+            <div class="text-center my-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading articles...</p>
+            </div>
+        `;
+    }
+    
+    fetch(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}&time_filter=${timeFilter}`)
+        .then(response => response.json())
+        .then(data => {
+            updateDisplay(data);
+        })
+        .catch(error => {
+            console.error('Error loading articles:', error);
+            showError('Failed to load articles');
+        });
 }
 
 function updateDisplay(data) {
@@ -44,13 +81,10 @@ function updateDisplay(data) {
         if (data.categories.length === 0) {
             eventsContent.innerHTML = `
                 <div class="alert alert-info">
-                    <h4 class="alert-heading">Loading Content...</h4>
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
+                    <h4 class="alert-heading">No articles found</h4>
+                    <p>Try selecting a different category or time range.</p>
                 </div>
             `;
-            setTimeout(() => reloadArticles(), 2000);
             return;
         }
 
@@ -132,7 +166,6 @@ function updateDisplay(data) {
         
         initializeCarousels();
         initializeScrollButtons();
-        initializeTabNavigation();
         
     } catch (error) {
         console.error('Error updating display:', error);
