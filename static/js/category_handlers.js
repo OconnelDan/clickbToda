@@ -40,8 +40,11 @@ function initializeTabNavigation() {
         if (!tabButton) return;
         
         selectedCategoryId = tabButton.dataset.categoryId;
-        if (selectedCategoryId === lastLoadedCategoryId) return;
-        lastLoadedCategoryId = selectedCategoryId;
+        if (!selectedCategoryId) return;
+        
+        // Remove active class from all tabs and add to selected
+        categoryTabs.querySelectorAll('.nav-link').forEach(tab => tab.classList.remove('active'));
+        tabButton.classList.add('active');
         
         showLoadingState();
         loadCategoryContent(selectedCategoryId);
@@ -49,23 +52,46 @@ function initializeTabNavigation() {
 }
 
 function loadDefaultCategory() {
-    const defaultCategoryTab = document.querySelector('#categoryTabs .nav-link.active');
-    if (defaultCategoryTab && defaultCategoryTab.dataset.categoryId) {
-        loadCategoryContent(defaultCategoryTab.dataset.categoryId);
+    const categoryTabs = document.querySelectorAll('#categoryTabs .nav-link');
+    if (categoryTabs.length > 0) {
+        // Remove active class from any previously active tabs
+        categoryTabs.forEach(tab => tab.classList.remove('active'));
+        // Set the first category as active
+        categoryTabs[0].classList.add('active');
+        // Load content for the first category
+        const categoryId = categoryTabs[0].dataset.categoryId;
+        if (categoryId) {
+            loadCategoryContent(categoryId);
+        }
     }
 }
 
 function loadCategoryContent(categoryId) {
+    if (!categoryId) {
+        console.error('No category ID provided');
+        showError('Invalid category selection');
+        return;
+    }
+
     const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
     const subcategoryTabs = document.getElementById('subcategoryTabs');
     
     // Clear existing subcategories
     subcategoryTabs.innerHTML = '';
     
+    // Show loading state before fetching
+    showLoadingState();
+    
     // Fetch subcategories and articles simultaneously
     Promise.all([
-        fetch(`/api/subcategories?category_id=${categoryId}`).then(r => r.json()),
-        fetch(`/api/articles?category_id=${categoryId}&time_filter=${timeFilter}`).then(r => r.json())
+        fetch(`/api/subcategories?category_id=${categoryId}`).then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        }),
+        fetch(`/api/articles?category_id=${categoryId}&time_filter=${timeFilter}`).then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
     ])
     .then(([subcategories, articlesData]) => {
         updateSubcategoryTabs(subcategories);
@@ -74,7 +100,7 @@ function loadCategoryContent(categoryId) {
     })
     .catch(error => {
         console.error('Error loading category content:', error);
-        showError('Failed to load category content');
+        showError(`Failed to load category content: ${error.message}`);
         hideLoadingState();
     });
 }
@@ -82,6 +108,11 @@ function loadCategoryContent(categoryId) {
 function updateSubcategoryTabs(subcategories) {
     const subcategoryTabs = document.getElementById('subcategoryTabs');
     if (!subcategoryTabs) return;
+    
+    if (!Array.isArray(subcategories)) {
+        console.error('Invalid subcategories data:', subcategories);
+        return;
+    }
     
     subcategoryTabs.innerHTML = subcategories.map(subcat => `
         <li class="nav-item" role="presentation">
@@ -98,6 +129,11 @@ function updateSubcategoryTabs(subcategories) {
     // Initialize subcategory click handlers
     subcategoryTabs.querySelectorAll('[data-subcategory-id]').forEach(button => {
         button.addEventListener('click', function() {
+            // Remove active class from all subcategory tabs
+            subcategoryTabs.querySelectorAll('.nav-link').forEach(tab => tab.classList.remove('active'));
+            // Add active class to clicked tab
+            this.classList.add('active');
+            
             const subcategoryId = this.dataset.subcategoryId;
             loadArticlesForSubcategory(subcategoryId);
         });
@@ -105,18 +141,26 @@ function updateSubcategoryTabs(subcategories) {
 }
 
 function loadArticlesForSubcategory(subcategoryId) {
+    if (!subcategoryId) {
+        console.error('No subcategory ID provided');
+        return;
+    }
+
     const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
     showLoadingState();
     
     fetch(`/api/articles?subcategory_id=${subcategoryId}&time_filter=${timeFilter}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
         .then(data => {
             updateDisplay(data);
             hideLoadingState();
         })
         .catch(error => {
             console.error('Error loading subcategory articles:', error);
-            showError('Failed to load articles');
+            showError(`Failed to load articles: ${error.message}`);
             hideLoadingState();
         });
 }
@@ -142,7 +186,7 @@ function hideLoadingState() {
     }
 }
 
-function showError(message, error = null, retryCallback = null) {
+function showError(message, error = null) {
     console.error('Error:', message, error);
     const eventsContent = document.getElementById('events-content');
     if (!eventsContent) return;
@@ -150,9 +194,9 @@ function showError(message, error = null, retryCallback = null) {
     const errorDiv = document.createElement('div');
     errorDiv.className = 'alert alert-danger alert-dismissible fade show';
     errorDiv.innerHTML = `
-        <h4 class="alert-heading">${message}</h4>
-        ${error ? `<p class="text-muted">Technical details: ${error.message || error}</p>` : ''}
-        ${retryCallback ? '<button class="btn btn-outline-danger btn-sm mt-2" onclick="retryCallback()">Retry</button>' : ''}
+        <h4 class="alert-heading">Error</h4>
+        <p>${message}</p>
+        ${error ? `<p class="text-muted small">Technical details: ${error.message || error}</p>` : ''}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     
