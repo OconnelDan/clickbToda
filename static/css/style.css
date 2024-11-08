@@ -22,14 +22,41 @@
     display: none;
 }
 
+/* Mobile Carousel Layout */
+.mobile-carousel-layout {
+    display: flex;
+    width: 100%;
+    gap: 1rem;
+    scroll-snap-align: start;
+}
+
 /* Event Details Mobile Styles */
 .event-details-mobile {
+    flex: 0 0 30%;
     background: var(--bs-body-bg);
     padding: 1rem;
-    margin-bottom: 1rem;
     border-radius: 0.5rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     transition: opacity 0.3s ease;
+    height: fit-content;
+    position: sticky;
+    top: 0;
+    margin-bottom: 1rem;
+}
+
+.articles-section {
+    flex: 0 0 70%;
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 1rem;
+}
+
+.articles-section::-webkit-scrollbar {
+    display: none;
 }
 
 .event-details-mobile .event-title {
@@ -53,8 +80,16 @@
 
 /* Hide event details on desktop */
 @media (min-width: 768px) {
-    .event-details-mobile {
+    .mobile-carousel-layout {
         display: none;
+    }
+}
+
+/* Article Card Styles for Mobile Layout */
+@media (max-width: 767px) {
+    .article-card {
+        flex: 0 0 calc(100% - 1rem);
+        width: calc(100% - 1rem);
     }
 }
 

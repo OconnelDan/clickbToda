@@ -4,11 +4,16 @@
             {% if not category.articles %}
             <div class="loading-placeholder">Loading articles...</div>
             {% else %}
-            <div class="event-details-mobile d-md-none">
-                <h4 class="event-title"></h4>
-                <p class="event-description"></p>
-                <div class="event-meta">
-                    <small class="text-muted event-date"></small>
+            <div class="mobile-carousel-layout d-md-none">
+                <div class="event-details-mobile">
+                    <h4 class="event-title"></h4>
+                    <p class="event-description"></p>
+                    <div class="event-meta">
+                        <small class="text-muted event-date"></small>
+                    </div>
+                </div>
+                <div class="articles-section">
+                    <!-- Articles will be dynamically added here -->
                 </div>
             </div>
             {% endif %}
