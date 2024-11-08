@@ -1,3 +1,9 @@
+:root {
+    --nav-height: 2.75rem;
+    --subnav-height: 2.25rem;
+    --total-nav-height: calc(var(--nav-height) + var(--subnav-height));
+}
+
 /* Base mobile styles (up to 767px) */
 .articles-carousel {
     position: relative;
@@ -22,32 +28,42 @@
     display: none;
 }
 
+/* Sticky Navigation Container */
+.sticky-nav-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    background: var(--bs-body-bg);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
 /* Category Navigation Styles */
 .category-nav {
-    position: sticky;
-    top: 0;
-    z-index: 1020;
+    height: var(--nav-height);
     background: var(--bs-body-bg);
-    padding: 0.5rem 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-bottom: 1rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.1);
 }
 
 .nav-tabs-wrapper, .nav-pills-wrapper {
     position: relative;
     overflow: hidden;
     padding: 0 2.5rem;
+    height: 100%;
 }
 
 .nav-tabs, .nav-pills {
     display: flex;
     flex-wrap: nowrap;
     width: 100%;
+    height: 100%;
     overflow: hidden;
     margin: 0;
     padding: 0;
     white-space: nowrap;
-    transition: transform 0.3s ease;
+    align-items: center;
 }
 
 .nav-tabs .nav-item, .nav-pills .nav-item {
@@ -74,14 +90,27 @@
     color: var(--bs-light);
 }
 
+/* Subcategory nav styles */
+.subcategory-nav {
+    height: var(--subnav-height);
+    background: var(--bs-body-bg);
+    padding: 0.15rem 0;
+    border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.1);
+}
+
+/* Main content padding to account for fixed navs */
+.container {
+    padding-top: calc(var(--total-nav-height) + 1rem);
+}
+
 /* Scroll button styles */
 .scroll-button {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
     z-index: 10;
-    width: 2rem;
-    height: 2rem;
+    width: 1.75rem;
+    height: 1.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -90,7 +119,7 @@
     border-radius: 50%;
     color: var(--bs-light);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.875rem;
     transition: all 0.2s ease-in-out;
     opacity: 0.8;
 }
@@ -106,17 +135,6 @@
 
 .scroll-button.right {
     right: 0.5rem;
-}
-
-/* Subcategory nav styles */
-.subcategory-nav {
-    position: sticky;
-    top: 3.5rem;
-    z-index: 1019;
-    background: var(--bs-body-bg);
-    padding: 0.25rem 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-top: 0.5rem;
 }
 
 /* Unified heading styles */
@@ -137,8 +155,13 @@
     font-size: 1.5rem;
 }
 
-/* Hide scroll buttons on mobile and tablet */
+/* Mobile optimizations */
 @media (max-width: 991px) {
+    :root {
+        --nav-height: 2.5rem;
+        --subnav-height: 2rem;
+    }
+
     .scroll-button {
         display: none !important;
     }
@@ -146,28 +169,27 @@
     .articles-carousel,
     .nav-tabs-wrapper,
     .nav-pills-wrapper {
-        padding: 0;  /* Remove padding since buttons are hidden */
+        padding: 0;
     }
     
     .carousel-wrapper {
-        -webkit-overflow-scrolling: touch;  /* Ensure smooth scrolling on iOS */
+        -webkit-overflow-scrolling: touch;
         scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
-    }
-
-    /* Make navigation more compact on mobile */
-    .category-nav {
-        padding: 0.25rem 0;
-    }
-
-    .subcategory-nav {
-        top: 2.75rem;
-        padding: 0.15rem 0;
     }
 
     .nav-tabs .nav-link, .nav-pills .nav-link {
         padding: 0.25rem 0.5rem;
         font-size: 0.85rem;
+    }
+
+    .category-nav,
+    .subcategory-nav {
+        padding: 0.15rem 0;
+    }
+
+    .container {
+        padding-top: calc(var(--total-nav-height) + 0.5rem);
     }
 }
 

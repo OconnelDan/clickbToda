@@ -1,27 +1,29 @@
-<div class="category-nav mb-4">
-    <div class="nav-tabs-wrapper">
-        <button class="scroll-button left" data-direction="left">←</button>
-        <button class="scroll-button right" data-direction="right">→</button>
-        <ul class="nav nav-tabs" id="categoryTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="all-categories-tab" data-bs-toggle="tab" 
-                        data-bs-target="#all-categories" type="button" role="tab" 
-                        aria-controls="all-categories" aria-selected="true">
-                    All Categories
-                </button>
-            </li>
-            {% for category in categories %}
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="category-{{ category.Categoria.categoria_id }}-tab" 
-                        data-bs-toggle="tab" data-bs-target="#category-{{ category.Categoria.categoria_id }}" 
-                        type="button" role="tab" data-category-id="{{ category.Categoria.categoria_id }}"
-                        aria-controls="category-{{ category.Categoria.categoria_id }}" aria-selected="false">
-                    {{ category.Categoria.nombre }}
-                    <span class="badge bg-secondary ms-1">{{ category.article_count }}</span>
-                </button>
-            </li>
-            {% endfor %}
-        </ul>
+<div class="sticky-nav-container">
+    <div class="category-nav">
+        <div class="nav-tabs-wrapper">
+            <button class="scroll-button left" data-direction="left">←</button>
+            <button class="scroll-button right" data-direction="right">→</button>
+            <ul class="nav nav-tabs" id="categoryTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="all-categories-tab" data-bs-toggle="tab" 
+                            data-bs-target="#all-categories" type="button" role="tab" 
+                            aria-controls="all-categories" aria-selected="true">
+                        All Categories
+                    </button>
+                </li>
+                {% for category in categories %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="category-{{ category.Categoria.categoria_id }}-tab" 
+                            data-bs-toggle="tab" data-bs-target="#category-{{ category.Categoria.categoria_id }}" 
+                            type="button" role="tab" data-category-id="{{ category.Categoria.categoria_id }}"
+                            aria-controls="category-{{ category.Categoria.categoria_id }}" aria-selected="false">
+                        {{ category.Categoria.nombre }}
+                        <span class="badge bg-secondary ms-1">{{ category.article_count }}</span>
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
     </div>
     <div class="subcategory-nav">
         <div class="nav-pills-wrapper">
