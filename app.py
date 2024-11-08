@@ -253,8 +253,8 @@ def get_navigation():
                     c.nombre AS categoria_nombre, 
                     s.subcategoria_id, 
                     s.nombre AS subcategoria_nombre, 
-                    COUNT(DISTINCT a.articulo_id) AS cuenta_articulos_subcategoria,
-                    SUM(COUNT(DISTINCT a.articulo_id)) OVER (
+                    COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL) AS cuenta_articulos_subcategoria,
+                    SUM(COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL)) OVER (
                         PARTITION BY c.categoria_id
                     ) AS cuenta_articulos_categoria
                 FROM 
@@ -272,10 +272,12 @@ def get_navigation():
             )
             SELECT *
             FROM ArticleCounts
+            WHERE cuenta_articulos_categoria > 0
             ORDER BY 
                 cuenta_articulos_categoria DESC NULLS LAST,
-                categoria_id,
-                cuenta_articulos_subcategoria DESC NULLS LAST
+                categoria_nombre,
+                cuenta_articulos_subcategoria DESC NULLS LAST,
+                subcategoria_nombre
         ''')
         
         result = db.session.execute(query, {'hours': hours})
@@ -290,7 +292,7 @@ def get_navigation():
                 current_category = {
                     'categoria_id': row.categoria_id,
                     'nombre': row.categoria_nombre,
-                    'article_count': row.cuenta_articulos_categoria or 0,
+                    'article_count': row.cuenta_articulos_categoria,
                     'subcategories': []
                 }
             
@@ -298,7 +300,7 @@ def get_navigation():
                 current_category['subcategories'].append({
                     'subcategoria_id': row.subcategoria_id,
                     'nombre': row.subcategoria_nombre,
-                    'article_count': row.cuenta_articulos_subcategoria or 0
+                    'article_count': row.cuenta_articulos_subcategoria
                 })
         
         if current_category is not None:
@@ -431,3 +433,6 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
