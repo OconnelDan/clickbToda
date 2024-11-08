@@ -81,6 +81,40 @@ function loadSubcategories(categoryId) {
         });
 }
 
+function initializeSubcategoryHandlers() {
+    const subcategoryTabs = document.getElementById('subcategoryTabs');
+    if (!subcategoryTabs) return;
+
+    subcategoryTabs.querySelectorAll('.nav-link').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            const subcategoryId = this.dataset.subcategoryId;
+            const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
+            
+            // Show loading state
+            document.getElementById('events-content').innerHTML = `
+                <div class="text-center my-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading articles...</p>
+                </div>
+            `;
+            
+            fetch(`/api/articles?subcategory_id=${subcategoryId}&time_filter=${timeFilter}`)
+                .then(response => response.json())
+                .then(data => {
+                    updateDisplay(data);
+                    initializeCarousels();
+                })
+                .catch(error => {
+                    console.error('Error loading subcategory articles:', error);
+                    showError('Failed to load articles. Please try again.');
+                });
+        });
+    });
+}
+
 function updateDisplay(data) {
     const eventsContent = document.getElementById('events-content');
     if (!eventsContent) return;
@@ -222,38 +256,4 @@ function showError(message) {
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     document.querySelector('.container').insertBefore(errorDiv, document.querySelector('.container').firstChild);
-}
-
-function initializeSubcategoryHandlers() {
-    const subcategoryTabs = document.getElementById('subcategoryTabs');
-    if (!subcategoryTabs) return;
-
-    subcategoryTabs.querySelectorAll('.nav-link').forEach(tab => {
-        tab.addEventListener('click', function(e) {
-            e.preventDefault();
-            const subcategoryId = this.dataset.subcategoryId;
-            const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
-            
-            // Show loading state
-            document.getElementById('events-content').innerHTML = `
-                <div class="text-center my-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-2">Loading articles...</p>
-                </div>
-            `;
-            
-            fetch(`/api/articles?subcategory_id=${subcategoryId}&time_filter=${timeFilter}`)
-                .then(response => response.json())
-                .then(data => {
-                    updateDisplay(data);
-                    initializeCarousels();
-                })
-                .catch(error => {
-                    console.error('Error loading subcategory articles:', error);
-                    showError('Failed to load articles. Please try again.');
-                });
-        });
-    });
 }

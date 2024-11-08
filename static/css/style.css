@@ -124,7 +124,7 @@
     visibility: visible;
 }
 
-/* Rest of the existing styles... */
+/* Time filter styles */
 .time-filter {
     position: relative;
     padding: 1rem;
@@ -266,4 +266,23 @@
     padding: 0.5rem;
     background: rgba(var(--bs-secondary-rgb), 0.1);
     border-radius: 0.25rem;
+}
+
+/* New styles for category headers */
+.category-header {
+    color: var(--bs-primary);
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.subcategory-header {
+    font-size: 1.5rem;
+    color: var(--bs-body-color);
+    margin-bottom: 1.5rem;
+}
+
+.event-title {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
 }
