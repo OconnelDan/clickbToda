@@ -31,20 +31,7 @@
                                             <div class="articles-carousel">
                                                 <div class="carousel-wrapper">
                                                     {% for article in event.articles %}
-                                                        <div class="article-card" data-article-id="{{ article.id }}" data-article-url="{{ article.url }}" role="button">
-                                                            <div class="card h-100">
-                                                                <div class="card-body">
-                                                                    <img src="{{ article.periodico_logo or url_for('static', filename='img/default-newspaper.svg') }}" 
-                                                                         class="newspaper-logo mb-2" alt="Newspaper logo">
-                                                                    <h5 class="card-title article-title {% if article.paywall %}text-muted{% endif %}">
-                                                                        {{ article.titular }}
-                                                                    </h5>
-                                                                    {% if article.paywall %}
-                                                                        <span class="badge bg-secondary">Paywall</span>
-                                                                    {% endif %}
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                                        {% include "components/article_card.html" %}
                                                     {% endfor %}
                                                 </div>
                                             </div>

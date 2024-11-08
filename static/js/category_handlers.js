@@ -1,302 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
-    initializeTabNavigation();
-    updateNavigation();
-    showAllCategories();
-});
-
-function initializeTabNavigation() {
-    const tabElements = document.querySelectorAll('[data-bs-toggle="tab"]');
-    tabElements.forEach(tab => {
-        tab.addEventListener('shown.bs.tab', function(event) {
-            const categoryId = event.target.dataset.categoryId;
-            if (categoryId) {
-                fetchSubcategories(categoryId);
-                loadEventsByCategory(categoryId);
-            } else {
-                hideSubcategoryTabs();
-                showAllCategories();
-            }
-        });
-    });
-
-    const subcategoryNav = document.querySelector('.subcategory-nav');
-    if (subcategoryNav) {
-        subcategoryNav.addEventListener('click', function(e) {
-            const tabButton = e.target.closest('[role="tab"]');
-            if (!tabButton) return;
-
-            const allSubcategoryTabs = subcategoryNav.querySelectorAll('[role="tab"]');
-            allSubcategoryTabs.forEach(tab => {
-                tab.classList.remove('active');
-                tab.style.transition = 'all 0.3s ease';
-            });
-            
-            tabButton.classList.add('active');
-
-            const categoryId = document.querySelector('#categoryTabs .nav-link.active').dataset.categoryId;
-            const subcategoryId = tabButton.dataset.subcategoryId;
-
-            if (categoryId && subcategoryId) {
-                loadEventsBySubcategory(categoryId, subcategoryId);
-            } else if (categoryId) {
-                loadEventsByCategory(categoryId);
-            }
-        });
-    }
-}
-
-function updateNavigation() {
-    const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
-    
-    fetchWithRetry(`/api/navigation?time_filter=${timeFilter}`)
-        .then(response => response.json())
-        .then(navigation => {
-            const categoryTabs = document.getElementById('categoryTabs');
-            if (!categoryTabs) return;
-            
-            // Keep "All Categories" tab
-            const allCategoriesTab = categoryTabs.querySelector('li:first-child');
-            categoryTabs.innerHTML = '';
-            if (allCategoriesTab) categoryTabs.appendChild(allCategoriesTab);
-            
-            navigation.forEach(category => {
-                const li = document.createElement('li');
-                li.className = 'nav-item';
-                li.setAttribute('role', 'presentation');
-                
-                li.innerHTML = `
-                    <button class="nav-link" 
-                            id="category-${category.categoria_id}-tab"
-                            data-bs-toggle="tab" 
-                            data-bs-target="#category-${category.categoria_id}"
-                            type="button" 
-                            role="tab"
-                            data-category-id="${category.categoria_id}"
-                            aria-controls="category-${category.categoria_id}"
-                            aria-selected="false">
-                        ${category.nombre}
-                        <span class="badge bg-secondary ms-1">${category.article_count}</span>
-                    </button>
-                `;
-                categoryTabs.appendChild(li);
-            });
-            
-            initializeTabNavigation();
-            initializeScrollButtons();
-        })
-        .catch(error => {
-            console.error('Error updating navigation:', error);
-            showError('Failed to update navigation');
-        });
-}
-
-function showLoadingState() {
-    const eventsContent = document.getElementById('events-content');
-    if (eventsContent) {
-        eventsContent.innerHTML = `
-            <div class="text-center my-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mt-2">Loading articles...</p>
-            </div>
-        `;
-    }
-}
-
-function showError(message, error = null, retryCallback = null) {
-    console.error('Error:', message, error);
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'alert alert-danger alert-dismissible fade show';
-    errorDiv.innerHTML = `
-        ${message}
-        ${error ? `<br><small class="text-muted">Technical details: ${error.message || error}</small>` : ''}
-        ${retryCallback ? '<button class="btn btn-outline-danger btn-sm ms-3" onclick="retryCallback()">Retry</button>' : ''}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    const container = document.querySelector('.container');
-    if (container) {
-        container.insertBefore(errorDiv, container.firstChild);
-        if (!retryCallback) {
-            setTimeout(() => errorDiv.remove(), 5000);
-        }
-    }
-}
-
-function fetchWithRetry(url, options = {}, retries = 3, delay = 1000) {
-    return new Promise((resolve, reject) => {
-        const attempt = async (attemptNumber) => {
-            try {
-                const response = await fetch(url, options);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                resolve(response);
-            } catch (error) {
-                console.error(`Attempt ${attemptNumber} failed:`, error);
-                if (attemptNumber < retries) {
-                    setTimeout(() => attempt(attemptNumber + 1), delay);
-                } else {
-                    reject(error);
-                }
-            }
-        };
-        attempt(1);
-    });
-}
-
-function fetchSubcategories(categoryId) {
-    const subcategoryNav = document.querySelector('.subcategory-nav');
-    if (!subcategoryNav) return;
-
-    fetchWithRetry(`/api/subcategories?category_id=${categoryId}`)
-        .then(response => response.json())
-        .then(subcategories => {
-            return fetchWithRetry(`/api/articles?category_id=${categoryId}`)
-                .then(response => response.json())
-                .then(data => {
-                    const subcatsWithEvents = new Set();
-                    data.categories[0]?.subcategories.forEach(subcat => {
-                        if (subcat.events && subcat.events.length > 0) {
-                            subcatsWithEvents.add(subcat.subcategoria_id);
-                        }
-                    });
-
-                    const filteredSubcats = subcategories.filter(subcat => 
-                        subcatsWithEvents.has(subcat.id)
-                    );
-
-                    if (filteredSubcats.length > 0) {
-                        updateSubcategoryTabs(filteredSubcats);
-                        requestAnimationFrame(() => {
-                            subcategoryNav.classList.add('visible');
-                        });
-                    } else {
-                        hideSubcategoryTabs();
-                    }
-                });
-        })
-        .catch(error => {
-            console.error('Error fetching subcategories:', error);
-            hideSubcategoryTabs();
-            showError('Error loading subcategories', error, () => fetchSubcategories(categoryId));
-        });
-}
-
-function updateSubcategoryTabs(subcategories) {
-    const subcategoryTabs = document.getElementById('subcategoryTabs');
-    if (!subcategoryTabs) return;
-
-    subcategoryTabs.innerHTML = `
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" role="tab" data-subcategory-id="">
-                All
-            </button>
-        </li>
-        ${subcategories.map(subcategory => `
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" role="tab" data-subcategory-id="${subcategory.id}">
-                    ${subcategory.nombre || 'Unnamed'}
-                </button>
-            </li>
-        `).join('')}
-    `;
-
-    initializeScrollButtons();
-}
-
-function hideSubcategoryTabs() {
-    const subcategoryNav = document.querySelector('.subcategory-nav');
-    if (!subcategoryNav) return;
-    
-    subcategoryNav.classList.remove('visible');
-}
-
-function showAllCategories() {
-    showLoadingState();
-    
-    fetchWithRetry('/api/articles')
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            if (!data || typeof data !== 'object') {
-                throw new Error('Invalid response format: response is not an object');
-            }
-            if (!Array.isArray(data.categories)) {
-                throw new Error('Invalid response format: missing or invalid categories array');
-            }
-            
-            updateDisplay(data);
-            hideSubcategoryTabs();
-        })
-        .catch(error => {
-            console.error('Error loading events:', error);
-            showError('Failed to load articles', error, showAllCategories);
-            const eventsContent = document.getElementById('events-content');
-            if (eventsContent) {
-                eventsContent.innerHTML = `
-                    <div class="alert alert-warning">
-                        <h4 class="alert-heading">Unable to load articles</h4>
-                        <p>${error.message || 'An unexpected error occurred'}</p>
-                        <hr>
-                        <button onclick="showAllCategories()" class="btn btn-outline-warning">Try Again</button>
-                    </div>
-                `;
-            }
-        });
-}
-
-function loadEventsByCategory(categoryId) {
-    if (!categoryId) {
-        console.error('Invalid category ID');
-        return;
-    }
-    
-    showLoadingState();
-    
-    fetchWithRetry(`/api/articles?category_id=${categoryId}`)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            if (!data.categories) throw new Error('Invalid response format: missing categories');
-            updateDisplay(data);
-        })
-        .catch(error => {
-            console.error('Error loading category events:', error);
-            showError(`Failed to load events for category ${categoryId}`, error, () => loadEventsByCategory(categoryId));
-            showAllCategories();
-        });
-}
-
-function loadEventsBySubcategory(categoryId, subcategoryId) {
-    if (!categoryId || !subcategoryId) {
-        console.error('Invalid category or subcategory ID');
-        return;
-    }
-    
-    showLoadingState();
-    
-    fetchWithRetry(`/api/articles?category_id=${categoryId}&subcategory_id=${subcategoryId}`)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            if (!data.categories) throw new Error('Invalid response format: missing categories');
-            updateDisplay(data);
-        })
-        .catch(error => {
-            console.error('Error loading subcategory events:', error);
-            showError(`Failed to load events for subcategory ${subcategoryId}`, error, () => loadEventsBySubcategory(categoryId, subcategoryId));
-            loadEventsByCategory(categoryId);
-        });
-}
-
+// Keep existing code until updateDisplay function
 function updateDisplay(data) {
     const eventsContent = document.getElementById('events-content');
     if (!eventsContent) return;
@@ -387,12 +89,37 @@ function updateDisplay(data) {
         document.querySelectorAll('.article-card').forEach(card => {
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');
+            card.addEventListener('click', function() {
+                const url = this.dataset.articleUrl;
+                if (url) {
+                    window.open(url, '_blank');
+                }
+            });
         });
-
+        
         initializeCarousels();
         initializeScrollButtons();
+        
     } catch (error) {
         console.error('Error updating display:', error);
         showError('Failed to update display', error);
     }
+}
+
+function showError(message, error = null, retryCallback = null) {
+    console.error('Error:', message, error);
+    const eventsContent = document.getElementById('events-content');
+    if (!eventsContent) return;
+
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger alert-dismissible fade show';
+    errorDiv.innerHTML = `
+        <h4 class="alert-heading">${message}</h4>
+        ${error ? `<p class="text-muted">Technical details: ${error.message || error}</p>` : ''}
+        ${retryCallback ? '<button class="btn btn-outline-danger btn-sm mt-2" onclick="retryCallback()">Retry</button>' : ''}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    eventsContent.innerHTML = '';
+    eventsContent.appendChild(errorDiv);
 }

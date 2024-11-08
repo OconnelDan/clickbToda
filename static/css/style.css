@@ -124,7 +124,25 @@
     visibility: visible;
 }
 
-/* Rest of the existing styles... */
+/* Unified heading styles */
+.category-section h2,
+.subcategory-section h3 {
+    color: var(--bs-primary);
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+}
+
+.category-section h2 {
+    font-size: 1.75rem;
+}
+
+.subcategory-section h3 {
+    font-size: 1.5rem;
+}
+
+/* Time filter styles */
 .time-filter {
     position: relative;
     padding: 1rem;
