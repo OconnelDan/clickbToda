@@ -45,7 +45,7 @@ login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 
 # Import models after db initialization
-from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, ArticuloEvento
+from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, articulo_evento
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -58,6 +58,7 @@ def load_user(user_id):
         logger.error(f"Error loading user: {str(e)}")
         return None
 
+# Authentication routes remain unchanged
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
@@ -168,10 +169,10 @@ def index():
         ).outerjoin(
             Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).outerjoin(
-            ArticuloEvento, ArticuloEvento.evento_id == Evento.evento_id
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).outerjoin(
             Articulo, and_(
-                Articulo.articulo_id == ArticuloEvento.articulo_id,
+                Articulo.articulo_id == articulo_evento.c.articulo_id,
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).group_by(
@@ -227,9 +228,9 @@ def get_subcategories():
         ).outerjoin(
             Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).outerjoin(
-            ArticuloEvento, ArticuloEvento.evento_id == Evento.evento_id
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).outerjoin(
-            Articulo, Articulo.articulo_id == ArticuloEvento.articulo_id
+            Articulo, Articulo.articulo_id == articulo_evento.c.articulo_id
         ).filter(
             Subcategoria.categoria_id == category_id
         ).group_by(
@@ -247,22 +248,6 @@ def get_subcategories():
         logger.error(f"Error fetching subcategories: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/api/articles')
-def get_articles():
-    try:
-        category_id = request.args.get('category_id', type=int)
-        subcategory_id = request.args.get('subcategory_id', type=int)
-        time_filter = request.args.get('time_filter', '24h')
-        
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        return jsonify(get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date))
-        
-    except Exception as e:
-        logger.error(f"Error fetching articles: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
-
 @cache.memoize(timeout=60)
 def get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date):
     try:
@@ -278,10 +263,10 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
         ).outerjoin(
             Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).outerjoin(
-            ArticuloEvento, ArticuloEvento.evento_id == Evento.evento_id
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).outerjoin(
             Articulo, and_(
-                Articulo.articulo_id == ArticuloEvento.articulo_id,
+                Articulo.articulo_id == articulo_evento.c.articulo_id,
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).group_by(
@@ -313,10 +298,10 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
             ).outerjoin(
                 Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
             ).outerjoin(
-                ArticuloEvento, ArticuloEvento.evento_id == Evento.evento_id
+                articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
             ).outerjoin(
                 Articulo, and_(
-                    Articulo.articulo_id == ArticuloEvento.articulo_id,
+                    Articulo.articulo_id == articulo_evento.c.articulo_id,
                     Articulo.fecha_publicacion.between(start_date, end_date)
                 )
             ).filter(

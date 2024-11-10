@@ -13,18 +13,14 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Database Seed"
+args = "Flask Server"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Seed Database"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Flask Server"
-
 [[workflows.workflow]]
-name = "Database Seed"
+name = "Flask Server"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -35,7 +31,8 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python seed_data.py"
+args = "python3 app.py"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Seed Database"
@@ -51,23 +48,8 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "python seed_data.py"
 
-[[workflows.workflow]]
-name = "Flask Server"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python app.py"
-waitForPort = 5000
-
 [deployment]
-run = ["sh", "-c", "python seed_data.py"]
+run = ["sh", "-c", "python3 app.py"]
 
 [[ports]]
 localPort = 5000
