@@ -3,7 +3,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import ENUM
-from sqlalchemy import Column, Integer, String, Text, Date, TIMESTAMP, Boolean, ForeignKey, func, Table, Index
+from sqlalchemy import Column, Integer, String, Text, Date, TIMESTAMP, Boolean, ForeignKey, func, Table
 from sqlalchemy.orm import relationship
 import re
 
@@ -13,43 +13,34 @@ agencia_enum = ENUM('Reuters', 'EFE', 'Otro', name='agencia_enum', schema='app',
 
 # Association tables
 articulo_evento = Table('articulo_evento', db.Model.metadata,
-    Column('articulo_id', Integer, ForeignKey('app.articulo.articulo_id', ondelete='CASCADE'), primary_key=True),
-    Column('evento_id', Integer, ForeignKey('app.evento.evento_id', ondelete='CASCADE'), primary_key=True),
-    Column('cluster_id', Integer),
-    Column('cluster_descripcion', String(255)),
+    Column('articulo_id', Integer, ForeignKey('app.articulo.articulo_id'), primary_key=True),
+    Column('evento_id', Integer, ForeignKey('app.evento.evento_id'), primary_key=True),
     schema='app'
 )
 
 evento_region = Table('evento_region', db.Model.metadata,
-    Column('evento_id', Integer, ForeignKey('app.evento.evento_id', ondelete='CASCADE'), primary_key=True),
-    Column('region_id', Integer, ForeignKey('app.region.region_id', ondelete='CASCADE'), primary_key=True),
-    schema='app'
-)
-
-articulo_influencer_mencion = Table('articulo_influencer_mencion', db.Model.metadata,
-    Column('articulo_id', Integer, ForeignKey('app.articulo.articulo_id', ondelete='CASCADE'), primary_key=True),
-    Column('influencer_id', Integer, ForeignKey('app.influencer.influencer_id', ondelete='CASCADE'), primary_key=True),
-    Column('fecha_mencion', TIMESTAMP, default=func.now()),
-    Column('plataforma', String(255)),
-    Column('url', String(255)),
+    Column('evento_id', Integer, ForeignKey('app.evento.evento_id'), primary_key=True),
+    Column('region_id', Integer, ForeignKey('app.region.region_id'), primary_key=True),
     schema='app'
 )
 
 class User(UserMixin, db.Model):
-    __tablename__ = 'USER'
+    __tablename__ = 'usuario'
     __table_args__ = {'schema': 'app'}
 
-    id = Column('user_id', Integer, primary_key=True)
+    id = Column('usuario_id', Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False, unique=True)
+    password_hash = Column(String(1000))
     is_admin = Column(Boolean, default=False)
     es_suscriptor = Column(Boolean, default=False)
     fin_fecha_suscripcion = Column(TIMESTAMP)
     status = Column(String(255))
-    password_hash = Column(String(1000))
     puntos = Column(Integer, default=0)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user_logs = relationship('UserLog', back_populates='user', cascade='all, delete-orphan')
+    user_logs = relationship('UserLog', back_populates='user')
 
     @staticmethod
     def validate_password(password):
@@ -84,21 +75,31 @@ class User(UserMixin, db.Model):
     def get_id(self):
         return str(self.id)
 
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
 class UserLog(db.Model):
     __tablename__ = 'user_log'
     __table_args__ = {'schema': 'app'}
 
     log_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('app.USER.user_id', ondelete='SET NULL'))
+    user_id = Column(Integer, ForeignKey('app.usuario.usuario_id'))
     timestamp = Column(TIMESTAMP, default=datetime.utcnow)
-    articulo_id = Column(Integer, ForeignKey('app.articulo.articulo_id', ondelete='SET NULL'))
-    evento_id = Column(Integer, ForeignKey('app.evento.evento_id', ondelete='SET NULL'))
+    articulo_id = Column(Integer, ForeignKey('app.articulo.articulo_id'))
+    evento_id = Column(Integer, ForeignKey('app.evento.evento_id'))
     tipo = Column(String(50))
     ip = Column(String(50))
     navegador = Column(String(255))
     puntos_otorgados = Column(Integer, default=0)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship('User', back_populates='user_logs')
     articulo = relationship('Articulo', back_populates='user_logs')
@@ -109,57 +110,42 @@ class Articulo(db.Model):
     __table_args__ = {'schema': 'app'}
 
     articulo_id = Column(Integer, primary_key=True)
+    periodico_id = Column(Integer, ForeignKey('app.periodico.periodico_id'))
     titular = Column(String(1000), nullable=False)
-    subtitular = Column(Text)
+    subtitulo = Column(Text)
     url = Column(String(255))
     fecha_publicacion = Column(Date)
-    updated_on = Column(TIMESTAMP)
-    periodico_id = Column(Integer, ForeignKey('app.periodico.periodico_id'), nullable=False)
-    periodista_id = Column(Integer, ForeignKey('app.periodista.periodista_id'))
-    ideologia_id = Column(Integer, ForeignKey('app.ideologia.ideologia_id'))
-    tipo = Column(String(50), nullable=False)
+    fecha_modificacion = Column(Date)
     agencia = Column(agencia_enum)
-    numero_de_palabras = Column(Integer)
-    likes = Column(Integer)
-    paywall = Column(Boolean, default=False)
-    cuerpo = Column(Text)
-    gpt_titular = Column(String(1000))
-    gpt_palabras_clave = Column(String(1000))
-    gpt_sentimiento = Column(sentimiento_enum, default='neutral')
-    gpt_titular_clickbait = Column(Boolean, default=False)
-    gpt_importancia = Column(Integer)
-    gpt_cantidad_fuentes_citadas = Column(Integer)
-    gpt_opinion = Column(Text)
+    seccion = Column(String(100))
+    autor = Column(String(100))
+    contenido = Column(Text)
+    sentimiento = Column(sentimiento_enum, default='neutral')
     gpt_resumen = Column(Text)
-    palabras_clave_embeddings = Column(Text)
+    gpt_opinion = Column(Text)
+    paywall = Column(Boolean, default=False)
     embeddings = Column(Text)
-    subcategoria_id = Column(Integer, ForeignKey('app.subcategoria.subcategoria_id'))
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     periodico = relationship('Periodico', back_populates='articulos')
-    periodista = relationship('Periodista', back_populates='articulos')
     eventos = relationship('Evento', secondary=articulo_evento, back_populates='articulos')
     user_logs = relationship('UserLog', back_populates='articulo')
-    influencers = relationship('Influencer', secondary=articulo_influencer_mencion, back_populates='articulos')
-    subcategoria = relationship('Subcategoria', back_populates='articulos')
-    ideologia = relationship('Ideologia', back_populates='articulos')
 
 class Evento(db.Model):
     __tablename__ = 'evento'
     __table_args__ = {'schema': 'app'}
 
     evento_id = Column(Integer, primary_key=True)
+    subcategoria_id = Column(Integer, ForeignKey('app.subcategoria.subcategoria_id'))
     titulo = Column(String(255), nullable=False)
     descripcion = Column(Text)
     fecha_evento = Column(Date)
-    impacto = Column(String(255))
-    subcategoria_id = Column(Integer, ForeignKey('app.subcategoria.subcategoria_id'))
     gpt_sujeto_activo = Column(String(255))
     gpt_sujeto_pasivo = Column(String(255))
     gpt_importancia = Column(Integer)
     gpt_tiene_contexto = Column(Boolean, default=False)
-    gpt_palabras_clave = Column(String)
+    gpt_palabras_clave = Column(String(1000))
     embeddings = Column(Text)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -167,22 +153,6 @@ class Evento(db.Model):
     subcategoria = relationship('Subcategoria', back_populates='eventos')
     articulos = relationship('Articulo', secondary=articulo_evento, back_populates='eventos')
     user_logs = relationship('UserLog', back_populates='evento')
-    opiniones = relationship('InfluencerOpinion', back_populates='evento')
-    regiones = relationship('Region', secondary=evento_region, back_populates='eventos')
-
-class Region(db.Model):
-    __tablename__ = 'region'
-    __table_args__ = {'schema': 'app'}
-
-    region_id = Column(Integer, primary_key=True)
-    region_nombre = Column(String(255), nullable=False)
-    pais_iso_code = Column(String(2))
-    ISO31662_subdivision_code = Column(String)
-    pais_nombre = Column(String)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    eventos = relationship('Evento', secondary=evento_region, back_populates='regiones')
 
 class Categoria(db.Model):
     __tablename__ = 'categoria'
@@ -194,17 +164,14 @@ class Categoria(db.Model):
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    subcategorias = relationship('Subcategoria', back_populates='categoria', cascade='all, delete-orphan')
+    subcategorias = relationship('Subcategoria', back_populates='categoria')
 
 class Subcategoria(db.Model):
     __tablename__ = 'subcategoria'
-    __table_args__ = (
-        Index('idx_subcategory_category', 'categoria_id'),
-        {'schema': 'app'}
-    )
+    __table_args__ = {'schema': 'app'}
 
     subcategoria_id = Column(Integer, primary_key=True)
-    categoria_id = Column(Integer, ForeignKey('app.categoria.categoria_id'), nullable=False)
+    categoria_id = Column(Integer, ForeignKey('app.categoria.categoria_id'))
     nombre = Column(String(255), nullable=False)
     descripcion = Column(Text)
     palabras_clave = Column(Text)
@@ -214,19 +181,6 @@ class Subcategoria(db.Model):
 
     categoria = relationship('Categoria', back_populates='subcategorias')
     eventos = relationship('Evento', back_populates='subcategoria')
-    articulos = relationship('Articulo', back_populates='subcategoria')
-
-class Ideologia(db.Model):
-    __tablename__ = 'ideologia'
-    __table_args__ = {'schema': 'app'}
-
-    ideologia_id = Column(Integer, primary_key=True)
-    nombre = Column(String(50), nullable=False)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    periodicos = relationship('Periodico', back_populates='ideologia')
-    articulos = relationship('Articulo', back_populates='ideologia')
 
 class Periodico(db.Model):
     __tablename__ = 'periodico'
@@ -236,64 +190,12 @@ class Periodico(db.Model):
     nombre = Column(String(255), nullable=False)
     pais_iso_code = Column(String(2))
     idioma = Column(String(50))
-    sitio_web = Column(String(255))
+    url = Column(String(255))
     logo_url = Column(String(255))
     tipo = Column(String(50))
     circulacion = Column(Integer)
     suscriptores = Column(Integer)
-    ideologia_id = Column(Integer, ForeignKey('app.ideologia.ideologia_id'))
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    ideologia = relationship('Ideologia', back_populates='periodicos')
     articulos = relationship('Articulo', back_populates='periodico')
-
-class Periodista(db.Model):
-    __tablename__ = 'periodista'
-    __table_args__ = {'schema': 'app'}
-
-    periodista_id = Column(Integer, primary_key=True)
-    nombre = Column(String(255), nullable=False)
-    apellido = Column(String(255), nullable=False)
-    email = Column(String(255))
-    telefono = Column(String(50))
-    biografia = Column(Text)
-    fecha_nacimiento = Column(Date)
-    nacionalidad = Column(String(255))
-    foto = Column(String(255))
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    articulos = relationship('Articulo', back_populates='periodista')
-
-class Influencer(db.Model):
-    __tablename__ = 'influencer'
-    __table_args__ = {'schema': 'app'}
-
-    influencer_id = Column(Integer, primary_key=True)
-    nombre = Column(String(255), nullable=False)
-    plataforma = Column(String(255))
-    username = Column(String(255))
-    seguidores = Column(Integer)
-    url = Column(String(255))
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    opiniones = relationship('InfluencerOpinion', back_populates='influencer', cascade='all, delete-orphan')
-    articulos = relationship('Articulo', secondary=articulo_influencer_mencion, back_populates='influencers')
-
-class InfluencerOpinion(db.Model):
-    __tablename__ = 'influencer_opinion'
-    __table_args__ = {'schema': 'app'}
-
-    opinion_id = Column(Integer, primary_key=True)
-    influencer_id = Column(Integer, ForeignKey('app.influencer.influencer_id'), nullable=False)
-    evento_id = Column(Integer, ForeignKey('app.evento.evento_id'), nullable=False)
-    contenido = Column(Text)
-    fecha_publicacion = Column(TIMESTAMP, default=func.now())
-    url = Column(String(255))
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    influencer = relationship('Influencer', back_populates='opiniones')
-    evento = relationship('Evento', back_populates='opiniones')

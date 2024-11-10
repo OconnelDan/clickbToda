@@ -50,10 +50,106 @@ from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, a
 @login_manager.user_loader
 def load_user(user_id):
     try:
-        return User.query.get(int(user_id))
+        user = User.query.get(int(user_id))
+        if user and user.is_active:
+            return user
+        return None
     except Exception as e:
         logger.error(f"Error loading user: {str(e)}")
         return None
+
+# Authentication routes remain unchanged
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        try:
+            nombre = request.form.get('nombre')
+            email = request.form.get('email')
+            password = request.form.get('password')
+            
+            if not all([nombre, email, password]):
+                flash('All fields are required', 'error')
+                return render_template('auth/register.html')
+
+            if not User.validate_email(email):
+                flash('Please enter a valid email address', 'error')
+                return render_template('auth/register.html')
+
+            is_valid, password_error = User.validate_password(password)
+            if not is_valid:
+                flash(password_error, 'error')
+                return render_template('auth/register.html')
+
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                flash('Email already registered', 'error')
+                return render_template('auth/register.html')
+            
+            new_user = User()
+            new_user.nombre = nombre
+            new_user.email = email
+            new_user.set_password(password)
+            
+            db.session.add(new_user)
+            db.session.commit()
+            
+            login_user(new_user)
+            logger.info(f"New user registered: {email}")
+            flash('Registration successful! Welcome to our platform.', 'success')
+            
+            return redirect(url_for('index'))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Registration error: {str(e)}")
+            flash('An error occurred during registration. Please try again.', 'error')
+            
+    return render_template('auth/register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        try:
+            email = request.form.get('email')
+            password = request.form.get('password')
+            
+            if not email or not password:
+                flash('Email and password are required', 'error')
+                return render_template('auth/login.html')
+                
+            user = User.query.filter_by(email=email).first()
+            
+            if user and user.check_password(password):
+                login_user(user, remember=True)
+                logger.info(f"User {email} logged in successfully")
+                flash('Login successful!', 'success')
+                
+                next_page = request.args.get('next')
+                if not next_page or not next_page.startswith('/'):
+                    next_page = url_for('index')
+                return redirect(next_page)
+            
+            flash('Invalid email or password', 'error')
+            logger.warning(f"Failed login attempt for email: {email}")
+            
+        except Exception as e:
+            logger.error(f"Login error: {str(e)}")
+            flash('An error occurred during login. Please try again.', 'error')
+            
+    return render_template('auth/login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('You have been logged out successfully.', 'success')
+    return redirect(url_for('index'))
 
 @app.route('/')
 def index():
@@ -61,17 +157,15 @@ def index():
         time_filter = request.args.get('time_filter', '24h')
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
+
         logger.info(f"Loading index page with time_filter: {time_filter}")
 
-        # Get categories with their article counts
-        categories = db.session.query(
-            Categoria.categoria_id,
-            Categoria.nombre,
-            Categoria.descripcion,
+        # First, get all categories with their article counts
+        categories_query = db.session.query(
+            Categoria,
             func.count(distinct(Articulo.articulo_id)).label('article_count')
         ).outerjoin(
-            Subcategoria, Subcategoria.categoria_id == Categoria.categoria_id
+            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
         ).outerjoin(
             Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).outerjoin(
@@ -82,27 +176,35 @@ def index():
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).group_by(
-            Categoria.categoria_id,
-            Categoria.nombre,
-            Categoria.descripcion
-        ).order_by(
-            desc('article_count')
+            Categoria.categoria_id
         ).all()
 
-        categories_list = [{
-            'Categoria': {
-                'categoria_id': cat.categoria_id,
-                'nombre': cat.nombre,
-                'descripcion': cat.descripcion
-            },
-            'article_count': cat.article_count or 0
-        } for cat in categories]
+        categories = []
+        for cat, article_count in categories_query:
+            categories.append({
+                'Categoria': cat,
+                'article_count': article_count or 0
+            })
+
+        # Sort categories by article count
+        categories.sort(key=lambda x: x['article_count'], reverse=True)
         
-        logger.info(f"Rendering index with {len(categories_list)} categories")
+        # Get initial data for the first category if available
+        initial_data = {'categories': []}
+        if categories:
+            initial_data = get_cached_articles(
+                categories[0]['Categoria'].categoria_id, 
+                None, 
+                time_filter, 
+                start_date, 
+                end_date
+            )
+        
+        logger.info(f"Rendering index with {len(categories)} categories")
         
         return render_template('index.html', 
-                           categories=categories_list,
-                           initial_data={'categories': []},
+                           categories=categories,
+                           initial_data=initial_data,
                            selected_date=datetime.now().date())
                            
     except Exception as e:
@@ -119,16 +221,45 @@ def get_subcategories():
         if not category_id:
             return jsonify({'error': 'Category ID is required'}), 400
 
-        time_filter = request.args.get('time_filter', '24h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
         subcategories = db.session.query(
             Subcategoria.subcategoria_id.label('id'),
             Subcategoria.nombre,
             func.count(distinct(Articulo.articulo_id)).label('article_count')
+        ).outerjoin(
+            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).outerjoin(
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+        ).outerjoin(
+            Articulo, Articulo.articulo_id == articulo_evento.c.articulo_id
         ).filter(
             Subcategoria.categoria_id == category_id
+        ).group_by(
+            Subcategoria.subcategoria_id,
+            Subcategoria.nombre
+        ).all()
+
+        return jsonify([{
+            'id': s.id,
+            'nombre': s.nombre,
+            'article_count': s.article_count
+        } for s in subcategories])
+
+    except Exception as e:
+        logger.error(f"Error fetching subcategories: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@cache.memoize(timeout=60)
+def get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date):
+    try:
+        logger.info(f"Fetching articles with params: category_id={category_id}, subcategory_id={subcategory_id}, time_filter={time_filter}")
+        
+        # First get categories with their article counts
+        categories_query = db.session.query(
+            Categoria.categoria_id,
+            Categoria.nombre,
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
+        ).outerjoin(
+            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
         ).outerjoin(
             Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).outerjoin(
@@ -139,138 +270,61 @@ def get_subcategories():
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).group_by(
-            Subcategoria.subcategoria_id,
-            Subcategoria.nombre
-        ).order_by(
-            desc('article_count')
-        ).all()
-
-        result = [{
-            'id': sub.id,
-            'nombre': sub.nombre,
-            'article_count': sub.article_count or 0
-        } for sub in subcategories]
-
-        return jsonify(result)
-
-    except Exception as e:
-        logger.error(f"Error fetching subcategories: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
-
-@app.route('/api/articles')
-def get_articles():
-    try:
-        category_id = request.args.get('category_id', type=int)
-        subcategory_id = request.args.get('subcategory_id', type=int)
-        time_filter = request.args.get('time_filter', '24h')
-        
-        if not category_id and not subcategory_id:
-            return jsonify({'error': 'Either category_id or subcategory_id is required'}), 400
-
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        logger.info(f"Fetching articles with params: category_id={category_id}, subcategory_id={subcategory_id}, time_filter={time_filter}")
-
-        # Base query
-        query = db.session.query(
-            Categoria,
-            Subcategoria,
-            Evento,
-            Articulo,
-            Periodico
-        ).join(
-            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
-        ).join(
-            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).join(
-            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
-        ).join(
-            Articulo, and_(
-                Articulo.articulo_id == articulo_evento.c.articulo_id,
-                Articulo.fecha_publicacion.between(start_date, end_date)
-            )
-        ).join(
-            Periodico, Periodico.periodico_id == Articulo.periodico_id
+            Categoria.categoria_id,
+            Categoria.nombre
         )
 
-        # Apply filters
-        if subcategory_id:
-            query = query.filter(Subcategoria.subcategoria_id == subcategory_id)
-        elif category_id:
-            query = query.filter(Categoria.categoria_id == category_id)
+        if category_id:
+            categories_query = categories_query.filter(Categoria.categoria_id == category_id)
 
-        results = query.all()
+        categories = categories_query.all()
 
-        # Process results
-        categories_dict = {}
-        for cat, sub, evt, art, per in results:
-            if cat.categoria_id not in categories_dict:
-                categories_dict[cat.categoria_id] = {
-                    'categoria_id': cat.categoria_id,
-                    'nombre': cat.nombre,
-                    'subcategories': {}
-                }
+        if not categories:
+            return {'categories': []}
 
-            if sub.subcategoria_id not in categories_dict[cat.categoria_id]['subcategories']:
-                categories_dict[cat.categoria_id]['subcategories'][sub.subcategoria_id] = {
-                    'subcategoria_id': sub.subcategoria_id,
-                    'nombre': sub.nombre,
-                    'events': []
-                }
-
-            # Find existing event or add new one
-            subcat_events = categories_dict[cat.categoria_id]['subcategories'][sub.subcategoria_id]['events']
-            event = next((e for e in subcat_events if e['evento_id'] == evt.evento_id), None)
-            
-            if event is None:
-                event = {
-                    'evento_id': evt.evento_id,
-                    'titulo': evt.titulo,
-                    'descripcion': evt.descripcion,
-                    'fecha_evento': evt.fecha_evento.isoformat() if evt.fecha_evento else None,
-                    'articles': []
-                }
-                subcat_events.append(event)
-
-            # Add article to event
-            event['articles'].append({
-                'id': art.articulo_id,
-                'titular': art.titular,
-                'url': art.url,
-                'fecha_publicacion': art.fecha_publicacion.isoformat() if art.fecha_publicacion else None,
-                'periodico_nombre': per.nombre,
-                'periodico_logo': per.logo_url,
-                'paywall': art.paywall,
-                'gpt_opinion': art.gpt_opinion,
-                'gpt_resumen': art.gpt_resumen
-            })
-
-        # Convert to final format
         result_categories = []
-        for cat_id, category in categories_dict.items():
+        for cat in categories:
             category_data = {
-                'categoria_id': category['categoria_id'],
-                'nombre': category['nombre'],
+                'categoria_id': cat.categoria_id,
+                'nombre': cat.nombre,
+                'article_count': cat.article_count or 0,
                 'subcategories': []
             }
 
-            for subcat_id, subcategory in category['subcategories'].items():
-                category_data['subcategories'].append({
-                    'subcategoria_id': subcategory['subcategoria_id'],
-                    'nombre': subcategory['nombre'],
-                    'events': sorted(subcategory['events'], 
-                                  key=lambda x: len(x['articles']), 
-                                  reverse=True)
-                })
+            # Get subcategories for this category
+            subcategories = db.session.query(
+                Subcategoria,
+                func.count(distinct(Articulo.articulo_id)).label('article_count')
+            ).outerjoin(
+                Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
+            ).outerjoin(
+                articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+            ).outerjoin(
+                Articulo, and_(
+                    Articulo.articulo_id == articulo_evento.c.articulo_id,
+                    Articulo.fecha_publicacion.between(start_date, end_date)
+                )
+            ).filter(
+                Subcategoria.categoria_id == cat.categoria_id
+            ).group_by(
+                Subcategoria.subcategoria_id
+            ).all()
+
+            for subcat, subcat_count in subcategories:
+                subcategory_data = {
+                    'nombre': subcat.nombre,
+                    'article_count': subcat_count or 0,
+                    'events': []
+                }
+                category_data['subcategories'].append(subcategory_data)
 
             result_categories.append(category_data)
 
-        return jsonify({'categories': result_categories})
-
+        return {'categories': result_categories}
+        
     except Exception as e:
-        logger.error(f"Error in get_articles: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
+        logger.error(f"Error in get_cached_articles: {str(e)}")
+        return {'categories': []}
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

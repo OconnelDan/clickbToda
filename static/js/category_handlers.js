@@ -46,52 +46,6 @@ function initializeTabNavigation() {
         showLoadingState();
         loadCategoryContent(categoryId);
     });
-
-    // Initialize scroll buttons
-    initializeScrollButtons();
-}
-
-function initializeScrollButtons() {
-    const containers = document.querySelectorAll('.nav-tabs-wrapper, .nav-pills-wrapper');
-    
-    containers.forEach(container => {
-        const scrollButtons = container.querySelectorAll('.scroll-button');
-        const navList = container.querySelector('.nav-tabs, .nav-pills');
-        
-        if (!navList || !scrollButtons.length) return;
-        
-        scrollButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const direction = button.dataset.direction;
-                const scrollAmount = direction === 'left' ? -200 : 200;
-                navList.scrollLeft += scrollAmount;
-                updateNavigation(container);
-            });
-        });
-        
-        // Initial update
-        updateNavigation(container);
-        
-        // Update on scroll
-        navList.addEventListener('scroll', () => {
-            updateNavigation(container);
-        });
-    });
-}
-
-function updateNavigation(container) {
-    const navList = container.querySelector('.nav-tabs, .nav-pills');
-    const leftButton = container.querySelector('.scroll-button.left');
-    const rightButton = container.querySelector('.scroll-button.right');
-    
-    if (!navList || !leftButton || !rightButton) return;
-    
-    // Show/hide left button based on scroll position
-    leftButton.style.display = navList.scrollLeft > 0 ? 'flex' : 'none';
-    
-    // Show/hide right button based on whether there's more content to scroll
-    const hasMoreContent = navList.scrollLeft + navList.clientWidth < navList.scrollWidth;
-    rightButton.style.display = hasMoreContent ? 'flex' : 'none';
 }
 
 function loadDefaultCategory() {
@@ -193,9 +147,6 @@ function updateSubcategoryTabs(subcategories) {
             loadArticlesForSubcategory(subcategoryId);
         });
     });
-
-    // Initialize scroll buttons for subcategory tabs
-    initializeScrollButtons();
 }
 
 function loadArticlesForSubcategory(subcategoryId) {
@@ -353,6 +304,8 @@ function updateDisplay(data) {
         });
         
         initializeCarousels();
+        initializeScrollButtons();
+        
     } catch (error) {
         console.error('Error updating display:', error);
         showError('Failed to update display', error);
