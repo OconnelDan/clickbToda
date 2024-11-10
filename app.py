@@ -41,6 +41,52 @@ def load_user(user_id):
         logger.error(f"Error loading user: {str(e)}")
         return None
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        nombre = request.form.get('nombre')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        if not nombre or not email or not password:
+            flash('Please fill in all fields', 'error')
+            return redirect(url_for('register'))
+        
+        # Validate email format
+        if not User.validate_email(email):
+            flash('Invalid email format', 'error')
+            return redirect(url_for('register'))
+        
+        # Check if email already exists
+        if User.query.filter_by(email=email).first():
+            flash('Email already registered', 'error')
+            return redirect(url_for('register'))
+        
+        # Validate password
+        is_valid, message = User.validate_password(password)
+        if not is_valid:
+            flash(message, 'error')
+            return redirect(url_for('register'))
+        
+        # Create new user
+        try:
+            user = User(nombre=nombre, email=email)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            
+            flash('Registration successful! Please log in.', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash('Error creating user account', 'error')
+            return redirect(url_for('register'))
+    
+    return render_template('auth/register.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -167,8 +213,8 @@ def get_articles():
             if not subcategory_info:
                 return jsonify({'error': 'Subcategory not found'}), 404
 
-        # Query events and articles
-        base_query = db.session.query(
+        # Query events with related articles
+        events_query = db.session.query(
             Evento,
             Articulo,
             Periodico.nombre.label('periodico_nombre'),
@@ -188,12 +234,12 @@ def get_articles():
 
         # Apply filters
         if category_id:
-            base_query = base_query.filter(Subcategoria.categoria_id == category_id)
+            events_query = events_query.filter(Subcategoria.categoria_id == category_id)
         if subcategory_id:
-            base_query = base_query.filter(Subcategoria.subcategoria_id == subcategory_id)
+            events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
         # Execute query
-        events_results = base_query.order_by(
+        events_results = events_query.order_by(
             desc(Evento.fecha_evento),
             desc(Articulo.fecha_publicacion)
         ).all()
