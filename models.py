@@ -4,12 +4,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy import Column, Integer, String, Text, Date, TIMESTAMP, Boolean, ForeignKey, func, Table
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, declarative_base
 
 Base = declarative_base()
 
-# Definir los tipos ENUM según el DDL
+# Define ENUM types
 sentimiento_enum = ENUM('positivo', 'negativo', 'neutral', name='sentimiento_enum', schema='app')
 agencia_enum = ENUM('Reuters', 'EFE', 'Otro', name='agencia_enum', schema='app')
 
@@ -26,23 +25,51 @@ evento_region = Table('evento_region', Base.metadata,
     schema='app'
 )
 
-class User(Base, UserMixin):
+class User(UserMixin, db.Model):
     __tablename__ = 'usuario'
     __table_args__ = {'schema': 'app'}
 
     id = Column('usuario_id', Integer, primary_key=True)
-    email = Column(String(120), unique=True, nullable=False)
-    password_hash = Column(String(128))
+    nombre = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False, unique=True)
+    password_hash = Column(String(1000))
+    is_admin = Column(Boolean, default=False)
+    es_suscriptor = Column(Boolean, default=False)
+    fin_fecha_suscripcion = Column(TIMESTAMP)
+    status = Column(String(255))
+    puntos = Column(Integer, default=0)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     logs = relationship('UserLog', back_populates='user')
 
     def set_password(self, password):
+        if not password:
+            raise ValueError("Password cannot be empty")
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+        if not self.password_hash or not password:
+            return False
+        try:
+            return check_password_hash(self.password_hash, password)
+        except Exception:
+            return False
+
+    def get_id(self):
+        return str(self.id)
+
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
 
 class Categoria(Base):
     __tablename__ = 'categoria'
@@ -54,7 +81,7 @@ class Categoria(Base):
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    subcategorias = relationship('Subcategoria', backref='categoria', lazy=True)
+    subcategorias = relationship('Subcategoria', back_populates='categoria')
 
 class Subcategoria(Base):
     __tablename__ = 'subcategoria'
@@ -64,12 +91,13 @@ class Subcategoria(Base):
     categoria_id = Column(Integer, ForeignKey('app.categoria.categoria_id'), nullable=False)
     nombre = Column(String(255), nullable=False)
     descripcion = Column(Text)
-    palabras_clave = Column(Text, nullable=True)
-    palabras_clave_embeddings = Column(Text, nullable=True)
+    palabras_clave = Column(Text)
+    palabras_clave_embeddings = Column(Text)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    eventos = relationship('Evento', backref='subcategoria', lazy=True)
+    categoria = relationship('Categoria', back_populates='subcategorias')
+    eventos = relationship('Evento', back_populates='subcategoria')
 
 class Region(Base):
     __tablename__ = 'region'
@@ -77,9 +105,9 @@ class Region(Base):
 
     region_id = Column(Integer, primary_key=True)
     region_nombre = Column(String(255), nullable=False)
-    pais_iso_code = Column(String(2), nullable=True)
-    ISO31662_subdivision_code = Column(String, nullable=True)
-    pais_nombre = Column(String, nullable=True)
+    pais_iso_code = Column(String(2))
+    ISO31662_subdivision_code = Column(String)
+    pais_nombre = Column(String)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -99,10 +127,11 @@ class Evento(Base):
     gpt_importancia = Column(Integer)
     gpt_tiene_contexto = Column(Boolean, default=False)
     gpt_palabras_clave = Column(String(1000))
-    embeddings = Column(String)
+    embeddings = Column(Text)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    subcategoria = relationship('Subcategoria', back_populates='eventos')
     regiones = relationship('Region', secondary=evento_region, back_populates='eventos')
     articulos = relationship('Articulo', secondary=articulo_evento, back_populates='eventos')
     user_logs = relationship('UserLog', back_populates='evento')
@@ -117,6 +146,9 @@ class Periodico(Base):
     idioma = Column(String(50))
     url = Column(String(255))
     logo_url = Column(String(255))
+    tipo = Column(String(50))
+    circulacion = Column(Integer)
+    suscriptores = Column(Integer)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -141,12 +173,12 @@ class Articulo(Base):
     gpt_resumen = Column(Text)
     gpt_opinion = Column(Text)
     paywall = Column(Boolean, default=False)
-    embeddings = Column(String)
+    embeddings = Column(Text)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    eventos = relationship('Evento', secondary=articulo_evento, back_populates='articulos')
     periodico = relationship('Periodico', back_populates='articulos')
+    eventos = relationship('Evento', secondary=articulo_evento, back_populates='articulos')
     user_logs = relationship('UserLog', back_populates='articulo')
 
 class UserLog(Base):
@@ -155,7 +187,7 @@ class UserLog(Base):
 
     log_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('app.usuario.usuario_id'), nullable=True)
-    timestamp = Column('timestamp', TIMESTAMP, nullable=True, default=func.now())
+    timestamp = Column('timestamp', TIMESTAMP, default=func.now())
     articulo_id = Column(Integer, ForeignKey('app.articulo.articulo_id'), nullable=True)
     evento_id = Column(Integer, ForeignKey('app.evento.evento_id'), nullable=True)
     tipo = Column(String(50))
