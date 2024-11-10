@@ -48,6 +48,33 @@ function initializeTabNavigation() {
     });
 }
 
+function updateNavigation() {
+    const categoryTabs = document.getElementById('categoryTabs');
+    const subcategoryTabs = document.getElementById('subcategoryTabs');
+    
+    if (!categoryTabs || !subcategoryTabs) return;
+    
+    // Update category tabs scroll position
+    const activeCategoryTab = categoryTabs.querySelector('.nav-link.active');
+    if (activeCategoryTab) {
+        const tabRect = activeCategoryTab.getBoundingClientRect();
+        const containerRect = categoryTabs.getBoundingClientRect();
+        if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
+            activeCategoryTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    }
+    
+    // Update subcategory tabs scroll position
+    const activeSubcategoryTab = subcategoryTabs.querySelector('.nav-link.active');
+    if (activeSubcategoryTab) {
+        const tabRect = activeSubcategoryTab.getBoundingClientRect();
+        const containerRect = subcategoryTabs.getBoundingClientRect();
+        if (tabRect.left < containerRect.left || tabRect.right > containerRect.right) {
+            activeSubcategoryTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    }
+}
+
 function loadDefaultCategory() {
     try {
         const categoryTabs = document.querySelectorAll('#categoryTabs .nav-link');
@@ -106,6 +133,7 @@ function loadCategoryContent(categoryId) {
         updateSubcategoryTabs(subcategories);
         updateDisplay(articlesData);
         hideLoadingState();
+        updateNavigation(); // Add navigation update after content is loaded
     })
     .catch(error => {
         console.error('Error loading category content:', error);
@@ -147,6 +175,8 @@ function updateSubcategoryTabs(subcategories) {
             loadArticlesForSubcategory(subcategoryId);
         });
     });
+    
+    updateNavigation(); // Add navigation update after subcategory tabs are updated
 }
 
 function loadArticlesForSubcategory(subcategoryId) {
@@ -166,6 +196,7 @@ function loadArticlesForSubcategory(subcategoryId) {
         .then(data => {
             updateDisplay(data);
             hideLoadingState();
+            updateNavigation(); // Add navigation update after articles are loaded
         })
         .catch(error => {
             console.error('Error loading subcategory articles:', error);
