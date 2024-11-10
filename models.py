@@ -15,6 +15,8 @@ agencia_enum = ENUM('Reuters', 'EFE', 'Otro', name='agencia_enum', schema='app',
 articulo_evento = Table('articulo_evento', db.Model.metadata,
     Column('articulo_id', Integer, ForeignKey('app.articulo.articulo_id'), primary_key=True),
     Column('evento_id', Integer, ForeignKey('app.evento.evento_id'), primary_key=True),
+    Column('cluster_id', Integer),
+    Column('cluster_descripcion', String(255)),
     schema='app'
 )
 
@@ -25,10 +27,10 @@ evento_region = Table('evento_region', db.Model.metadata,
 )
 
 class User(UserMixin, db.Model):
-    __tablename__ = 'usuario'
+    __tablename__ = 'USER'
     __table_args__ = {'schema': 'app'}
 
-    id = Column('usuario_id', Integer, primary_key=True)
+    id = Column('user_id', Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False, unique=True)
     password_hash = Column(String(1000))
@@ -80,7 +82,7 @@ class UserLog(db.Model):
     __table_args__ = {'schema': 'app'}
 
     log_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('app.usuario.usuario_id'))
+    user_id = Column(Integer, ForeignKey('app.USER.user_id'))
     timestamp = Column(TIMESTAMP, default=datetime.utcnow)
     articulo_id = Column(Integer, ForeignKey('app.articulo.articulo_id'))
     evento_id = Column(Integer, ForeignKey('app.evento.evento_id'))
@@ -102,19 +104,27 @@ class Articulo(db.Model):
     subtitular = Column(Text)
     url = Column(String(255))
     fecha_publicacion = Column(Date)
-    fecha_modificacion = Column(Date)
+    updated_on = Column(TIMESTAMP)
     periodico_id = Column(Integer, ForeignKey('app.periodico.periodico_id'), nullable=False)
     periodista_id = Column(Integer, ForeignKey('app.periodista.periodista_id'))
+    ideologia_id = Column(Integer, ForeignKey('app.ideologia.ideologia_id'))
     tipo = Column(String(50), nullable=False)
     agencia = Column(agencia_enum)
-    seccion = Column(String(100))
-    autor = Column(String(100))
-    contenido = Column(Text)
-    sentimiento = Column(sentimiento_enum, default='neutral')
-    gpt_resumen = Column(Text)
-    gpt_opinion = Column(Text)
+    numero_de_palabras = Column(Integer)
+    likes = Column(Integer)
     paywall = Column(Boolean, default=False)
+    cuerpo = Column(Text)
+    gpt_titular = Column(String(1000))
+    gpt_palabras_clave = Column(String(1000))
+    gpt_sentimiento = Column(sentimiento_enum, default='neutral')
+    gpt_titular_clickbait = Column(Boolean, default=False)
+    gpt_importancia = Column(Integer)
+    gpt_cantidad_fuentes_citadas = Column(Integer)
+    gpt_opinion = Column(Text)
+    gpt_resumen = Column(Text)
+    palabras_clave_embeddings = Column(Text)
     embeddings = Column(Text)
+    subcategoria_id = Column(Integer, ForeignKey('app.subcategoria.subcategoria_id'))
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -130,12 +140,13 @@ class Evento(db.Model):
     titulo = Column(String(255), nullable=False)
     descripcion = Column(Text)
     fecha_evento = Column(Date)
+    impacto = Column(String(255))
     subcategoria_id = Column(Integer, ForeignKey('app.subcategoria.subcategoria_id'))
     gpt_sujeto_activo = Column(String(255))
     gpt_sujeto_pasivo = Column(String(255))
     gpt_importancia = Column(Integer)
     gpt_tiene_contexto = Column(Boolean, default=False)
-    gpt_palabras_clave = Column(String(1000))
+    gpt_palabras_clave = Column(String)
     embeddings = Column(Text)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -161,7 +172,7 @@ class Subcategoria(db.Model):
     __table_args__ = {'schema': 'app'}
 
     subcategoria_id = Column(Integer, primary_key=True)
-    categoria_id = Column(Integer, ForeignKey('app.categoria.categoria_id'))
+    categoria_id = Column(Integer, ForeignKey('app.categoria.categoria_id'), nullable=False)
     nombre = Column(String(255), nullable=False)
     descripcion = Column(Text)
     palabras_clave = Column(Text)
@@ -178,8 +189,9 @@ class Ideologia(db.Model):
 
     ideologia_id = Column(Integer, primary_key=True)
     nombre = Column(String(50), nullable=False)
-    
-    # Add reverse relationship to Periodico
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     periodicos = relationship('Periodico', back_populates='ideologia')
 
 class Periodico(db.Model):
@@ -195,11 +207,9 @@ class Periodico(db.Model):
     tipo = Column(String(50))
     circulacion = Column(Integer)
     suscriptores = Column(Integer)
+    ideologia_id = Column(Integer, ForeignKey('app.ideologia.ideologia_id'))
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Add foreign key and relationship to Ideologia
-    ideologia_id = Column(Integer, ForeignKey('app.ideologia.ideologia_id'))
-    ideologia = relationship('Ideologia', back_populates='periodicos')
 
+    ideologia = relationship('Ideologia', back_populates='periodicos')
     articulos = relationship('Articulo', back_populates='periodico')
