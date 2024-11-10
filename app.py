@@ -143,7 +143,7 @@ def index():
 
         logger.info(f"Loading index page with time_filter: {time_filter}")
 
-        # Modified query to only select required fields
+        # Updated query to only select required fields
         categories_query = db.session.query(
             Categoria.categoria_id,
             Categoria.nombre,
