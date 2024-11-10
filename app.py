@@ -143,7 +143,7 @@ def index():
 
         logger.info(f"Loading index page with time_filter: {time_filter}")
 
-        # Updated query to only select required fields
+        # Query categories with article counts
         categories_query = db.session.query(
             Categoria.categoria_id,
             Categoria.nombre,
@@ -239,9 +239,13 @@ def get_articles():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
-        # Base query for articles
-        query = db.session.query(
-            Articulo.articulo_id.label('id'),
+        # Query events with articles
+        events_query = db.session.query(
+            Evento.evento_id,
+            Evento.titulo.label('event_titulo'),
+            Evento.descripcion.label('event_descripcion'),
+            Evento.fecha_evento,
+            Articulo.articulo_id,
             Articulo.titular,
             Articulo.url,
             Articulo.fecha_publicacion,
@@ -250,44 +254,61 @@ def get_articles():
             Periodico.nombre.label('periodico_nombre'),
             Periodico.logo_url.label('periodico_logo')
         ).join(
+            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).join(
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+        ).join(
+            Articulo, and_(
+                Articulo.articulo_id == articulo_evento.c.articulo_id,
+                Articulo.fecha_publicacion.between(start_date, end_date)
+            )
+        ).join(
             Periodico
-        ).join(
-            articulo_evento
-        ).join(
-            Evento
-        ).join(
-            Subcategoria
-        ).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date)
         )
 
         if category_id:
-            query = query.filter(Subcategoria.categoria_id == category_id)
+            events_query = events_query.filter(Subcategoria.categoria_id == category_id)
         if subcategory_id:
-            query = query.filter(Subcategoria.subcategoria_id == subcategory_id)
+            events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
-        articles = query.all()
+        # Execute query and organize results
+        events_results = events_query.all()
+        
+        # Organize results by events
+        events_dict = {}
+        for result in events_results:
+            event_id = result.evento_id
+            if event_id not in events_dict:
+                events_dict[event_id] = {
+                    'titulo': result.event_titulo,
+                    'descripcion': result.event_descripcion,
+                    'fecha_evento': result.fecha_evento.isoformat() if result.fecha_evento else None,
+                    'articles': []
+                }
+            
+            events_dict[event_id]['articles'].append({
+                'id': result.articulo_id,
+                'titular': result.titular,
+                'url': result.url,
+                'fecha_publicacion': result.fecha_publicacion.isoformat() if result.fecha_publicacion else None,
+                'paywall': result.paywall,
+                'gpt_opinion': result.gpt_opinion,
+                'periodico_nombre': result.periodico_nombre,
+                'periodico_logo': result.periodico_logo
+            })
 
-        return jsonify({
+        # Structure the response
+        response_data = {
             'categories': [{
                 'categoria_id': category_id,
                 'subcategories': [{
                     'subcategoria_id': subcategory_id,
-                    'events': [{
-                        'articles': [{
-                            'id': article.id,
-                            'titular': article.titular,
-                            'url': article.url,
-                            'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
-                            'paywall': article.paywall,
-                            'gpt_opinion': article.gpt_opinion,
-                            'periodico_nombre': article.periodico_nombre,
-                            'periodico_logo': article.periodico_logo
-                        } for article in articles]
-                    }]
+                    'events': [event_data for event_data in events_dict.values()]
                 }]
             }]
-        })
+        }
+
+        return jsonify(response_data)
 
     except Exception as e:
         logger.error(f"Error in get_articles: {str(e)}")
