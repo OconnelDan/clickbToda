@@ -1,13 +1,13 @@
 from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user, AnonymousUserMixin
 from sqlalchemy import func, text, desc, and_, or_, distinct, Index
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
 import logging
-from config import Config
 import sys
+from config import Config
 from flask_caching import Cache
+from database import db
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,54 +29,20 @@ cache = Cache(app, config={
     'CACHE_DEFAULT_TIMEOUT': 60
 })
 
-try:
-    db = SQLAlchemy(app)
-    with app.app_context():
-        db.engine.connect()
-        with db.engine.connect() as connection:
-            connection.execute(text("""
-                CREATE INDEX IF NOT EXISTS idx_articulo_updated_on ON app.articulo (updated_on);
-                CREATE INDEX IF NOT EXISTS idx_articulo_evento_ids ON app.articulo_evento (articulo_id, evento_id);
-                CREATE INDEX IF NOT EXISTS idx_evento_subcategoria ON app.evento (subcategoria_id);
-                CREATE INDEX IF NOT EXISTS idx_article_time ON app.articulo (updated_on, paywall);
-                CREATE INDEX IF NOT EXISTS idx_article_category ON app.articulo (periodico_id, updated_on);
-            """))
-    logger.info("Database connection and indexes setup successful")
-except Exception as e:
-    logger.error(f"Database connection failed: {str(e)}")
-    raise
+# Initialize SQLAlchemy
+db.init_app(app)
 
+# Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, articulo_evento, evento_region, Region, Periodista
+# Import models after db initialization
+from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, articulo_evento
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
-
-def get_filtered_articles(start_date, end_date, event_ids=None):
-    query = db.session.query(
-        Articulo,
-        Periodico
-    ).join(
-        Periodico,
-        Articulo.periodico_id == Periodico.periodico_id
-    ).filter(
-        Articulo.updated_on.between(start_date, end_date)
-    )
-    
-    if event_ids:
-        query = query.join(
-            articulo_evento,
-            and_(
-                Articulo.articulo_id == articulo_evento.c.articulo_id,
-                articulo_evento.c.evento_id.in_(event_ids)
-            )
-        )
-    
-    return query.order_by(desc(Articulo.updated_on))
 
 @cache.memoize(timeout=60)
 def get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date):
@@ -122,8 +88,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
             Categoria.categoria_id,
             Subcategoria.subcategoria_id
         ).order_by(
-            desc('article_count'),
-            desc(Evento.fecha_evento)
+            desc('article_count')
         )
 
         events = base_query.all()
@@ -134,8 +99,25 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
         # Get all event IDs first
         event_ids = [event.evento_id for event in events]
         
-        # Fetch articles in a single query with proper joins
-        articles_query = get_filtered_articles(start_date, end_date, event_ids)
+        # Fetch articles in a single query
+        articles_query = db.session.query(
+            Articulo,
+            Periodico
+        ).join(
+            Periodico,
+            Articulo.periodico_id == Periodico.periodico_id
+        ).filter(
+            Articulo.updated_on.between(start_date, end_date)
+        )
+        
+        if event_ids:
+            articles_query = articles_query.join(
+                articulo_evento,
+                and_(
+                    Articulo.articulo_id == articulo_evento.c.articulo_id,
+                    articulo_evento.c.evento_id.in_(event_ids)
+                )
+            )
         
         # Organize articles by event
         articles_by_event = {}
@@ -157,7 +139,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                     'categoria_id': cat_id,
                     'nombre': event.categoria_nombre if event.categoria_nombre else 'Uncategorized',
                     'subcategories': {},
-                    'article_count': 0  # Initialize article count for category
+                    'article_count': 0
                 }
 
             subcat_id = event.subcategoria_id if event.subcategoria_id else 0
@@ -166,7 +148,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                     'subcategoria_id': subcat_id,
                     'nombre': event.subcategoria_nombre if event.subcategoria_nombre else 'Uncategorized',
                     'events': {},
-                    'article_count': 0  # Initialize article count for subcategory
+                    'article_count': 0
                 }
 
             organized_data[cat_id]['subcategories'][subcat_id]['events'][event.evento_id] = {
@@ -202,6 +184,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                 {
                     'categoria_id': cat_data['categoria_id'],
                     'nombre': cat_data['nombre'],
+                    'article_count': cat_data['article_count'],
                     'subcategories': sorted(
                         [
                             {
@@ -237,18 +220,25 @@ def index():
         # Pre-fetch initial data for faster loading
         initial_data = get_cached_articles(None, None, time_filter, start_date, end_date)
         
+        if not initial_data or 'categories' not in initial_data:
+            logger.warning("No initial data retrieved")
+            return render_template('index.html', 
+                               categories=[],
+                               initial_data={'categories': []},
+                               selected_date=datetime.now().date())
+
         # Sort categories by article count
-        categories = sorted([
-            {
-                'Categoria': Categoria(categoria_id=cat['categoria_id'], nombre=cat['nombre']),
-                'article_count': sum(
-                    len(event['articles']) 
-                    for subcat in cat.get('subcategories', [])
-                    for event in subcat.get('events', [])
-                )
-            }
-            for cat in initial_data.get('categories', [])
-        ], key=lambda x: x['article_count'], reverse=True)
+        categories = []
+        for cat in initial_data.get('categories', []):
+            article_count = cat.get('article_count', 0)
+            if article_count > 0:  # Only include categories with articles
+                categories.append({
+                    'Categoria': Categoria(categoria_id=cat['categoria_id'], nombre=cat['nombre']),
+                    'article_count': article_count
+                })
+
+        # Sort categories by article count in descending order
+        categories.sort(key=lambda x: x['article_count'], reverse=True)
 
         return render_template('index.html', 
                            categories=categories,
@@ -256,178 +246,10 @@ def index():
                            selected_date=datetime.now().date())
     except Exception as e:
         logger.error(f"Error in index route: {str(e)}")
-        return render_template('index.html', categories=[], selected_date=datetime.now().date())
+        return render_template('index.html', 
+                           categories=[],
+                           initial_data={'categories': []},
+                           selected_date=datetime.now().date())
 
-@app.route('/api/navigation')
-def get_navigation():
-    try:
-        time_filter = request.args.get('time_filter', '24h')
-        hours = int(time_filter[:-1])
-        
-        query = text('''
-            WITH ArticleCounts AS (
-                SELECT 
-                    c.categoria_id, 
-                    c.nombre AS categoria_nombre, 
-                    s.subcategoria_id, 
-                    s.nombre AS subcategoria_nombre, 
-                    COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL) AS cuenta_articulos_subcategoria,
-                    SUM(COUNT(DISTINCT a.articulo_id) FILTER (WHERE a.articulo_id IS NOT NULL)) OVER (
-                        PARTITION BY c.categoria_id
-                    ) AS cuenta_articulos_categoria
-                FROM 
-                    app.categoria c
-                    LEFT JOIN app.subcategoria s ON s.categoria_id = c.categoria_id
-                    LEFT JOIN app.evento e ON e.subcategoria_id = s.subcategoria_id
-                    LEFT JOIN app.articulo_evento ae ON e.evento_id = ae.evento_id
-                    LEFT JOIN app.articulo a ON ae.articulo_id = a.articulo_id 
-                        AND a.updated_on >= CURRENT_TIMESTAMP - ((:hours || ' hours')::interval)
-                GROUP BY 
-                    c.categoria_id, 
-                    c.nombre, 
-                    s.subcategoria_id, 
-                    s.nombre
-            )
-            SELECT *
-            FROM ArticleCounts
-            WHERE cuenta_articulos_categoria > 0
-            ORDER BY 
-                cuenta_articulos_categoria DESC,
-                cuenta_articulos_subcategoria DESC NULLS LAST
-        ''')
-        
-        result = db.session.execute(query, {'hours': hours})
-        
-        navigation = []
-        current_category = None
-        
-        for row in result:
-            if current_category is None or current_category['categoria_id'] != row.categoria_id:
-                if current_category is not None:
-                    navigation.append(current_category)
-                current_category = {
-                    'categoria_id': row.categoria_id,
-                    'nombre': row.categoria_nombre,
-                    'article_count': row.cuenta_articulos_categoria,
-                    'subcategories': []
-                }
-            
-            if row.subcategoria_id:
-                current_category['subcategories'].append({
-                    'subcategoria_id': row.subcategoria_id,
-                    'nombre': row.subcategoria_nombre,
-                    'article_count': row.cuenta_articulos_subcategoria
-                })
-        
-        if current_category is not None:
-            navigation.append(current_category)
-            
-        return jsonify(navigation)
-    except Exception as e:
-        logger.error(f"Error in get_navigation: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/subcategories')
-def get_subcategories():
-    try:
-        category_id = request.args.get('category_id')
-        if not category_id:
-            return jsonify([])
-        
-        subcategories = db.session.query(
-            Subcategoria.subcategoria_id.label('id'),
-            Subcategoria.nombre
-        ).filter_by(
-            categoria_id=category_id
-        ).all()
-        
-        return jsonify([{
-            'id': subcat.id,
-            'nombre': subcat.nombre
-        } for subcat in subcategories])
-    except Exception as e:
-        logger.error(f"Error in get_subcategories: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/articles')
-def get_articles():
-    try:
-        category_id = request.args.get('category_id')
-        subcategory_id = request.args.get('subcategory_id')
-        time_filter = request.args.get('time_filter', '24h')
-        
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        return jsonify(get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date))
-    except Exception as e:
-        logger.error(f"Error in get_articles: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/article/<int:article_id>')
-@cache.memoize(timeout=60)
-def get_article_details(article_id):
-    try:
-        logger.info(f"Fetching details for article ID: {article_id}")
-        
-        article = db.session.query(Articulo).filter(
-            Articulo.articulo_id == article_id
-        ).options(
-            joinedload(Articulo.periodico),
-            joinedload(Articulo.periodista)
-        ).first()
-
-        if not article:
-            logger.warning(f"Article not found with ID: {article_id}")
-            return jsonify({'error': 'Article not found'}), 404
-
-        response_data = {
-            'id': article.articulo_id,
-            'titular': article.titular,
-            'subtitular': article.subtitular,
-            'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None,
-            'periodico_logo': article.periodico.logo_url if article.periodico else None,
-            'periodico_nombre': article.periodico.nombre if article.periodico else None,
-            'periodista': f"{article.periodista.nombre} {article.periodista.apellido}" if article.periodista else None,
-            'url': article.url,
-            'paywall': article.paywall,
-            'cuerpo': article.cuerpo,
-            'gpt_resumen': article.gpt_resumen or 'No summary available',
-            'gpt_opinion': article.gpt_opinion or 'No opinion available',
-            'gpt_palabras_clave': article.gpt_palabras_clave,
-            'gpt_cantidad_fuentes_citadas': article.gpt_cantidad_fuentes_citadas or 0,
-            'agencia': article.agencia
-        }
-        
-        return jsonify(response_data)
-    except Exception as e:
-        logger.error(f"Error fetching article details: {str(e)}")
-        db.session.rollback()
-        return jsonify({
-            'error': 'Failed to load article details',
-            'details': str(e)
-        }), 500
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        
-        user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password):
-            login_user(user)
-            return redirect(url_for('index'))
-            
-        flash('Invalid email or password')
-    return render_template('auth/login.html')
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        nombre = request.form.get('nombre')
-        
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered')
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
