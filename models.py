@@ -42,14 +42,12 @@ class User(UserMixin, db.Model):
     id = Column('user_id', Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False, unique=True)
-    password_hash = Column(String(1000))
     is_admin = Column(Boolean, default=False)
     es_suscriptor = Column(Boolean, default=False)
     fin_fecha_suscripcion = Column(TIMESTAMP)
     status = Column(String(255))
+    password_hash = Column(String(1000))
     puntos = Column(Integer, default=0)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user_logs = relationship('UserLog', back_populates='user', cascade='all, delete-orphan')
 
@@ -105,52 +103,6 @@ class UserLog(db.Model):
     user = relationship('User', back_populates='user_logs')
     articulo = relationship('Articulo', back_populates='user_logs')
     evento = relationship('Evento', back_populates='user_logs')
-
-class Region(db.Model):
-    __tablename__ = 'region'
-    __table_args__ = {'schema': 'app'}
-
-    region_id = Column(Integer, primary_key=True)
-    region_nombre = Column(String(255), nullable=False)
-    pais_iso_code = Column(String(2))
-    ISO31662_subdivision_code = Column(String)
-    pais_nombre = Column(String)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    eventos = relationship('Evento', secondary=evento_region, back_populates='regiones')
-
-class Influencer(db.Model):
-    __tablename__ = 'influencer'
-    __table_args__ = {'schema': 'app'}
-
-    influencer_id = Column(Integer, primary_key=True)
-    nombre = Column(String(255), nullable=False)
-    plataforma = Column(String(255))
-    username = Column(String(255))
-    seguidores = Column(Integer)
-    url = Column(String(255))
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    opiniones = relationship('InfluencerOpinion', back_populates='influencer', cascade='all, delete-orphan')
-    articulos = relationship('Articulo', secondary=articulo_influencer_mencion, back_populates='influencers')
-
-class InfluencerOpinion(db.Model):
-    __tablename__ = 'influencer_opinion'
-    __table_args__ = {'schema': 'app'}
-
-    opinion_id = Column(Integer, primary_key=True)
-    influencer_id = Column(Integer, ForeignKey('app.influencer.influencer_id'), nullable=False)
-    evento_id = Column(Integer, ForeignKey('app.evento.evento_id'), nullable=False)
-    contenido = Column(Text)
-    fecha_publicacion = Column(TIMESTAMP, default=func.now())
-    url = Column(String(255))
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    influencer = relationship('Influencer', back_populates='opiniones')
-    evento = relationship('Evento', back_populates='opiniones')
 
 class Articulo(db.Model):
     __tablename__ = 'articulo'
@@ -217,6 +169,20 @@ class Evento(db.Model):
     user_logs = relationship('UserLog', back_populates='evento')
     opiniones = relationship('InfluencerOpinion', back_populates='evento')
     regiones = relationship('Region', secondary=evento_region, back_populates='eventos')
+
+class Region(db.Model):
+    __tablename__ = 'region'
+    __table_args__ = {'schema': 'app'}
+
+    region_id = Column(Integer, primary_key=True)
+    region_nombre = Column(String(255), nullable=False)
+    pais_iso_code = Column(String(2))
+    ISO31662_subdivision_code = Column(String)
+    pais_nombre = Column(String)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    eventos = relationship('Evento', secondary=evento_region, back_populates='regiones')
 
 class Categoria(db.Model):
     __tablename__ = 'categoria'
@@ -299,3 +265,35 @@ class Periodista(db.Model):
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     articulos = relationship('Articulo', back_populates='periodista')
+
+class Influencer(db.Model):
+    __tablename__ = 'influencer'
+    __table_args__ = {'schema': 'app'}
+
+    influencer_id = Column(Integer, primary_key=True)
+    nombre = Column(String(255), nullable=False)
+    plataforma = Column(String(255))
+    username = Column(String(255))
+    seguidores = Column(Integer)
+    url = Column(String(255))
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    opiniones = relationship('InfluencerOpinion', back_populates='influencer', cascade='all, delete-orphan')
+    articulos = relationship('Articulo', secondary=articulo_influencer_mencion, back_populates='influencers')
+
+class InfluencerOpinion(db.Model):
+    __tablename__ = 'influencer_opinion'
+    __table_args__ = {'schema': 'app'}
+
+    opinion_id = Column(Integer, primary_key=True)
+    influencer_id = Column(Integer, ForeignKey('app.influencer.influencer_id'), nullable=False)
+    evento_id = Column(Integer, ForeignKey('app.evento.evento_id'), nullable=False)
+    contenido = Column(Text)
+    fecha_publicacion = Column(TIMESTAMP, default=func.now())
+    url = Column(String(255))
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    influencer = relationship('Influencer', back_populates='opiniones')
+    evento = relationship('Evento', back_populates='opiniones')

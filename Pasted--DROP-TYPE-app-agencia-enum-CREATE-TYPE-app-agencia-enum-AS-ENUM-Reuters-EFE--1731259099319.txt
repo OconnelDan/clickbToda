@@ -1,6 +1,3 @@
--- DROP SCHEMA app;
-
-CREATE SCHEMA app AUTHORIZATION avnadmin;
 
 -- DROP TYPE app."agencia_enum";
 
@@ -322,7 +319,7 @@ CREATE TABLE app.region (
 	region_id serial4 NOT NULL,
 	region_nombre varchar(255) NOT NULL,
 	pais_iso_code varchar(2) NULL,
-	"ISO31662_subdivision_code" varchar NULL,
+	iso31662_subdivision_code varchar NULL,
 	pais_nombre varchar NULL,
 	CONSTRAINT region_pkey PRIMARY KEY (region_id)
 );
