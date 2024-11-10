@@ -375,7 +375,7 @@ def get_article(article_id):
         article = db.session.query(
             Articulo.articulo_id.label('id'),
             Articulo.titular,
-            Articulo.subtitulo.label('subtitular'),
+            Articulo.subtitular.label('subtitular'),  # Changed from subtitulo to subtitular
             Articulo.url,
             Articulo.fecha_publicacion,
             Articulo.autor.label('periodista'),
