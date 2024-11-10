@@ -120,7 +120,7 @@ def logout():
 @app.route('/')
 def index():
     try:
-        time_filter = request.args.get('time_filter', '24h')
+        time_filter = request.args.get('time_filter', '72h')
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
@@ -166,21 +166,23 @@ def index():
         return render_template('index.html', 
                            categories=categories,
                            initial_data={'categories': categories},
-                           selected_date=datetime.now().date())
+                           selected_date=datetime.now().date(),
+                           time_filter=time_filter)
                            
     except Exception as e:
         logger.error(f"Error in index route: {str(e)}", exc_info=True)
         return render_template('index.html', 
                            categories=[],
                            initial_data={'categories': []},
-                           selected_date=datetime.now().date())
+                           selected_date=datetime.now().date(),
+                           time_filter=time_filter)
 
 @app.route('/api/articles')
 def get_articles():
     try:
         category_id = request.args.get('category_id', type=int)
         subcategory_id = request.args.get('subcategory_id', type=int)
-        time_filter = request.args.get('time_filter', '24h')
+        time_filter = request.args.get('time_filter', '72h')
         
         if not category_id and not subcategory_id:
             logger.error("Missing required parameters: category_id or subcategory_id")
@@ -321,8 +323,13 @@ def get_articles():
 def get_subcategories():
     try:
         category_id = request.args.get('category_id', type=int)
+        time_filter = request.args.get('time_filter', '72h')
+        
         if not category_id:
             return jsonify({'error': 'Category ID is required'}), 400
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
         subcategories = db.session.query(
             Subcategoria.subcategoria_id.label('id'),
@@ -333,13 +340,19 @@ def get_subcategories():
         ).outerjoin(
             articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).outerjoin(
-            Articulo, Articulo.articulo_id == articulo_evento.c.articulo_id
+            Articulo, and_(
+                Articulo.articulo_id == articulo_evento.c.articulo_id,
+                Articulo.fecha_publicacion.between(start_date, end_date)
+            )
         ).filter(
             Subcategoria.categoria_id == category_id
         ).group_by(
             Subcategoria.subcategoria_id,
             Subcategoria.nombre
-        ).order_by(desc('article_count')).all()
+        ).order_by(
+            desc('article_count'),
+            Subcategoria.nombre
+        ).all()
 
         return jsonify([{
             'id': s.id,
@@ -354,13 +367,16 @@ def get_subcategories():
 @app.route('/api/article/<int:article_id>')
 def get_article(article_id):
     try:
+        if not article_id:
+            return jsonify({'error': 'Article ID is required'}), 400
+
         article = db.session.query(
-            Articulo.articulo_id,
+            Articulo.articulo_id.label('id'),
             Articulo.titular,
-            Articulo.subtitulo,
+            Articulo.subtitular,  # Using correct column name
             Articulo.url,
             Articulo.fecha_publicacion,
-            Articulo.autor,
+            Articulo.periodista_id.label('periodista'),  # Using periodista_id instead of autor
             Articulo.agencia,
             Articulo.paywall,
             Articulo.gpt_resumen,
@@ -374,26 +390,30 @@ def get_article(article_id):
         ).first()
 
         if not article:
+            logger.error(f"Article not found with ID: {article_id}")
             return jsonify({'error': 'Article not found'}), 404
 
-        return jsonify({
-            'id': article.articulo_id,
+        # Convert to dict for JSON serialization
+        article_data = {
+            'id': article.id,
             'titular': article.titular,
-            'subtitular': article.subtitulo,
+            'subtitular': article.subtitular,
             'url': article.url,
             'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
-            'periodista': article.autor,
-            'agencia': article.agencia,
+            'periodista': str(article.periodista) if article.periodista else None,
+            'agencia': str(article.agencia) if article.agencia else None,
             'paywall': article.paywall,
             'gpt_resumen': article.gpt_resumen,
             'gpt_opinion': article.gpt_opinion,
             'periodico_nombre': article.periodico_nombre,
             'periodico_logo': article.periodico_logo
-        })
+        }
+
+        return jsonify(article_data)
 
     except Exception as e:
-        logger.error(f"Error fetching article details: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error fetching article details for ID {article_id}: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Failed to fetch article details', 'details': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
