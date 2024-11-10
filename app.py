@@ -54,6 +54,49 @@ def load_user(user_id):
         logger.error(f"Error loading user: {str(e)}")
         return None
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        try:
+            nombre = request.form.get('nombre')
+            email = request.form.get('email')
+            password = request.form.get('password')
+            
+            if not all([nombre, email, password]):
+                flash('All fields are required')
+                return render_template('auth/register.html')
+                
+            # Check if user already exists
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                flash('Email already registered')
+                return render_template('auth/register.html')
+            
+            # Create new user
+            new_user = User()
+            new_user.nombre = nombre
+            new_user.email = email
+            new_user.set_password(password)
+            
+            db.session.add(new_user)
+            db.session.commit()
+            
+            # Log the user in
+            login_user(new_user)
+            logger.info(f"New user registered: {email}")
+            
+            return redirect(url_for('index'))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Registration error: {str(e)}")
+            flash('An error occurred during registration')
+            
+    return render_template('auth/register.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -93,60 +136,6 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('index'))
-
-@app.route('/api/subcategories')
-def get_subcategories():
-    try:
-        category_id = request.args.get('category_id', type=int)
-        if not category_id:
-            return jsonify({'error': 'Category ID is required'}), 400
-
-        subcategories = db.session.query(
-            Subcategoria.subcategoria_id.label('id'),
-            Subcategoria.nombre,
-            func.count(distinct(Articulo.articulo_id)).label('article_count')
-        ).outerjoin(
-            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).outerjoin(
-            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
-        ).outerjoin(
-            Articulo, Articulo.articulo_id == articulo_evento.c.articulo_id
-        ).filter(
-            Subcategoria.categoria_id == category_id
-        ).group_by(
-            Subcategoria.subcategoria_id,
-            Subcategoria.nombre
-        ).all()
-
-        return jsonify([{
-            'id': s.id,
-            'nombre': s.nombre,
-            'article_count': s.article_count
-        } for s in subcategories])
-
-    except Exception as e:
-        logger.error(f"Error fetching subcategories: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
-
-@app.route('/api/articles')
-def get_articles():
-    try:
-        category_id = request.args.get('category_id', type=int)
-        subcategory_id = request.args.get('subcategory_id', type=int)
-        time_filter = request.args.get('time_filter', '24h')
-        
-        if not any([category_id, subcategory_id]):
-            return jsonify({'error': 'Category ID or Subcategory ID is required'}), 400
-
-        end_date = datetime.now()
-        hours = int(time_filter[:-1]) if time_filter.endswith('h') else 24
-        start_date = end_date - timedelta(hours=hours)
-
-        return jsonify(get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date))
-
-    except Exception as e:
-        logger.error(f"Error fetching articles: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/')
 def index():
@@ -191,6 +180,40 @@ def index():
                            initial_data={'categories': []},
                            selected_date=datetime.now().date())
 
+@app.route('/api/subcategories')
+def get_subcategories():
+    try:
+        category_id = request.args.get('category_id', type=int)
+        if not category_id:
+            return jsonify({'error': 'Category ID is required'}), 400
+
+        subcategories = db.session.query(
+            Subcategoria.subcategoria_id.label('id'),
+            Subcategoria.nombre,
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
+        ).outerjoin(
+            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).outerjoin(
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+        ).outerjoin(
+            Articulo, Articulo.articulo_id == articulo_evento.c.articulo_id
+        ).filter(
+            Subcategoria.categoria_id == category_id
+        ).group_by(
+            Subcategoria.subcategoria_id,
+            Subcategoria.nombre
+        ).all()
+
+        return jsonify([{
+            'id': s.id,
+            'nombre': s.nombre,
+            'article_count': s.article_count
+        } for s in subcategories])
+
+    except Exception as e:
+        logger.error(f"Error fetching subcategories: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 @cache.memoize(timeout=60)
 def get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date):
     try:
@@ -230,10 +253,8 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
         # Apply filters
         if category_id:
             base_query = base_query.filter(Categoria.categoria_id == category_id)
-            logger.debug(f"Filtering by category_id: {category_id}")
         if subcategory_id:
             base_query = base_query.filter(Subcategoria.subcategoria_id == subcategory_id)
-            logger.debug(f"Filtering by subcategory_id: {subcategory_id}")
 
         # Group and order
         base_query = base_query.group_by(
@@ -243,13 +264,11 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
         ).order_by(desc('article_count'))
 
         events = base_query.all()
-        logger.info(f"Retrieved {len(events)} events")
 
         organized_data = {}
         event_ids = [event.evento_id for event in events]
         
         if not event_ids:
-            logger.warning("No events found for the given criteria")
             return {'categories': []}
 
         # Fetch articles in a single query
@@ -333,6 +352,7 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
         return {
             'categories': sorted_categories
         }
+        
     except Exception as e:
         logger.error(f"Error in get_cached_articles: {str(e)}")
         return {'categories': []}
