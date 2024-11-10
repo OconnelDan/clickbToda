@@ -254,33 +254,35 @@ def get_articles():
         
         logger.info(f"Fetching articles with params: category_id={category_id}, subcategory_id={subcategory_id}, time_filter={time_filter}")
 
-        # Base query for categories
+        # Base query for categories with explicit join conditions
         categories_query = db.session.query(
             Categoria.categoria_id,
             Categoria.nombre,
             func.count(distinct(Articulo.articulo_id)).label('article_count')
         ).outerjoin(
-            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
+            Subcategoria, 
+            Subcategoria.categoria_id == Categoria.categoria_id
+        )
+
+        # Apply filters based on parameters
+        if subcategory_id:
+            categories_query = categories_query.filter(Subcategoria.subcategoria_id == subcategory_id)
+        elif category_id:
+            categories_query = categories_query.filter(Categoria.categoria_id == category_id)
+
+        # Continue with the rest of the joins
+        categories_query = categories_query.outerjoin(
+            Evento, 
+            Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).outerjoin(
-            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).outerjoin(
-            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+            articulo_evento, 
+            articulo_evento.c.evento_id == Evento.evento_id
         ).outerjoin(
             Articulo, and_(
                 Articulo.articulo_id == articulo_evento.c.articulo_id,
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
-        )
-
-        # Apply filters based on parameters
-        if category_id:
-            categories_query = categories_query.filter(Categoria.categoria_id == category_id)
-        elif subcategory_id:
-            categories_query = categories_query.join(
-                Subcategoria
-            ).filter(Subcategoria.subcategoria_id == subcategory_id)
-
-        categories_query = categories_query.group_by(
+        ).group_by(
             Categoria.categoria_id,
             Categoria.nombre
         )
@@ -293,14 +295,16 @@ def get_articles():
         # Prepare response data
         result_categories = []
         for cat in categories:
-            # Get subcategories for this category
+            # Get subcategories for this category with explicit join conditions
             subcategories = db.session.query(
                 Subcategoria,
                 func.count(distinct(Articulo.articulo_id)).label('article_count')
             ).outerjoin(
-                Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
+                Evento,
+                Evento.subcategoria_id == Subcategoria.subcategoria_id
             ).outerjoin(
-                articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+                articulo_evento,
+                articulo_evento.c.evento_id == Evento.evento_id
             ).outerjoin(
                 Articulo, and_(
                     Articulo.articulo_id == articulo_evento.c.articulo_id,
@@ -313,7 +317,11 @@ def get_articles():
             if subcategory_id:
                 subcategories = subcategories.filter(Subcategoria.subcategoria_id == subcategory_id)
 
-            subcategories = subcategories.group_by(Subcategoria.subcategoria_id).all()
+            subcategories = subcategories.group_by(
+                Subcategoria.subcategoria_id,
+                Subcategoria.nombre,
+                Subcategoria.descripcion
+            ).all()
 
             category_data = {
                 'categoria_id': cat.categoria_id,
@@ -324,12 +332,13 @@ def get_articles():
 
             # Add subcategories data
             for subcat, subcat_count in subcategories:
-                # Get events for this subcategory
+                # Get events for this subcategory with explicit join conditions
                 events = db.session.query(
                     Evento,
                     func.array_agg(distinct(Articulo.articulo_id)).label('article_ids')
                 ).outerjoin(
-                    articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+                    articulo_evento,
+                    articulo_evento.c.evento_id == Evento.evento_id
                 ).outerjoin(
                     Articulo, and_(
                         Articulo.articulo_id == articulo_evento.c.articulo_id,
@@ -337,7 +346,12 @@ def get_articles():
                     )
                 ).filter(
                     Evento.subcategoria_id == subcat.subcategoria_id
-                ).group_by(Evento.evento_id).all()
+                ).group_by(
+                    Evento.evento_id,
+                    Evento.titulo,
+                    Evento.descripcion,
+                    Evento.fecha_evento
+                ).all()
 
                 subcategory_data = {
                     'subcategoria_id': subcat.subcategoria_id,
@@ -349,12 +363,13 @@ def get_articles():
                 # Add events data
                 for event, article_ids in events:
                     if article_ids[0] is not None:  # Check if there are articles
-                        # Get articles for this event
+                        # Get articles for this event with explicit join conditions
                         articles = db.session.query(
                             Articulo,
                             Periodico
                         ).join(
-                            Periodico
+                            Periodico,
+                            Periodico.periodico_id == Articulo.periodico_id
                         ).filter(
                             Articulo.articulo_id.in_(article_ids)
                         ).all()
