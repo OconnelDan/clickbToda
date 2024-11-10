@@ -4,6 +4,7 @@ import logging
 from config import Config
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -68,53 +69,36 @@ def seed_categories(app):
     ]
 
     try:
-        # Ensure schema exists
-        db.session.execute(text('CREATE SCHEMA IF NOT EXISTS app;'))
-        db.session.commit()
-        
-        # Clear existing data first
+        # Clear existing data
         logger.info("Clearing existing categories and subcategories...")
         db.session.execute(text('TRUNCATE TABLE app.subcategoria CASCADE;'))
         db.session.execute(text('TRUNCATE TABLE app.categoria CASCADE;'))
         db.session.commit()
 
-        # Reset sequences
-        db.session.execute(text('ALTER SEQUENCE app.categoria_categoria_id_seq RESTART WITH 1;'))
-        db.session.execute(text('ALTER SEQUENCE app.subcategoria_subcategoria_id_seq RESTART WITH 1;'))
-        db.session.commit()
-
         # Insert new categories and subcategories
         logger.info("Inserting new categories and subcategories...")
         for cat_data in categories_data:
-            # Insert category
-            result = db.session.execute(
-                text("""
-                    INSERT INTO app.categoria (nombre, descripcion, created_at, updated_at) 
-                    VALUES (:nombre, :descripcion, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
-                    RETURNING categoria_id;
-                """),
-                {
-                    'nombre': cat_data['nombre'],
-                    'descripcion': cat_data['descripcion']
-                }
-            )
-            categoria_id = result.scalar()
+            # Create new category
+            now = datetime.utcnow()
+            category = Categoria()
+            category.nombre = cat_data['nombre']
+            category.descripcion = cat_data['descripcion']
+            category.created_at = now
+            category.updated_at = now
             
-            # Insert subcategories
+            db.session.add(category)
+            db.session.flush()  # Get the ID of the inserted category
+
+            # Create subcategories for this category
             for subcat_data in cat_data['subcategories']:
-                db.session.execute(
-                    text("""
-                        INSERT INTO app.subcategoria 
-                        (categoria_id, nombre, descripcion, palabras_clave, created_at, updated_at) 
-                        VALUES (:categoria_id, :nombre, :descripcion, :palabras_clave, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
-                    """),
-                    {
-                        'categoria_id': categoria_id,
-                        'nombre': subcat_data['nombre'],
-                        'descripcion': subcat_data['descripcion'],
-                        'palabras_clave': subcat_data['palabras_clave']
-                    }
-                )
+                subcategory = Subcategoria()
+                subcategory.categoria_id = category.categoria_id
+                subcategory.nombre = subcat_data['nombre']
+                subcategory.descripcion = subcat_data['descripcion']
+                subcategory.palabras_clave = subcat_data['palabras_clave']
+                subcategory.created_at = now
+                subcategory.updated_at = now
+                db.session.add(subcategory)
 
         db.session.commit()
         logger.info("Database seeding completed successfully!")
