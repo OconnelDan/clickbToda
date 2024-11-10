@@ -130,10 +130,14 @@ function loadCategoryContent(categoryId) {
         if (!articlesData || !articlesData.categories) {
             throw new Error('Invalid response format');
         }
+        
+        // Sort subcategories by article count
+        subcategories.sort((a, b) => (b.article_count || 0) - (a.article_count || 0));
+        
         updateSubcategoryTabs(subcategories);
         updateDisplay(articlesData);
         hideLoadingState();
-        updateNavigation(); // Add navigation update after content is loaded
+        updateNavigation();
     })
     .catch(error => {
         console.error('Error loading category content:', error);
@@ -176,7 +180,7 @@ function updateSubcategoryTabs(subcategories) {
         });
     });
     
-    updateNavigation(); // Add navigation update after subcategory tabs are updated
+    updateNavigation();
 }
 
 function loadArticlesForSubcategory(subcategoryId) {
@@ -196,7 +200,7 @@ function loadArticlesForSubcategory(subcategoryId) {
         .then(data => {
             updateDisplay(data);
             hideLoadingState();
-            updateNavigation(); // Add navigation update after articles are loaded
+            updateNavigation();
         })
         .catch(error => {
             console.error('Error loading subcategory articles:', error);
@@ -271,54 +275,75 @@ function updateDisplay(data) {
             categorySection.dataset.categoryId = category.categoria_id || '';
             categorySection.dataset.loaded = 'true';
             
+            // Sort subcategories by article count (if available)
+            const sortedSubcategories = (category.subcategories || []).sort((a, b) => {
+                const aCount = (a.events || []).reduce((sum, event) => sum + (event.articles || []).length, 0);
+                const bCount = (b.events || []).reduce((sum, event) => sum + (event.articles || []).length, 0);
+                return bCount - aCount;
+            });
+            
             categorySection.innerHTML = `
                 <h2 class="mb-3">${category.nombre || 'Unnamed Category'}</h2>
                 <div class="category-content">
-                    ${(category.subcategories || []).map(subcategory => `
-                        <div class="subcategory-section mb-4">
-                            ${subcategory.nombre ? 
-                                `<h3 class="h4 mb-3">${subcategory.nombre}</h3>` : 
-                                ''}
-                            <div class="events-container">
-                                ${(subcategory.events || []).map(event => `
-                                    <div class="event-articles mb-4">
-                                        <div class="row">
-                                            <div class="col-md-3">
-                                                <div class="event-info">
-                                                    <h4 class="event-title">${event.titulo || 'Untitled Event'}</h4>
-                                                    <p class="event-description">${event.descripcion || ''}</p>
-                                                    <div class="event-meta">
-                                                        <small class="text-muted">${event.fecha_evento || ''}</small>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-9">
-                                                <div class="articles-carousel">
-                                                    <div class="carousel-wrapper">
-                                                        ${(event.articles || []).map(article => `
-                                                            <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url || ''}" role="button">
-                                                                <div class="card h-100">
-                                                                    <div class="card-body">
-                                                                        <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
-                                                                             class="newspaper-logo mb-2" alt="Newspaper logo">
-                                                                        <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
-                                                                            ${article.titular || 'No Title'}
-                                                                        </h5>
-                                                                        ${article.gpt_opinion ? `<div class="article-opinion">${article.gpt_opinion}</div>` : ''}
-                                                                        ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
-                                                                    </div>
-                                                                </div>
+                    ${sortedSubcategories.map(subcategory => {
+                        // Sort events by article count
+                        const sortedEvents = (subcategory.events || []).sort((a, b) => {
+                            return (b.articles || []).length - (a.articles || []).length;
+                        });
+                        
+                        return `
+                            <div class="subcategory-section mb-4">
+                                ${subcategory.nombre ? 
+                                    `<h3 class="h4 mb-3">${subcategory.nombre}</h3>` : 
+                                    ''}
+                                <div class="events-container">
+                                    ${sortedEvents.map(event => {
+                                        // Sort articles by fecha_publicacion
+                                        const sortedArticles = (event.articles || []).sort((a, b) => {
+                                            return new Date(b.fecha_publicacion || 0) - new Date(a.fecha_publicacion || 0);
+                                        });
+                                        
+                                        return `
+                                            <div class="event-articles mb-4">
+                                                <div class="row">
+                                                    <div class="col-md-3">
+                                                        <div class="event-info">
+                                                            <h4 class="event-title">${event.titulo || 'Untitled Event'}</h4>
+                                                            <p class="event-description">${event.descripcion || ''}</p>
+                                                            <div class="event-meta">
+                                                                <small class="text-muted">${event.fecha_evento || ''}</small>
                                                             </div>
-                                                        `).join('')}
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-9">
+                                                        <div class="articles-carousel">
+                                                            <div class="carousel-wrapper">
+                                                                ${sortedArticles.map(article => `
+                                                                    <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url || ''}" role="button">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
+                                                                                     class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
+                                                                                    ${article.titular || 'No Title'}
+                                                                                </h5>
+                                                                                ${article.gpt_opinion ? `<div class="article-opinion">${article.gpt_opinion}</div>` : ''}
+                                                                                ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                `).join('')}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
+                                        `;
+                                    }).join('')}
+                                </div>
                             </div>
-                        </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             `;
             

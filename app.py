@@ -9,6 +9,7 @@ import sys
 from config import Config
 from flask_caching import Cache
 from database import db
+from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, articulo_evento
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,8 +32,6 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 
-from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, articulo_evento
-
 @login_manager.user_loader
 def load_user(user_id):
     try:
@@ -41,7 +40,41 @@ def load_user(user_id):
         logger.error(f"Error loading user: {str(e)}")
         return None
 
-# Authentication routes (register, login, logout)
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        try:
+            email = request.form.get('email')
+            password = request.form.get('password')
+            
+            if not email or not password:
+                flash('Email and password are required', 'error')
+                return render_template('auth/login.html')
+                
+            user = User.query.filter_by(email=email).first()
+            
+            if user and user.check_password(password):
+                login_user(user, remember=True)
+                logger.info(f"User {email} logged in successfully")
+                flash('Login successful!', 'success')
+                
+                next_page = request.args.get('next')
+                if not next_page or not next_page.startswith('/'):
+                    next_page = url_for('index')
+                return redirect(next_page)
+            
+            flash('Invalid email or password', 'error')
+            logger.warning(f"Failed login attempt for email: {email}")
+            
+        except Exception as e:
+            logger.error(f"Login error: {str(e)}")
+            flash('An error occurred during login. Please try again.', 'error')
+            
+    return render_template('auth/login.html')
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
@@ -92,41 +125,6 @@ def register():
             
     return render_template('auth/register.html')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-        
-    if request.method == 'POST':
-        try:
-            email = request.form.get('email')
-            password = request.form.get('password')
-            
-            if not email or not password:
-                flash('Email and password are required', 'error')
-                return render_template('auth/login.html')
-                
-            user = User.query.filter_by(email=email).first()
-            
-            if user and user.check_password(password):
-                login_user(user, remember=True)
-                logger.info(f"User {email} logged in successfully")
-                flash('Login successful!', 'success')
-                
-                next_page = request.args.get('next')
-                if not next_page or not next_page.startswith('/'):
-                    next_page = url_for('index')
-                return redirect(next_page)
-            
-            flash('Invalid email or password', 'error')
-            logger.warning(f"Failed login attempt for email: {email}")
-            
-        except Exception as e:
-            logger.error(f"Login error: {str(e)}")
-            flash('An error occurred during login. Please try again.', 'error')
-            
-    return render_template('auth/login.html')
-
 @app.route('/logout')
 @login_required
 def logout():
@@ -164,7 +162,7 @@ def index():
             Categoria.categoria_id,
             Categoria.nombre,
             Categoria.descripcion
-        ).all()
+        ).order_by(desc('article_count')).all()
 
         categories = []
         for category in categories_query:
@@ -176,9 +174,6 @@ def index():
                 },
                 'article_count': category.article_count or 0
             })
-
-        # Sort categories by article count
-        categories.sort(key=lambda x: x['article_count'], reverse=True)
         
         return render_template('index.html', 
                            categories=categories,
@@ -214,12 +209,12 @@ def get_subcategories():
         ).group_by(
             Subcategoria.subcategoria_id,
             Subcategoria.nombre
-        ).all()
+        ).order_by(desc('article_count')).all()
 
         return jsonify([{
             'id': s.id,
             'nombre': s.nombre,
-            'article_count': s.article_count
+            'article_count': s.article_count or 0
         } for s in subcategories])
 
     except Exception as e:
@@ -239,7 +234,7 @@ def get_articles():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
-        # Query events with articles
+        # Base query for events
         events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo.label('event_titulo'),
@@ -252,7 +247,8 @@ def get_articles():
             Articulo.paywall,
             Articulo.gpt_opinion,
             Periodico.nombre.label('periodico_nombre'),
-            Periodico.logo_url.label('periodico_logo')
+            Periodico.logo_url.label('periodico_logo'),
+            func.count(distinct(Articulo.articulo_id)).over(partition_by=Evento.evento_id).label('article_count')
         ).join(
             Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
@@ -263,7 +259,7 @@ def get_articles():
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).join(
-            Periodico
+            Periodico, Periodico.periodico_id == Articulo.periodico_id
         )
 
         if category_id:
@@ -271,7 +267,7 @@ def get_articles():
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
-        # Execute query and organize results
+        # Execute query
         events_results = events_query.all()
         
         # Organize results by events
@@ -283,19 +279,37 @@ def get_articles():
                     'titulo': result.event_titulo,
                     'descripcion': result.event_descripcion,
                     'fecha_evento': result.fecha_evento.isoformat() if result.fecha_evento else None,
+                    'article_count': result.article_count,
                     'articles': []
                 }
             
-            events_dict[event_id]['articles'].append({
-                'id': result.articulo_id,
-                'titular': result.titular,
-                'url': result.url,
-                'fecha_publicacion': result.fecha_publicacion.isoformat() if result.fecha_publicacion else None,
-                'paywall': result.paywall,
-                'gpt_opinion': result.gpt_opinion,
-                'periodico_nombre': result.periodico_nombre,
-                'periodico_logo': result.periodico_logo
-            })
+            # Only add article if it's not already in the list
+            article_exists = any(a['id'] == result.articulo_id for a in events_dict[event_id]['articles'])
+            if not article_exists:
+                events_dict[event_id]['articles'].append({
+                    'id': result.articulo_id,
+                    'titular': result.titular,
+                    'url': result.url,
+                    'fecha_publicacion': result.fecha_publicacion.isoformat() if result.fecha_publicacion else None,
+                    'paywall': result.paywall,
+                    'gpt_opinion': result.gpt_opinion,
+                    'periodico_nombre': result.periodico_nombre,
+                    'periodico_logo': result.periodico_logo
+                })
+
+        # Sort events by article count
+        sorted_events = sorted(
+            events_dict.values(),
+            key=lambda x: (x['article_count'] or 0, x['fecha_evento'] if x['fecha_evento'] else ''),
+            reverse=True
+        )
+
+        # Sort articles within each event by fecha_publicacion
+        for event in sorted_events:
+            event['articles'].sort(
+                key=lambda x: x['fecha_publicacion'] if x['fecha_publicacion'] else '',
+                reverse=True
+            )
 
         # Structure the response
         response_data = {
@@ -303,7 +317,7 @@ def get_articles():
                 'categoria_id': category_id,
                 'subcategories': [{
                     'subcategoria_id': subcategory_id,
-                    'events': [event_data for event_data in events_dict.values()]
+                    'events': sorted_events
                 }]
             }]
         }
@@ -312,6 +326,50 @@ def get_articles():
 
     except Exception as e:
         logger.error(f"Error in get_articles: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/article/<int:article_id>')
+def get_article(article_id):
+    try:
+        article = db.session.query(
+            Articulo.articulo_id,
+            Articulo.titular,
+            Articulo.subtitulo,
+            Articulo.url,
+            Articulo.fecha_publicacion,
+            Articulo.autor,
+            Articulo.agencia,
+            Articulo.paywall,
+            Articulo.gpt_resumen,
+            Articulo.gpt_opinion,
+            Periodico.nombre.label('periodico_nombre'),
+            Periodico.logo_url.label('periodico_logo')
+        ).join(
+            Periodico, Periodico.periodico_id == Articulo.periodico_id
+        ).filter(
+            Articulo.articulo_id == article_id
+        ).first()
+
+        if not article:
+            return jsonify({'error': 'Article not found'}), 404
+
+        return jsonify({
+            'id': article.articulo_id,
+            'titular': article.titular,
+            'subtitular': article.subtitulo,
+            'url': article.url,
+            'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
+            'periodista': article.autor,
+            'agencia': article.agencia,
+            'paywall': article.paywall,
+            'gpt_resumen': article.gpt_resumen,
+            'gpt_opinion': article.gpt_opinion,
+            'periodico_nombre': article.periodico_nombre,
+            'periodico_logo': article.periodico_logo
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching article details: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
