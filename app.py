@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import func, text, desc, and_, or_, distinct
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
@@ -18,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
 
 # Database configuration
 app.config['SQLALCHEMY_POOL_SIZE'] = 10
@@ -65,14 +69,26 @@ def register():
             email = request.form.get('email')
             password = request.form.get('password')
             
+            # Basic validation
             if not all([nombre, email, password]):
-                flash('All fields are required')
+                flash('All fields are required', 'error')
                 return render_template('auth/register.html')
-                
+
+            # Email validation
+            if not User.validate_email(email):
+                flash('Please enter a valid email address', 'error')
+                return render_template('auth/register.html')
+
+            # Password validation
+            is_valid, password_error = User.validate_password(password)
+            if not is_valid:
+                flash(password_error, 'error')
+                return render_template('auth/register.html')
+
             # Check if user already exists
             existing_user = User.query.filter_by(email=email).first()
             if existing_user:
-                flash('Email already registered')
+                flash('Email already registered', 'error')
                 return render_template('auth/register.html')
             
             # Create new user
@@ -87,13 +103,14 @@ def register():
             # Log the user in
             login_user(new_user)
             logger.info(f"New user registered: {email}")
+            flash('Registration successful! Welcome to our platform.', 'success')
             
             return redirect(url_for('index'))
             
         except Exception as e:
             db.session.rollback()
             logger.error(f"Registration error: {str(e)}")
-            flash('An error occurred during registration')
+            flash('An error occurred during registration. Please try again.', 'error')
             
     return render_template('auth/register.html')
 
@@ -108,7 +125,7 @@ def login():
             password = request.form.get('password')
             
             if not email or not password:
-                flash('Email and password are required')
+                flash('Email and password are required', 'error')
                 return render_template('auth/login.html')
                 
             user = User.query.filter_by(email=email).first()
@@ -116,18 +133,19 @@ def login():
             if user and user.check_password(password):
                 login_user(user, remember=True)
                 logger.info(f"User {email} logged in successfully")
+                flash('Login successful!', 'success')
                 
                 next_page = request.args.get('next')
                 if not next_page or not next_page.startswith('/'):
                     next_page = url_for('index')
                 return redirect(next_page)
             
-            flash('Invalid email or password')
+            flash('Invalid email or password', 'error')
             logger.warning(f"Failed login attempt for email: {email}")
             
         except Exception as e:
             logger.error(f"Login error: {str(e)}")
-            flash('An error occurred during login')
+            flash('An error occurred during login. Please try again.', 'error')
             
     return render_template('auth/login.html')
 
@@ -135,8 +153,10 @@ def login():
 @login_required
 def logout():
     logout_user()
+    flash('You have been logged out successfully.', 'success')
     return redirect(url_for('index'))
 
+# Restore all previously existing functions: get_subcategories, get_cached_articles, index route, etc.
 @app.route('/')
 def index():
     try:

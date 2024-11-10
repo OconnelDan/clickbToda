@@ -13,4 +13,5 @@ dependencies = [
     "werkzeug>=3.0.6",
     "sqlalchemy>=2.0.36",
     "flask-caching>=2.3.0",
+    "flask-wtf>=1.2.2",
 ]

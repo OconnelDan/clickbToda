@@ -9,6 +9,7 @@
             </div>
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="nombre" class="form-label">Name</label>
                         <input type="text" class="form-control" id="nombre" name="nombre" required>
@@ -20,6 +21,14 @@
                     <div class="mb-3">
                         <label for="password" class="form-label">Password</label>
                         <input type="password" class="form-control" id="password" name="password" required>
+                        <small class="form-text text-muted">
+                            Password must be at least 8 characters long and contain:
+                            <ul>
+                                <li>At least one uppercase letter</li>
+                                <li>At least one lowercase letter</li>
+                                <li>At least one number</li>
+                            </ul>
+                        </small>
                     </div>
                     <button type="submit" class="btn btn-primary">Register</button>
                 </form>
