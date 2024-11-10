@@ -73,7 +73,9 @@ def register():
         
         # Create new user
         try:
-            user = User(nombre=nombre, email=email)
+            user = User()
+            user.nombre = nombre
+            user.email = email
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
@@ -373,18 +375,17 @@ def get_article(article_id):
         article = db.session.query(
             Articulo.articulo_id.label('id'),
             Articulo.titular,
-            Articulo.subtitulo.label('subtitular'),  # Changed from subtitular to subtitulo
+            Articulo.subtitulo.label('subtitular'),
             Articulo.url,
             Articulo.fecha_publicacion,
-            Articulo.autor.label('periodista'),  # Changed from periodista_id to autor
+            Articulo.autor.label('periodista'),
             Articulo.agencia,
             Articulo.paywall,
             Articulo.gpt_resumen,
             Articulo.gpt_opinion,
-            Articulo.gpt_palabras_clave,
             Periodico.nombre.label('periodico_nombre'),
             Periodico.logo_url.label('periodico_logo')
-        ).select_from(text('app.articulo')).join(  # Added schema prefix
+        ).join(
             Periodico, Periodico.periodico_id == Articulo.periodico_id
         ).filter(
             Articulo.articulo_id == article_id
@@ -406,7 +407,6 @@ def get_article(article_id):
             'paywall': article.paywall,
             'gpt_resumen': article.gpt_resumen,
             'gpt_opinion': article.gpt_opinion,
-            'gpt_palabras_clave': article.gpt_palabras_clave,
             'periodico_nombre': article.periodico_nombre,
             'periodico_logo': article.periodico_logo
         }
