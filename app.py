@@ -224,31 +224,26 @@ def get_subcategories():
 @app.route('/api/articles')
 def get_articles():
     try:
+        # Validate and get request parameters
         category_id = request.args.get('category_id', type=int)
         subcategory_id = request.args.get('subcategory_id', type=int)
         time_filter = request.args.get('time_filter', '24h')
         
         if not category_id and not subcategory_id:
+            logger.error("Missing required parameters: category_id or subcategory_id")
             return jsonify({'error': 'category_id or subcategory_id is required'}), 400
 
+        # Calculate time range
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        logger.info(f"Fetching articles with parameters: category_id={category_id}, subcategory_id={subcategory_id}, time_range={start_date} to {end_date}")
 
-        # Base query for events
+        # Base query with explicit joins
         events_query = db.session.query(
-            Evento.evento_id,
-            Evento.titulo.label('event_titulo'),
-            Evento.descripcion.label('event_descripcion'),
-            Evento.fecha_evento,
-            Articulo.articulo_id,
-            Articulo.titular,
-            Articulo.url,
-            Articulo.fecha_publicacion,
-            Articulo.paywall,
-            Articulo.gpt_opinion,
-            Periodico.nombre.label('periodico_nombre'),
-            Periodico.logo_url.label('periodico_logo'),
-            func.count(distinct(Articulo.articulo_id)).over(partition_by=Evento.evento_id).label('article_count')
+            Evento,
+            Articulo,
+            Periodico
         ).join(
             Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
@@ -262,52 +257,58 @@ def get_articles():
             Periodico, Periodico.periodico_id == Articulo.periodico_id
         )
 
+        # Apply filters
         if category_id:
             events_query = events_query.filter(Subcategoria.categoria_id == category_id)
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
         # Execute query
+        logger.info("Executing events query")
         events_results = events_query.all()
         
-        # Organize results by events
+        # Process and organize results
         events_dict = {}
         for result in events_results:
-            event_id = result.evento_id
+            evento = result[0]  # Evento object
+            articulo = result[1]  # Articulo object
+            periodico = result[2]  # Periodico object
+            
+            event_id = evento.evento_id
             if event_id not in events_dict:
                 events_dict[event_id] = {
-                    'titulo': result.event_titulo,
-                    'descripcion': result.event_descripcion,
-                    'fecha_evento': result.fecha_evento.isoformat() if result.fecha_evento else None,
-                    'article_count': result.article_count,
+                    'titulo': evento.titulo,
+                    'descripcion': evento.descripcion,
+                    'fecha_evento': evento.fecha_evento.isoformat() if evento.fecha_evento else None,
+                    'article_count': 0,
                     'articles': []
                 }
             
             # Only add article if it's not already in the list
-            article_exists = any(a['id'] == result.articulo_id for a in events_dict[event_id]['articles'])
+            article_exists = any(a['id'] == articulo.articulo_id for a in events_dict[event_id]['articles'])
             if not article_exists:
                 events_dict[event_id]['articles'].append({
-                    'id': result.articulo_id,
-                    'titular': result.titular,
-                    'url': result.url,
-                    'fecha_publicacion': result.fecha_publicacion.isoformat() if result.fecha_publicacion else None,
-                    'paywall': result.paywall,
-                    'gpt_opinion': result.gpt_opinion,
-                    'periodico_nombre': result.periodico_nombre,
-                    'periodico_logo': result.periodico_logo
+                    'id': articulo.articulo_id,
+                    'titular': articulo.titular,
+                    'url': articulo.url,
+                    'fecha_publicacion': articulo.fecha_publicacion.isoformat() if articulo.fecha_publicacion else None,
+                    'paywall': articulo.paywall,
+                    'gpt_opinion': articulo.gpt_opinion,
+                    'periodico_nombre': periodico.nombre,
+                    'periodico_logo': periodico.logo_url
                 })
+                events_dict[event_id]['article_count'] += 1
 
-        # Sort events by article count
+        # Sort events by article count and date
         sorted_events = sorted(
             events_dict.values(),
-            key=lambda x: (x['article_count'] or 0, x['fecha_evento'] if x['fecha_evento'] else ''),
-            reverse=True
+            key=lambda x: (-x['article_count'], x['fecha_evento'] or ''),
         )
 
-        # Sort articles within each event by fecha_publicacion
+        # Sort articles within each event by publication date
         for event in sorted_events:
             event['articles'].sort(
-                key=lambda x: x['fecha_publicacion'] if x['fecha_publicacion'] else '',
+                key=lambda x: x['fecha_publicacion'] or '',
                 reverse=True
             )
 
@@ -322,11 +323,12 @@ def get_articles():
             }]
         }
 
+        logger.info(f"Successfully processed {len(sorted_events)} events with articles")
         return jsonify(response_data)
 
     except Exception as e:
-        logger.error(f"Error in get_articles: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error in get_articles: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 @app.route('/api/article/<int:article_id>')
 def get_article(article_id):
