@@ -1,0 +1,92 @@
+
+Structure	news.app	neondb.app
+Esquema	app	app
+Tablas	Tablas	Tablas
+Tabla	articulo	articulo
+Columnas	Columnas	Columnas
+Columna	embeddings	N/A
+Columna	subcategoria_id	N/A
+Claves foráneas	Claves foráneas	Claves foráneas
+Clave foránea	articulo_subcategoria_id_fkey	N/A
+Tabla	articulo_20241104	N/A
+Tabla	articulo_evento	articulo_evento
+Columnas	Columnas	Columnas
+Columna	cluster_id	N/A
+Columna	cluster_descripcion	N/A
+Claves foráneas	Claves foráneas	Claves foráneas
+Clave foránea	articulo_evento_articulo_id_fkey	N/A
+Clave foránea	articulo_evento_evento_id_fkey	N/A
+Tabla	articulo_influencer_mencion	N/A
+Tabla	categoria	categoria
+Restricciones	Restricciones	Restricciones
+Restricción	categoria_pkey1	N/A
+Restricción	N/A	categoria_pkey
+Índices	Índices	Índices
+Índice	categoria_pkey1	N/A
+Índice	N/A	categoria_pkey
+Tabla	categoria_mapping	N/A
+Tabla	evento	evento
+Columnas	Columnas	Columnas
+Columna	evento_id	N/A
+Columna	titulo	N/A
+Columna	descripcion	N/A
+Columna	fecha_evento	N/A
+Columna	impacto	N/A
+Columna	grupo_de_eventos_id	N/A
+Columna	subgrupo_de_eventos_id	N/A
+Columna	gpt_sujeto_activo	N/A
+Columna	gpt_sujeto_pasivo	N/A
+Columna	gpt_importancia	N/A
+Columna	gpt_tiene_contexto	N/A
+Columna	embeddings	N/A
+Columna	gpt_palabras_clave	N/A
+Columna	subcategoria_id	N/A
+Restricciones	Restricciones	Restricciones
+Restricción	evento_pkey	evento_pkey
+Columna	evento_id	N/A
+Claves foráneas	Claves foráneas	Claves foráneas
+Clave foránea	evento_subcategoria_id_fkey	N/A
+Índices	Índices	Índices
+Índice	evento_pkey	evento_pkey
+Columnas del índice	evento_id	N/A
+Columnas del índice	N/A	NULL
+Tabla	evento_20241104	N/A
+Tabla	evento_region	evento_region
+Claves foráneas	Claves foráneas	Claves foráneas
+Clave foránea	evento_region_evento_id_fkey	N/A
+Clave foránea	evento_region_region_id_fkey	N/A
+Tabla	grupo_de_eventos	N/A
+Tabla	influencer	N/A
+Tabla	influencer_opinion	N/A
+Tabla	periodico	periodico
+Índices	Índices	Índices
+Índice	periodico_pkey	N/A
+Tabla	region	region
+Columnas	Columnas	Columnas
+Columna	region_id	N/A
+Columna	region_nombre	N/A
+Columna	pais_iso_code	N/A
+Columna	iso31662_subdivision_code	N/A
+Columna	pais_nombre	N/A
+Restricciones	Restricciones	Restricciones
+Restricción	region_pkey	region_pkey
+Columna	region_id	N/A
+Índices	Índices	Índices
+Índice	region_pkey	region_pkey
+Columnas del índice	region_id	N/A
+Columnas del índice	N/A	NULL
+Tabla	subcategoria	subcategoria
+Índices	Índices	Índices
+Índice	N/A	idx_subcategory_category
+Tabla	subgrupo_de_eventos	N/A
+Tabla	user_log	N/A
+Secuencias	Secuencias	Secuencias
+Secuencia	categoria_categoria_id_seq1	N/A
+Secuencia	grupo_de_eventos_grupo_de_eventos_id_seq	N/A
+Secuencia	influencer_influencer_id_seq	N/A
+Secuencia	influencer_opinion_opinion_id_seq	N/A
+Secuencia	subcategoria_id_seq	N/A
+Secuencia	subgrupo_de_eventos_subgrupo_de_eventos_id_seq	N/A
+Secuencia	user_log_log_id_seq	N/A
+Secuencia	N/A	categoria_categoria_id_seq
+Secuencia	N/A	subcategoria_subcategoria_id_seq

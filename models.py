@@ -3,7 +3,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import ENUM
-from sqlalchemy import Column, Integer, String, Text, Date, TIMESTAMP, Boolean, ForeignKey, func, Table
+from sqlalchemy import Column, Integer, String, Text, Date, TIMESTAMP, Boolean, ForeignKey, func, Table, Index
 from sqlalchemy.orm import relationship
 import re
 
@@ -120,33 +120,6 @@ class Region(db.Model):
 
     eventos = relationship('Evento', secondary=evento_region, back_populates='regiones')
 
-class GrupoDeEventos(db.Model):
-    __tablename__ = 'grupo_de_eventos'
-    __table_args__ = {'schema': 'app'}
-
-    grupo_de_eventos_id = Column(Integer, primary_key=True)
-    nombre = Column(String(255), nullable=False)
-    descripcion = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    subgrupos = relationship('SubgrupoDeEventos', back_populates='grupo', cascade='all, delete-orphan')
-    eventos = relationship('Evento', back_populates='grupo')
-
-class SubgrupoDeEventos(db.Model):
-    __tablename__ = 'subgrupo_de_eventos'
-    __table_args__ = {'schema': 'app'}
-
-    subgrupo_de_eventos_id = Column(Integer, primary_key=True)
-    nombre = Column(String(255), nullable=False)
-    descripcion = Column(Text)
-    grupo_de_eventos_id = Column(Integer, ForeignKey('app.grupo_de_eventos.grupo_de_eventos_id'), nullable=False)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    grupo = relationship('GrupoDeEventos', back_populates='subgrupos')
-    eventos = relationship('Evento', back_populates='subgrupo')
-
 class Influencer(db.Model):
     __tablename__ = 'influencer'
     __table_args__ = {'schema': 'app'}
@@ -229,8 +202,6 @@ class Evento(db.Model):
     descripcion = Column(Text)
     fecha_evento = Column(Date)
     impacto = Column(String(255))
-    grupo_de_eventos_id = Column(Integer, ForeignKey('app.grupo_de_eventos.grupo_de_eventos_id'))
-    subgrupo_de_eventos_id = Column(Integer, ForeignKey('app.subgrupo_de_eventos.subgrupo_de_eventos_id'))
     subcategoria_id = Column(Integer, ForeignKey('app.subcategoria.subcategoria_id'))
     gpt_sujeto_activo = Column(String(255))
     gpt_sujeto_pasivo = Column(String(255))
@@ -241,8 +212,6 @@ class Evento(db.Model):
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    grupo = relationship('GrupoDeEventos', back_populates='eventos')
-    subgrupo = relationship('SubgrupoDeEventos', back_populates='eventos')
     subcategoria = relationship('Subcategoria', back_populates='eventos')
     articulos = relationship('Articulo', secondary=articulo_evento, back_populates='eventos')
     user_logs = relationship('UserLog', back_populates='evento')
@@ -263,7 +232,10 @@ class Categoria(db.Model):
 
 class Subcategoria(db.Model):
     __tablename__ = 'subcategoria'
-    __table_args__ = {'schema': 'app'}
+    __table_args__ = (
+        Index('idx_subcategory_category', 'categoria_id'),
+        {'schema': 'app'}
+    )
 
     subcategoria_id = Column(Integer, primary_key=True)
     categoria_id = Column(Integer, ForeignKey('app.categoria.categoria_id'), nullable=False)
