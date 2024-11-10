@@ -99,7 +99,7 @@ class Articulo(db.Model):
 
     articulo_id = Column(Integer, primary_key=True)
     titular = Column(String(1000), nullable=False)
-    subtitular = Column(Text)  # Changed from subtitulo to subtitular
+    subtitular = Column(Text)
     url = Column(String(255))
     fecha_publicacion = Column(Date)
     fecha_modificacion = Column(Date)
@@ -172,6 +172,16 @@ class Subcategoria(db.Model):
     categoria = relationship('Categoria', back_populates='subcategorias')
     eventos = relationship('Evento', back_populates='subcategoria')
 
+class Ideologia(db.Model):
+    __tablename__ = 'ideologia'
+    __table_args__ = {'schema': 'app'}
+
+    ideologia_id = Column(Integer, primary_key=True)
+    nombre = Column(String(50), nullable=False)
+    
+    # Add reverse relationship to Periodico
+    periodicos = relationship('Periodico', back_populates='ideologia')
+
 class Periodico(db.Model):
     __tablename__ = 'periodico'
     __table_args__ = {'schema': 'app'}
@@ -180,12 +190,16 @@ class Periodico(db.Model):
     nombre = Column(String(255), nullable=False)
     pais_iso_code = Column(String(2))
     idioma = Column(String(50))
-    sitio_web = Column(String(255))  # Changed from url to sitio_web
+    sitio_web = Column(String(255))
     logo_url = Column(String(255))
     tipo = Column(String(50))
     circulacion = Column(Integer)
     suscriptores = Column(Integer)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Add foreign key and relationship to Ideologia
+    ideologia_id = Column(Integer, ForeignKey('app.ideologia.ideologia_id'))
+    ideologia = relationship('Ideologia', back_populates='periodicos')
 
     articulos = relationship('Articulo', back_populates='periodico')
