@@ -75,18 +75,6 @@ class User(UserMixin, db.Model):
     def get_id(self):
         return str(self.id)
 
-    @property
-    def is_active(self):
-        return True
-
-    @property
-    def is_authenticated(self):
-        return True
-
-    @property
-    def is_anonymous(self):
-        return False
-
 class UserLog(db.Model):
     __tablename__ = 'user_log'
     __table_args__ = {'schema': 'app'}
@@ -110,12 +98,14 @@ class Articulo(db.Model):
     __table_args__ = {'schema': 'app'}
 
     articulo_id = Column(Integer, primary_key=True)
-    periodico_id = Column(Integer, ForeignKey('app.periodico.periodico_id'))
     titular = Column(String(1000), nullable=False)
-    subtitulo = Column(Text)
+    subtitular = Column(Text)  # Changed from subtitulo to subtitular
     url = Column(String(255))
     fecha_publicacion = Column(Date)
     fecha_modificacion = Column(Date)
+    periodico_id = Column(Integer, ForeignKey('app.periodico.periodico_id'), nullable=False)
+    periodista_id = Column(Integer, ForeignKey('app.periodista.periodista_id'))
+    tipo = Column(String(50), nullable=False)
     agencia = Column(agencia_enum)
     seccion = Column(String(100))
     autor = Column(String(100))
@@ -137,10 +127,10 @@ class Evento(db.Model):
     __table_args__ = {'schema': 'app'}
 
     evento_id = Column(Integer, primary_key=True)
-    subcategoria_id = Column(Integer, ForeignKey('app.subcategoria.subcategoria_id'))
     titulo = Column(String(255), nullable=False)
     descripcion = Column(Text)
     fecha_evento = Column(Date)
+    subcategoria_id = Column(Integer, ForeignKey('app.subcategoria.subcategoria_id'))
     gpt_sujeto_activo = Column(String(255))
     gpt_sujeto_pasivo = Column(String(255))
     gpt_importancia = Column(Integer)
@@ -190,7 +180,7 @@ class Periodico(db.Model):
     nombre = Column(String(255), nullable=False)
     pais_iso_code = Column(String(2))
     idioma = Column(String(50))
-    url = Column(String(255))
+    sitio_web = Column(String(255))  # Changed from url to sitio_web
     logo_url = Column(String(255))
     tipo = Column(String(50))
     circulacion = Column(Integer)

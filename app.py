@@ -157,7 +157,7 @@ def index():
         time_filter = request.args.get('time_filter', '24h')
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
+        
         logger.info(f"Loading index page with time_filter: {time_filter}")
 
         # First, get all categories with their article counts
@@ -189,22 +189,11 @@ def index():
         # Sort categories by article count
         categories.sort(key=lambda x: x['article_count'], reverse=True)
         
-        # Get initial data for the first category if available
-        initial_data = {'categories': []}
-        if categories:
-            initial_data = get_cached_articles(
-                categories[0]['Categoria'].categoria_id, 
-                None, 
-                time_filter, 
-                start_date, 
-                end_date
-            )
-        
         logger.info(f"Rendering index with {len(categories)} categories")
         
         return render_template('index.html', 
                            categories=categories,
-                           initial_data=initial_data,
+                           initial_data={'categories': []},
                            selected_date=datetime.now().date())
                            
     except Exception as e:
@@ -248,12 +237,24 @@ def get_subcategories():
         logger.error(f"Error fetching subcategories: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@cache.memoize(timeout=60)
-def get_cached_articles(category_id, subcategory_id, time_filter, start_date, end_date):
+@app.route('/api/articles')
+def get_articles():
     try:
-        logger.info(f"Fetching articles with params: category_id={category_id}, subcategory_id={subcategory_id}, time_filter={time_filter}")
+        # Get query parameters
+        category_id = request.args.get('category_id', type=int)
+        subcategory_id = request.args.get('subcategory_id', type=int)
+        time_filter = request.args.get('time_filter', '24h')
         
-        # First get categories with their article counts
+        if not category_id and not subcategory_id:
+            return jsonify({'error': 'Either category_id or subcategory_id is required'}), 400
+
+        # Calculate date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        logger.info(f"Fetching articles with params: category_id={category_id}, subcategory_id={subcategory_id}, time_filter={time_filter}")
+
+        # Base query for categories
         categories_query = db.session.query(
             Categoria.categoria_id,
             Categoria.nombre,
@@ -269,28 +270,29 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                 Articulo.articulo_id == articulo_evento.c.articulo_id,
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
-        ).group_by(
+        )
+
+        # Apply filters based on parameters
+        if category_id:
+            categories_query = categories_query.filter(Categoria.categoria_id == category_id)
+        elif subcategory_id:
+            categories_query = categories_query.join(
+                Subcategoria
+            ).filter(Subcategoria.subcategoria_id == subcategory_id)
+
+        categories_query = categories_query.group_by(
             Categoria.categoria_id,
             Categoria.nombre
         )
 
-        if category_id:
-            categories_query = categories_query.filter(Categoria.categoria_id == category_id)
-
         categories = categories_query.all()
 
         if not categories:
-            return {'categories': []}
+            return jsonify({'categories': []})
 
+        # Prepare response data
         result_categories = []
         for cat in categories:
-            category_data = {
-                'categoria_id': cat.categoria_id,
-                'nombre': cat.nombre,
-                'article_count': cat.article_count or 0,
-                'subcategories': []
-            }
-
             # Get subcategories for this category
             subcategories = db.session.query(
                 Subcategoria,
@@ -306,25 +308,85 @@ def get_cached_articles(category_id, subcategory_id, time_filter, start_date, en
                 )
             ).filter(
                 Subcategoria.categoria_id == cat.categoria_id
-            ).group_by(
-                Subcategoria.subcategoria_id
-            ).all()
+            )
 
+            if subcategory_id:
+                subcategories = subcategories.filter(Subcategoria.subcategoria_id == subcategory_id)
+
+            subcategories = subcategories.group_by(Subcategoria.subcategoria_id).all()
+
+            category_data = {
+                'categoria_id': cat.categoria_id,
+                'nombre': cat.nombre,
+                'article_count': cat.article_count or 0,
+                'subcategories': []
+            }
+
+            # Add subcategories data
             for subcat, subcat_count in subcategories:
+                # Get events for this subcategory
+                events = db.session.query(
+                    Evento,
+                    func.array_agg(distinct(Articulo.articulo_id)).label('article_ids')
+                ).outerjoin(
+                    articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+                ).outerjoin(
+                    Articulo, and_(
+                        Articulo.articulo_id == articulo_evento.c.articulo_id,
+                        Articulo.fecha_publicacion.between(start_date, end_date)
+                    )
+                ).filter(
+                    Evento.subcategoria_id == subcat.subcategoria_id
+                ).group_by(Evento.evento_id).all()
+
                 subcategory_data = {
+                    'subcategoria_id': subcat.subcategoria_id,
                     'nombre': subcat.nombre,
                     'article_count': subcat_count or 0,
                     'events': []
                 }
+
+                # Add events data
+                for event, article_ids in events:
+                    if article_ids[0] is not None:  # Check if there are articles
+                        # Get articles for this event
+                        articles = db.session.query(
+                            Articulo,
+                            Periodico
+                        ).join(
+                            Periodico
+                        ).filter(
+                            Articulo.articulo_id.in_(article_ids)
+                        ).all()
+
+                        event_data = {
+                            'evento_id': event.evento_id,
+                            'titulo': event.titulo,
+                            'descripcion': event.descripcion,
+                            'fecha_evento': event.fecha_evento.isoformat() if event.fecha_evento else None,
+                            'articles': [{
+                                'id': article.articulo_id,
+                                'titular': article.titular,
+                                'url': article.url,
+                                'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
+                                'periodico_nombre': periodico.nombre,
+                                'periodico_logo': periodico.logo_url,
+                                'paywall': article.paywall,
+                                'gpt_opinion': article.gpt_opinion,
+                                'gpt_resumen': article.gpt_resumen
+                            } for article, periodico in articles]
+                        }
+                        subcategory_data['events'].append(event_data)
+
                 category_data['subcategories'].append(subcategory_data)
 
             result_categories.append(category_data)
 
-        return {'categories': result_categories}
-        
+        return jsonify({'categories': result_categories})
+
     except Exception as e:
-        logger.error(f"Error in get_cached_articles: {str(e)}")
-        return {'categories': []}
+        logger.error(f"Error in get_articles: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
