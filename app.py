@@ -128,9 +128,11 @@ def index():
 
         logger.info(f"Loading index page with time_filter: {time_filter}")
 
-        # Updated categories query
+        # Query categories with article counts
         categories_query = db.session.query(
-            Categoria,
+            Categoria.categoria_id,
+            Categoria.nombre,
+            Categoria.descripcion,
             func.count(distinct(Articulo.articulo_id)).label('article_count')
         ).outerjoin(
             Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
@@ -144,7 +146,9 @@ def index():
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).group_by(
-            Categoria
+            Categoria.categoria_id,
+            Categoria.nombre,
+            Categoria.descripcion
         ).order_by(
             desc('article_count'),
             Categoria.nombre
@@ -154,9 +158,9 @@ def index():
         for category in categories_query:
             categories.append({
                 'Categoria': {
-                    'categoria_id': category.Categoria.categoria_id,
-                    'nombre': category.Categoria.nombre,
-                    'descripcion': category.Categoria.descripcion
+                    'categoria_id': category.categoria_id,
+                    'nombre': category.nombre,
+                    'descripcion': category.descripcion
                 },
                 'article_count': category.article_count or 0
             })
@@ -376,7 +380,7 @@ def get_article(article_id):
         article = db.session.query(
             Articulo.articulo_id.label('id'),
             Articulo.titular,
-            Articulo.subtitulo.label('subtitular'),
+            Articulo.subtitulo.label('subtitular'),  # Using subtitulo as defined in the model
             Articulo.url,
             Articulo.fecha_publicacion,
             Articulo.autor.label('periodista'),
@@ -387,7 +391,7 @@ def get_article(article_id):
             Periodico.nombre.label('periodico_nombre'),
             Periodico.logo_url.label('periodico_logo')
         ).join(
-            Periodico, text('app.periodico.periodico_id = app.articulo.periodico_id')
+            Periodico, Periodico.periodico_id == Articulo.periodico_id
         ).filter(
             Articulo.articulo_id == article_id
         ).first()

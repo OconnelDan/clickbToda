@@ -16,21 +16,6 @@ def create_app():
     db.init_app(app)
     return app
 
-def create_tables(app):
-    try:
-        with app.app_context():
-            # Create schema if it doesn't exist
-            db.session.execute(text('CREATE SCHEMA IF NOT EXISTS app'))
-            db.session.commit()
-            
-            # Create all tables
-            db.create_all()
-            db.session.commit()
-            logger.info("Database tables created successfully")
-    except Exception as e:
-        logger.error(f"Error creating tables: {str(e)}")
-        raise
-
 def seed_categories(app):
     categories_data = [
         {
@@ -126,5 +111,4 @@ def seed_categories(app):
 if __name__ == '__main__':
     app = create_app()
     with app.app_context():
-        create_tables(app)
         seed_categories(app)
