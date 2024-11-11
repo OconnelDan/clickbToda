@@ -71,8 +71,8 @@ def seed_categories(app):
     try:
         # Clear existing data
         logger.info("Clearing existing categories and subcategories...")
-        db.session.execute(text('TRUNCATE TABLE app.subcategoria CASCADE;'))
-        db.session.execute(text('TRUNCATE TABLE app.categoria CASCADE;'))
+        db.session.execute(text('TRUNCATE TABLE subcategoria CASCADE;'))
+        db.session.execute(text('TRUNCATE TABLE categoria CASCADE;'))
         db.session.commit()
 
         # Insert new categories and subcategories
@@ -83,8 +83,6 @@ def seed_categories(app):
             category = Categoria()
             category.nombre = cat_data['nombre']
             category.descripcion = cat_data['descripcion']
-            category.created_at = now
-            category.updated_at = now
             
             db.session.add(category)
             db.session.flush()  # Get the ID of the inserted category
@@ -96,8 +94,6 @@ def seed_categories(app):
                 subcategory.nombre = subcat_data['nombre']
                 subcategory.descripcion = subcat_data['descripcion']
                 subcategory.palabras_clave = subcat_data['palabras_clave']
-                subcategory.created_at = now
-                subcategory.updated_at = now
                 db.session.add(subcategory)
 
         db.session.commit()
