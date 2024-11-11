@@ -221,7 +221,7 @@ def get_articles():
             if not subcategory_info:
                 return jsonify({'error': 'Subcategory not found'}), 404
 
-        # Query events with related articles using proper SQLAlchemy model references
+        # Query events with related articles
         events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,
@@ -258,10 +258,6 @@ def get_articles():
             events_query = events_query.filter(Subcategoria.categoria_id == category_id)
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
-
-        # Log the generated SQL query
-        query_sql = str(events_query.statement.compile(compile_kwargs={"literal_binds": True}))
-        logger.info(f"Generated SQL: {query_sql}")
 
         # Execute query
         events_results = events_query.order_by(
@@ -384,7 +380,7 @@ def get_article(article_id):
         article = db.session.query(
             Articulo.articulo_id.label('id'),
             Articulo.titular,
-            Articulo.subtitulo.label('subtitular'),
+            Articulo.subtitulo.label('subtitular'),  # Using subtitulo as defined in the model
             Articulo.url,
             Articulo.fecha_publicacion,
             Articulo.autor.label('periodista'),
