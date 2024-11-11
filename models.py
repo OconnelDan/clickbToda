@@ -107,7 +107,7 @@ class Articulo(db.Model):
     articulo_id = Column(Integer, primary_key=True)
     periodico_id = Column(Integer, ForeignKey('periodico.periodico_id'))
     titular = Column(String(1000), nullable=False)
-    subtitulo = Column(Text)
+    subtitular = Column(Text)  # Changed from subtitulo to subtitular
     url = Column(String(255))
     fecha_publicacion = Column(Date)
     fecha_modificacion = Column(Date)
