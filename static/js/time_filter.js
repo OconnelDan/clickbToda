@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    timeFilter.addEventListener('change', function(e) {
+    timeFilter.addEventListener('change', async function(e) {
         if (!e.target.matches('input[type="radio"]')) return;
         
         // Update URL without page reload
@@ -41,16 +41,8 @@ document.addEventListener('DOMContentLoaded', function() {
             slider.style.transform = `translateX(${getSliderTransform(e.target.value)})`;
         }
 
-        // Reload the content through API
-        if (typeof loadCategoryContent === 'function') {
-            const activeCategoryTab = document.querySelector('#categoryTabs .nav-link.active');
-            if (activeCategoryTab) {
-                const categoryId = activeCategoryTab.dataset.categoryId;
-                if (categoryId) {
-                    loadCategoryContent(categoryId);
-                }
-            }
-        }
+        // Reload the entire page to refresh all counts
+        window.location.reload();
     });
 });
 
