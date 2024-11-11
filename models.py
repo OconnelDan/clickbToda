@@ -112,7 +112,7 @@ class Articulo(db.Model):
     articulo_id = Column(Integer, primary_key=True)
     periodico_id = Column(Integer, ForeignKey('app.periodico.periodico_id'))
     titular = Column(String(1000), nullable=False)
-    subtitulo = Column(Text)
+    subtitular = Column(Text)
     url = Column(String(255))
     fecha_publicacion = Column(Date)
     fecha_modificacion = Column(Date)
@@ -125,8 +125,6 @@ class Articulo(db.Model):
     gpt_opinion = Column(Text)
     paywall = Column(Boolean, default=False)
     embeddings = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     periodico = relationship('Periodico', back_populates='articulos')
     eventos = relationship('Evento', secondary=articulo_evento, back_populates='articulos')
@@ -147,8 +145,6 @@ class Evento(db.Model):
     gpt_tiene_contexto = Column(Boolean, default=False)
     gpt_palabras_clave = Column(String(1000))
     embeddings = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     subcategoria = relationship('Subcategoria', back_populates='eventos')
     articulos = relationship('Articulo', secondary=articulo_evento, back_populates='eventos')
@@ -161,8 +157,6 @@ class Categoria(db.Model):
     categoria_id = Column(Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
     descripcion = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     subcategorias = relationship('Subcategoria', back_populates='categoria')
 
@@ -176,8 +170,6 @@ class Subcategoria(db.Model):
     descripcion = Column(Text)
     palabras_clave = Column(Text)
     palabras_clave_embeddings = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     categoria = relationship('Categoria', back_populates='subcategorias')
     eventos = relationship('Evento', back_populates='subcategoria')
@@ -195,7 +187,5 @@ class Periodico(db.Model):
     tipo = Column(String(50))
     circulacion = Column(Integer)
     suscriptores = Column(Integer)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     articulos = relationship('Articulo', back_populates='periodico')

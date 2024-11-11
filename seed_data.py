@@ -79,12 +79,9 @@ def seed_categories(app):
         logger.info("Inserting new categories and subcategories...")
         for cat_data in categories_data:
             # Create new category
-            now = datetime.utcnow()
             category = Categoria()
             category.nombre = cat_data['nombre']
             category.descripcion = cat_data['descripcion']
-            category.created_at = now
-            category.updated_at = now
             
             db.session.add(category)
             db.session.flush()  # Get the ID of the inserted category
@@ -96,8 +93,6 @@ def seed_categories(app):
                 subcategory.nombre = subcat_data['nombre']
                 subcategory.descripcion = subcat_data['descripcion']
                 subcategory.palabras_clave = subcat_data['palabras_clave']
-                subcategory.created_at = now
-                subcategory.updated_at = now
                 db.session.add(subcategory)
 
         db.session.commit()
