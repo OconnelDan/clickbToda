@@ -265,6 +265,11 @@ def get_articles():
             desc(Articulo.fecha_publicacion)
         ).all()
 
+        # Log newspaper information
+        logger.info(f"Newspapers in results: {set(r.periodico_nombre for r in events_results)}")
+        newspaper_count = len(set(r.periodico_nombre for r in events_results))
+        logger.info(f"Total number of distinct newspapers: {newspaper_count}")
+
         # Process results
         events_dict = {}
         for result in events_results:
@@ -375,7 +380,7 @@ def get_article(article_id):
         article = db.session.query(
             Articulo.articulo_id.label('id'),
             Articulo.titular,
-            Articulo.subtitular.label('subtitular'),  # Changed from subtitulo to subtitular
+            Articulo.subtitulo.label('subtitular'),  # Using subtitulo as defined in the model
             Articulo.url,
             Articulo.fecha_publicacion,
             Articulo.autor.label('periodista'),
