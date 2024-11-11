@@ -73,8 +73,6 @@ function resetModalContent() {
         'articleAuthor': { type: 'text', value: '' },
         'articleAgency': { type: 'text', value: '' },
         'articleSummary': { type: 'text', value: '' },
-        'articleOpinion': { type: 'text', value: '' },
-        'articleKeywords': { type: 'html', value: '' },
         'articleSources': { type: 'text', value: '' }
     };
     
@@ -192,8 +190,7 @@ function updateModalContent(article) {
             'articleDate': { type: 'text', value: formatDate(article.fecha_publicacion) },
             'articleAuthor': { type: 'text', value: article.periodista || 'Unknown Author' },
             'articleAgency': { type: 'text', value: article.agencia || '' },
-            'articleSummary': { type: 'text', value: article.gpt_resumen || 'No summary available' },
-            'articleOpinion': { type: 'text', value: article.gpt_opinion || 'No opinion available' }
+            'articleSummary': { type: 'text', value: article.gpt_resumen || 'No summary available' }
         };
         
         for (const [id, config] of Object.entries(elements)) {
@@ -209,7 +206,6 @@ function updateModalContent(article) {
             }
         }
         
-        updateKeywords(article.gpt_palabras_clave);
         updateSources(article.gpt_cantidad_fuentes_citadas);
         updatePaywallWarning(article.paywall);
         updateArticleLink(article.url);
@@ -233,25 +229,6 @@ function formatDate(dateString) {
     } catch (error) {
         console.warn('Error formatting date:', error);
         return dateString;
-    }
-}
-
-function updateKeywords(keywords) {
-    const keywordsDiv = document.getElementById('articleKeywords');
-    if (!keywordsDiv) {
-        console.error('Keywords element not found');
-        return;
-    }
-    
-    if (keywords) {
-        const badges = keywords.split(',')
-            .map(keyword => keyword.trim())
-            .filter(keyword => keyword)
-            .map(keyword => `<span class="badge bg-secondary me-1 mb-1">${keyword}</span>`)
-            .join('');
-        keywordsDiv.innerHTML = badges || '<span class="text-muted">No keywords available</span>';
-    } else {
-        keywordsDiv.innerHTML = '<span class="text-muted">No keywords available</span>';
     }
 }
 

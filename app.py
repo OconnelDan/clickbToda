@@ -387,7 +387,6 @@ def get_article(article_id):
             Articulo.agencia,
             Articulo.paywall,
             Articulo.gpt_resumen,
-            Articulo.gpt_opinion,
             Periodico.nombre.label('periodico_nombre'),
             Periodico.logo_url.label('periodico_logo')
         ).join(
@@ -411,7 +410,6 @@ def get_article(article_id):
             'agencia': str(article.agencia) if article.agencia else None,
             'paywall': article.paywall,
             'gpt_resumen': article.gpt_resumen,
-            'gpt_opinion': article.gpt_opinion,
             'periodico_nombre': article.periodico_nombre,
             'periodico_logo': article.periodico_logo
         }
