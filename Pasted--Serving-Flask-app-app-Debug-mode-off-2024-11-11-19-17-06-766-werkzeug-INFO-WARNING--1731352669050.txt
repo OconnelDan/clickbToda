@@ -1,0 +1,24 @@
+ * Serving Flask app 'app'
+ * Debug mode: off
+2024-11-11 19:17:06,766 - werkzeug - INFO - WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.31.196.85:5000
+2024-11-11 19:17:06,766 - werkzeug - INFO - Press CTRL+C to quit
+2024-11-11 19:17:07,500 - app - INFO - Loading index page with time_filter: 72h
+2024-11-11 19:17:08,001 - werkzeug - INFO - 172.31.196.85 - - [11/Nov/2024 19:17:08] "GET / HTTP/1.1" 200 -
+2024-11-11 19:17:08,142 - werkzeug - INFO - 172.31.196.85 - - [11/Nov/2024 19:17:08] "GET /static/css/style.css HTTP/1.1" 304 -
+2024-11-11 19:17:08,453 - werkzeug - INFO - 172.31.196.85 - - [11/Nov/2024 19:17:08] "GET /static/js/time_filter.js HTTP/1.1" 304 -
+2024-11-11 19:17:08,464 - werkzeug - INFO - 172.31.196.85 - - [11/Nov/2024 19:17:08] "GET /static/js/article_modal.js HTTP/1.1" 304 -
+2024-11-11 19:17:08,521 - werkzeug - INFO - 172.31.196.85 - - [11/Nov/2024 19:17:08] "GET /static/js/carousel.js HTTP/1.1" 304 -
+2024-11-11 19:17:08,561 - werkzeug - INFO - 172.31.196.85 - - [11/Nov/2024 19:17:08] "GET /static/js/category_handlers.js HTTP/1.1" 304 -
+2024-11-11 19:17:16,570 - app - INFO - Loading index page with time_filter: 72h
+2024-11-11 19:17:16,656 - app - ERROR - Error loading user: (psycopg2.errors.UndefinedTable) relation "app.usuario" does not exist
+LINE 2: FROM app.usuario 
+             ^
+
+[SQL: SELECT app.usuario.usuario_id AS app_usuario_usuario_id, app.usuario.nombre AS app_usuario_nombre, app.usuario.email AS app_usuario_email, app.usuario.password_hash AS app_usuario_password_hash, app.usuario.is_admin AS app_usuario_is_admin, app.usuario.es_suscriptor AS app_usuario_es_suscriptor, app.usuario.fin_fecha_suscripcion AS app_usuario_fin_fecha_suscripcion, app.usuario.status AS app_usuario_status, app.usuario.puntos AS app_usuario_puntos, app.usuario.created_at AS app_usuario_created_at, app.usuario.updated_at AS app_usuario_updated_at 
+FROM app.usuario 
+WHERE app.usuario.usuario_id = %(pk_1)s]
+[parameters: {'pk_1': 1}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
