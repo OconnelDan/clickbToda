@@ -143,7 +143,7 @@ def index():
         ).outerjoin(
             Articulo, and_(
                 Articulo.articulo_id == articulo_evento.c.articulo_id,
-                Articulo.fecha_publicacion.between(start_date, end_date)
+                Articulo.updated_on.between(start_date, end_date)
             )
         ).group_by(
             Categoria.categoria_id,
@@ -235,7 +235,7 @@ def get_articles():
             Articulo.articulo_id,
             Articulo.titular,
             Articulo.url,
-            Articulo.fecha_publicacion,
+            Articulo.updated_on.label(fecha_publicacion),
             Articulo.paywall,
             Articulo.gpt_opinion,
             Periodico.nombre.label('periodico_nombre'),
@@ -247,7 +247,7 @@ def get_articles():
         ).join(
             Articulo, and_(
                 Articulo.articulo_id == articulo_evento.c.articulo_id,
-                Articulo.fecha_publicacion.between(start_date, end_date)
+                Articulo.updated_on.between(start_date, end_date)
             )
         ).join(
             Periodico, Periodico.periodico_id == Articulo.periodico_id
@@ -262,7 +262,7 @@ def get_articles():
         # Execute query
         events_results = events_query.order_by(
             desc(Evento.fecha_evento),
-            desc(Articulo.fecha_publicacion)
+            desc(Articulo.updated_on)
         ).all()
 
         # Log newspaper information
@@ -406,7 +406,7 @@ def get_article(article_id):
             'titular': article.titular,
             'subtitular': article.subtitular,
             'url': article.url,
-            'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
+            'fecha_publicacion': article.fecha_publicacion.isoformat() if article.updated_on else None,
             'periodista': str(article.periodista) if article.periodista else None,
             'agencia': str(article.agencia) if article.agencia else None,
             'paywall': article.paywall,
