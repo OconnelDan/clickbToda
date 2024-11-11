@@ -240,17 +240,21 @@ def get_articles():
             Articulo.gpt_opinion,
             Periodico.nombre.label('periodico_nombre'),
             Periodico.logo_url.label('periodico_logo')
+        ).select_from(text('app.evento')).join(
+            text('app.subcategoria'),
+            Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
-            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
+            text('app.articulo_evento'),
+            articulo_evento.c.evento_id == Evento.evento_id
         ).join(
-            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
-        ).join(
-            Articulo, and_(
+            text('app.articulo'),
+            and_(
                 Articulo.articulo_id == articulo_evento.c.articulo_id,
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).join(
-            Periodico, Periodico.periodico_id == Articulo.periodico_id
+            text('app.periodico'),
+            Periodico.periodico_id == Articulo.periodico_id
         )
 
         # Apply filters
@@ -258,6 +262,10 @@ def get_articles():
             events_query = events_query.filter(Subcategoria.categoria_id == category_id)
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
+
+        # Log the generated SQL query
+        query_sql = str(events_query.statement.compile(compile_kwargs={"literal_binds": True}))
+        logger.info(f"Generated SQL: {query_sql}")
 
         # Execute query
         events_results = events_query.order_by(
