@@ -380,10 +380,10 @@ def get_article(article_id):
         article = db.session.query(
             Articulo.articulo_id.label('id'),
             Articulo.titular,
-            Articulo.subtitular,  # Changed from subtitulo to subtitular
+            Articulo.subtitular,
             Articulo.url,
             Articulo.fecha_publicacion,
-            Articulo.autor.label('periodista'),
+            Articulo.periodista_id.label('periodista'),  # Changed from periodista to periodista_id
             Articulo.agencia,
             Articulo.paywall,
             Articulo.gpt_resumen,

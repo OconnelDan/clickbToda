@@ -107,13 +107,13 @@ class Articulo(db.Model):
     articulo_id = Column(Integer, primary_key=True)
     periodico_id = Column(Integer, ForeignKey('periodico.periodico_id'))
     titular = Column(String(1000), nullable=False)
-    subtitular = Column(Text)  # Changed from subtitulo to subtitular
+    subtitular = Column(Text)
     url = Column(String(255))
     fecha_publicacion = Column(Date)
     fecha_modificacion = Column(Date)
     agencia = Column(agencia_enum)
     seccion = Column(String(100))
-    autor = Column(String(100))
+    periodista_id = Column(Integer)  # Changed from periodista to periodista_id
     contenido = Column(Text)
     sentimiento = Column(sentimiento_enum, default='neutral')
     gpt_resumen = Column(Text)
