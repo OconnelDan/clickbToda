@@ -380,7 +380,7 @@ def get_article(article_id):
         article = db.session.query(
             Articulo.articulo_id.label('id'),
             Articulo.titular,
-            Articulo.subtitulo.label('subtitular'),  # Using subtitulo as defined in the model
+            Articulo.subtitulo.label('subtitular'),
             Articulo.url,
             Articulo.fecha_publicacion,
             Articulo.autor.label('periodista'),
@@ -391,7 +391,7 @@ def get_article(article_id):
             Periodico.nombre.label('periodico_nombre'),
             Periodico.logo_url.label('periodico_logo')
         ).join(
-            Periodico, Periodico.periodico_id == Articulo.periodico_id
+            Periodico, text('app.periodico.periodico_id = app.articulo.periodico_id')
         ).filter(
             Articulo.articulo_id == article_id
         ).first()
