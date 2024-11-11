@@ -221,7 +221,7 @@ def get_articles():
             if not subcategory_info:
                 return jsonify({'error': 'Subcategory not found'}), 404
 
-        # Query events with related articles
+        # Query events with related articles using proper SQLAlchemy model references
         events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,
@@ -240,21 +240,17 @@ def get_articles():
             Articulo.gpt_opinion,
             Periodico.nombre.label('periodico_nombre'),
             Periodico.logo_url.label('periodico_logo')
-        ).select_from(text('app.evento')).join(
-            text('app.subcategoria'),
-            Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
-            text('app.articulo_evento'),
-            articulo_evento.c.evento_id == Evento.evento_id
+            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
-            text('app.articulo'),
-            and_(
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+        ).join(
+            Articulo, and_(
                 Articulo.articulo_id == articulo_evento.c.articulo_id,
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).join(
-            text('app.periodico'),
-            Periodico.periodico_id == Articulo.periodico_id
+            Periodico, Periodico.periodico_id == Articulo.periodico_id
         )
 
         # Apply filters
@@ -388,7 +384,7 @@ def get_article(article_id):
         article = db.session.query(
             Articulo.articulo_id.label('id'),
             Articulo.titular,
-            Articulo.subtitulo.label('subtitular'),  # Using subtitulo as defined in the model
+            Articulo.subtitulo.label('subtitular'),
             Articulo.url,
             Articulo.fecha_publicacion,
             Articulo.autor.label('periodista'),
