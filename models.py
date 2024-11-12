@@ -15,6 +15,8 @@ agencia_enum = ENUM('Reuters', 'EFE', 'Otro', name='agencia_enum', schema='publi
 articulo_evento = Table('articulo_evento', db.Model.metadata,
     Column('articulo_id', Integer, ForeignKey('public.articulo.articulo_id'), primary_key=True),
     Column('evento_id', Integer, ForeignKey('public.evento.evento_id'), primary_key=True),
+    Column('cluster_id', Integer),
+    Column('cluster_descripcion', String(255)),
     schema='public'
 )
 
@@ -68,6 +70,7 @@ class Evento(db.Model):
     subcategoria = relationship('Subcategoria', back_populates='eventos')
     articulos = relationship('Articulo', secondary=articulo_evento, back_populates='eventos')
     regiones = relationship('Region', secondary=evento_region, back_populates='eventos')
+    user_logs = relationship('UserLog', back_populates='evento')
 
 class Articulo(db.Model):
     __tablename__ = 'articulo'
@@ -91,6 +94,7 @@ class Articulo(db.Model):
 
     periodico = relationship('Periodico', back_populates='articulos')
     eventos = relationship('Evento', secondary=articulo_evento, back_populates='articulos')
+    user_logs = relationship('UserLog', back_populates='articulo')
 
 class Periodico(db.Model):
     __tablename__ = 'periodico'
@@ -121,6 +125,8 @@ class User(UserMixin, db.Model):
     fin_fecha_suscripcion = Column(TIMESTAMP)
     status = Column(String(255))
     puntos = Column(Integer, default=0)
+    
+    user_logs = relationship('UserLog', back_populates='user')
 
     @staticmethod
     def validate_password(password):
