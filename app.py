@@ -233,26 +233,16 @@ def get_articles():
             Articulo,
             Periodico
         ).join(
-            Subcategoria, and_(
-                Evento.subcategoria_id == Subcategoria.subcategoria_id,
-                Subcategoria.__table_args__['schema'] == 'public'
-            )
+            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
-            articulo_evento, and_(
-                articulo_evento.c.evento_id == Evento.evento_id,
-                articulo_evento.schema == 'public'
-            )
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).join(
             Articulo, and_(
                 Articulo.articulo_id == articulo_evento.c.articulo_id,
-                Articulo.fecha_publicacion.between(start_date, end_date),
-                Articulo.__table_args__['schema'] == 'public'
+                Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).join(
-            Periodico, and_(
-                Periodico.periodico_id == Articulo.periodico_id,
-                Periodico.__table_args__['schema'] == 'public'
-            )
+            Periodico, Periodico.periodico_id == Articulo.periodico_id
         )
 
         # Apply filters
@@ -380,7 +370,7 @@ def get_article(article_id):
         article = db.session.query(
             Articulo.articulo_id,
             Articulo.titular,
-            Articulo.subtitulo,
+            Articulo.subtitular,
             Articulo.url,
             Articulo.fecha_publicacion,
             Articulo.autor,
@@ -402,7 +392,7 @@ def get_article(article_id):
         return jsonify({
             'id': article.articulo_id,
             'titular': article.titular,
-            'subtitular': article.subtitulo,
+            'subtitular': article.subtitular,
             'url': article.url,
             'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
             'periodista': article.autor,
