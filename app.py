@@ -130,9 +130,7 @@ def index():
 
         # Query categories with article counts
         categories_query = db.session.query(
-            Categoria.categoria_id,
-            Categoria.nombre,
-            Categoria.descripcion,
+            Categoria,
             func.count(distinct(Articulo.articulo_id)).label('article_count')
         ).outerjoin(
             Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
@@ -155,14 +153,14 @@ def index():
         ).all()
 
         categories = []
-        for category in categories_query:
+        for category, article_count in categories_query:
             categories.append({
                 'Categoria': {
                     'categoria_id': category.categoria_id,
                     'nombre': category.nombre,
                     'descripcion': category.descripcion
                 },
-                'article_count': category.article_count or 0
+                'article_count': article_count or 0
             })
         
         return render_template('index.html', 
@@ -193,7 +191,7 @@ def get_articles():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        # Get category and subcategory info with specific columns
+        # Get category and subcategory info
         category_info = None
         subcategory_info = None
         
@@ -264,11 +262,6 @@ def get_articles():
             desc(Evento.fecha_evento),
             desc(Articulo.fecha_publicacion)
         ).all()
-
-        # Log newspaper information
-        logger.info(f"Newspapers in results: {set(r.periodico_nombre for r in events_results)}")
-        newspaper_count = len(set(r.periodico_nombre for r in events_results))
-        logger.info(f"Total number of distinct newspapers: {newspaper_count}")
 
         # Process results
         events_dict = {}
@@ -383,7 +376,7 @@ def get_article(article_id):
             Articulo.subtitular,
             Articulo.url,
             Articulo.fecha_publicacion,
-            Articulo.periodista_id.label('periodista'),
+            Articulo.periodista_id,
             Articulo.agencia,
             Articulo.paywall,
             Articulo.gpt_resumen,
@@ -400,14 +393,13 @@ def get_article(article_id):
             logger.error(f"Article not found with ID: {article_id}")
             return jsonify({'error': 'Article not found'}), 404
 
-        # Convert to dict for JSON serialization
         article_data = {
             'id': article.id,
             'titular': article.titular,
             'subtitular': article.subtitular,
             'url': article.url,
             'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
-            'periodista': str(article.periodista) if article.periodista else None,
+            'periodista': article.periodista_id,
             'agencia': str(article.agencia) if article.agencia else None,
             'paywall': article.paywall,
             'gpt_resumen': article.gpt_resumen,
