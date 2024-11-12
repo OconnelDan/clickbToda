@@ -24,6 +24,90 @@ evento_region = Table('evento_region', db.Model.metadata,
     schema='public'
 )
 
+class Categoria(db.Model):
+    __tablename__ = 'categoria'
+    __table_args__ = {'schema': 'public'}
+
+    categoria_id = Column(Integer, primary_key=True)
+    nombre = Column(String(255), nullable=False)
+    descripcion = Column(Text)
+
+    subcategorias = relationship('Subcategoria', back_populates='categoria')
+
+class Subcategoria(db.Model):
+    __tablename__ = 'subcategoria'
+    __table_args__ = {'schema': 'public'}
+
+    subcategoria_id = Column(Integer, primary_key=True)
+    categoria_id = Column(Integer, ForeignKey('public.categoria.categoria_id'))
+    nombre = Column(String(255), nullable=False)
+    descripcion = Column(Text)
+    palabras_clave = Column(Text)
+    palabras_clave_embeddings = Column(Text)
+
+    categoria = relationship('Categoria', back_populates='subcategorias')
+    eventos = relationship('Evento', back_populates='subcategoria')
+
+class Evento(db.Model):
+    __tablename__ = 'evento'
+    __table_args__ = {'schema': 'public'}
+
+    evento_id = Column(Integer, primary_key=True)
+    subcategoria_id = Column(Integer, ForeignKey('public.subcategoria.subcategoria_id'))
+    titulo = Column(String(255), nullable=False)
+    descripcion = Column(Text)
+    fecha_evento = Column(Date)
+    impacto = Column(String(255))
+    gpt_sujeto_activo = Column(String(255))
+    gpt_sujeto_pasivo = Column(String(255))
+    gpt_importancia = Column(Integer)
+    gpt_tiene_contexto = Column(Boolean, default=False)
+    gpt_palabras_clave = Column(String)
+    embeddings = Column(String)
+
+    subcategoria = relationship('Subcategoria', back_populates='eventos')
+    articulos = relationship('Articulo', secondary=articulo_evento, back_populates='eventos')
+    regiones = relationship('Region', secondary=evento_region, back_populates='eventos')
+
+class Articulo(db.Model):
+    __tablename__ = 'articulo'
+    __table_args__ = {'schema': 'public'}
+
+    articulo_id = Column(Integer, primary_key=True)
+    periodico_id = Column(Integer, ForeignKey('public.periodico.periodico_id'))
+    titular = Column(String(1000), nullable=False)
+    subtitulo = Column(Text)
+    url = Column(String(255))
+    fecha_publicacion = Column(Date)
+    fecha_modificacion = Column(Date)
+    agencia = Column(agencia_enum)
+    autor = Column(String(100))
+    contenido = Column(Text)
+    paywall = Column(Boolean, default=False)
+    gpt_resumen = Column(Text)
+    gpt_opinion = Column(Text)
+    gpt_palabras_clave = Column(String(1000))
+    embeddings = Column(String)
+
+    periodico = relationship('Periodico', back_populates='articulos')
+    eventos = relationship('Evento', secondary=articulo_evento, back_populates='articulos')
+
+class Periodico(db.Model):
+    __tablename__ = 'periodico'
+    __table_args__ = {'schema': 'public'}
+
+    periodico_id = Column(Integer, primary_key=True)
+    nombre = Column(String(255), nullable=False)
+    pais_iso_code = Column(String(2))
+    idioma = Column(String(50))
+    url = Column(String(255))
+    logo_url = Column(String(255))
+    tipo = Column(String(50))
+    circulacion = Column(Integer)
+    suscriptores = Column(Integer)
+
+    articulos = relationship('Articulo', back_populates='periodico')
+
 class User(UserMixin, db.Model):
     __tablename__ = 'usuario'
     __table_args__ = {'schema': 'public'}
@@ -37,10 +121,6 @@ class User(UserMixin, db.Model):
     fin_fecha_suscripcion = Column(TIMESTAMP)
     status = Column(String(255))
     puntos = Column(Integer, default=0)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    user_logs = relationship('UserLog', back_populates='user')
 
     @staticmethod
     def validate_password(password):
@@ -105,97 +185,11 @@ class UserLog(db.Model):
     articulo = relationship('Articulo', back_populates='user_logs')
     evento = relationship('Evento', back_populates='user_logs')
 
-class Articulo(db.Model):
-    __tablename__ = 'articulo'
+class Region(db.Model):
+    __tablename__ = 'region'
     __table_args__ = {'schema': 'public'}
 
-    articulo_id = Column(Integer, primary_key=True)
-    periodico_id = Column(Integer, ForeignKey('public.periodico.periodico_id'))
-    titular = Column(String(1000), nullable=False)
-    subtitulo = Column(Text)
-    url = Column(String(255))
-    fecha_publicacion = Column(Date)
-    fecha_modificacion = Column(Date)
-    agencia = Column(agencia_enum)
-    seccion = Column(String(100))
-    autor = Column(String(100))
-    contenido = Column(Text)
-    sentimiento = Column(sentimiento_enum, default='neutral')
-    gpt_resumen = Column(Text)
-    gpt_opinion = Column(Text)
-    paywall = Column(Boolean, default=False)
-    embeddings = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    periodico = relationship('Periodico', back_populates='articulos')
-    eventos = relationship('Evento', secondary=articulo_evento, back_populates='articulos')
-    user_logs = relationship('UserLog', back_populates='articulo')
-
-class Evento(db.Model):
-    __tablename__ = 'evento'
-    __table_args__ = {'schema': 'public'}
-
-    evento_id = Column(Integer, primary_key=True)
-    subcategoria_id = Column(Integer, ForeignKey('public.subcategoria.subcategoria_id'))
-    titulo = Column(String(255), nullable=False)
-    descripcion = Column(Text)
-    fecha_evento = Column(Date)
-    gpt_sujeto_activo = Column(String(255))
-    gpt_sujeto_pasivo = Column(String(255))
-    gpt_importancia = Column(Integer)
-    gpt_tiene_contexto = Column(Boolean, default=False)
-    gpt_palabras_clave = Column(String(1000))
-    embeddings = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    subcategoria = relationship('Subcategoria', back_populates='eventos')
-    articulos = relationship('Articulo', secondary=articulo_evento, back_populates='eventos')
-    user_logs = relationship('UserLog', back_populates='evento')
-
-class Categoria(db.Model):
-    __tablename__ = 'categoria'
-    __table_args__ = {'schema': 'public'}
-
-    categoria_id = Column(Integer, primary_key=True)
+    region_id = Column(Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
-    descripcion = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    subcategorias = relationship('Subcategoria', back_populates='categoria')
-
-class Subcategoria(db.Model):
-    __tablename__ = 'subcategoria'
-    __table_args__ = {'schema': 'public'}
-
-    subcategoria_id = Column(Integer, primary_key=True)
-    categoria_id = Column(Integer, ForeignKey('public.categoria.categoria_id'))
-    nombre = Column(String(255), nullable=False)
-    descripcion = Column(Text)
-    palabras_clave = Column(Text)
-    palabras_clave_embeddings = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    categoria = relationship('Categoria', back_populates='subcategorias')
-    eventos = relationship('Evento', back_populates='subcategoria')
-
-class Periodico(db.Model):
-    __tablename__ = 'periodico'
-    __table_args__ = {'schema': 'public'}
-
-    periodico_id = Column(Integer, primary_key=True)
-    nombre = Column(String(255), nullable=False)
-    pais_iso_code = Column(String(2))
-    idioma = Column(String(50))
-    url = Column(String(255))
-    logo_url = Column(String(255))
-    tipo = Column(String(50))
-    circulacion = Column(Integer)
-    suscriptores = Column(Integer)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    articulos = relationship('Articulo', back_populates='periodico')
+    eventos = relationship('Evento', secondary=evento_region, back_populates='regiones')

@@ -1,0 +1,543 @@
+-- DROP SCHEMA public;
+
+CREATE SCHEMA public AUTHORIZATION avnadmin;
+
+-- DROP TYPE public."agencia_enum";
+
+CREATE TYPE public."agencia_enum" AS ENUM (
+	'Reuters',
+	'EFE',
+	'Otro');
+
+-- DROP TYPE public."sentimiento_enum";
+
+CREATE TYPE public."sentimiento_enum" AS ENUM (
+	'positivo',
+	'negativo',
+	'neutral');
+
+-- DROP SEQUENCE public."USER_user_id_seq";
+
+CREATE SEQUENCE public."USER_user_id_seq"
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.articulo_articulo_id_seq;
+
+CREATE SEQUENCE public.articulo_articulo_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.categoria_categoria_id_seq1;
+
+CREATE SEQUENCE public.categoria_categoria_id_seq1
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.evento_evento_id_seq;
+
+CREATE SEQUENCE public.evento_evento_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.grupo_de_eventos_grupo_de_eventos_id_seq;
+
+CREATE SEQUENCE public.grupo_de_eventos_grupo_de_eventos_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.ideologia_ideologia_id_seq;
+
+CREATE SEQUENCE public.ideologia_ideologia_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.influencer_influencer_id_seq;
+
+CREATE SEQUENCE public.influencer_influencer_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.influencer_opinion_opinion_id_seq;
+
+CREATE SEQUENCE public.influencer_opinion_opinion_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.periodico_periodico_id_seq;
+
+CREATE SEQUENCE public.periodico_periodico_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.periodista_periodista_id_seq;
+
+CREATE SEQUENCE public.periodista_periodista_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.region_region_id_seq;
+
+CREATE SEQUENCE public.region_region_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.subcategoria_id_seq;
+
+CREATE SEQUENCE public.subcategoria_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 9223372036854775807
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.subgrupo_de_eventos_subgrupo_de_eventos_id_seq;
+
+CREATE SEQUENCE public.subgrupo_de_eventos_subgrupo_de_eventos_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.user_log_log_id_seq;
+
+CREATE SEQUENCE public.user_log_log_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;-- public."USER" definition
+
+-- Drop table
+
+-- DROP TABLE public."USER";
+
+CREATE TABLE public."USER" (
+	user_id serial4 NOT NULL,
+	nombre varchar(255) NOT NULL,
+	email varchar(255) NOT NULL,
+	is_admin bool NULL DEFAULT false,
+	es_suscriptor bool NULL DEFAULT false,
+	fin_fecha_suscripcion timestamp NULL,
+	status varchar(255) NULL,
+	password_hash varchar(1000) NULL,
+	puntos int4 NULL DEFAULT 0,
+	CONSTRAINT "USER_email_key" UNIQUE (email),
+	CONSTRAINT "USER_pkey" PRIMARY KEY (user_id)
+);
+
+
+-- public.articulo_20241104 definition
+
+-- Drop table
+
+-- DROP TABLE public.articulo_20241104;
+
+CREATE TABLE public.articulo_20241104 (
+	articulo_id int4 NULL,
+	titular varchar(1000) NULL,
+	subtitular text NULL,
+	gpt_palabras_clave varchar(1000) NULL,
+	numero_de_palabras int4 NULL,
+	likes int4 NULL,
+	tipo varchar(50) NULL,
+	url varchar(255) NULL,
+	paywall bool NULL,
+	fecha_publicacion date NULL,
+	updated_on timestamp NULL,
+	periodico_id int4 NULL,
+	periodista_id int4 NULL,
+	ideologia_id int4 NULL,
+	cuerpo text NULL,
+	gpt_titular varchar(1000) NULL,
+	gpt_sentimiento public."sentimiento_enum" NULL,
+	gpt_titular_clickbait bool NULL,
+	agencia public."agencia_enum" NULL,
+	gpt_importancia int4 NULL,
+	gpt_cantidad_fuentes_citadas int4 NULL,
+	gpt_opinion varchar NULL,
+	gpt_resumen varchar NULL,
+	palabras_clave_embeddings varchar NULL,
+	embeddings varchar NULL
+);
+
+
+-- public.categoria definition
+
+-- Drop table
+
+-- DROP TABLE public.categoria;
+
+CREATE TABLE public.categoria (
+	categoria_id serial4 NOT NULL,
+	nombre varchar(255) NOT NULL,
+	descripcion text NULL,
+	CONSTRAINT categoria_pkey1 PRIMARY KEY (categoria_id)
+);
+
+
+-- public.categoria_mapping definition
+
+-- Drop table
+
+-- DROP TABLE public.categoria_mapping;
+
+CREATE TABLE public.categoria_mapping (
+	old_categoria_id int4 NOT NULL,
+	new_categoria_id int4 NOT NULL,
+	CONSTRAINT categoria_mapping_pkey PRIMARY KEY (old_categoria_id)
+);
+
+
+-- public.evento_20241104 definition
+
+-- Drop table
+
+-- DROP TABLE public.evento_20241104;
+
+CREATE TABLE public.evento_20241104 (
+	evento_id int4 NULL,
+	titulo varchar(255) NULL,
+	descripcion text NULL,
+	fecha_evento date NULL,
+	impacto varchar(255) NULL,
+	categoria_id int4 NULL,
+	grupo_de_eventos_id int4 NULL,
+	subgrupo_de_eventos_id int4 NULL,
+	gpt_sujeto_activo varchar(255) NULL,
+	gpt_sujeto_pasivo varchar(255) NULL,
+	gpt_importancia int4 NULL,
+	gpt_tiene_contexto bool NULL,
+	embeddings varchar NULL,
+	gpt_palabras_clave varchar NULL
+);
+
+
+-- public.grupo_de_eventos definition
+
+-- Drop table
+
+-- DROP TABLE public.grupo_de_eventos;
+
+CREATE TABLE public.grupo_de_eventos (
+	grupo_de_eventos_id serial4 NOT NULL,
+	nombre varchar(255) NOT NULL,
+	descripcion text NULL,
+	CONSTRAINT grupo_de_eventos_pkey PRIMARY KEY (grupo_de_eventos_id)
+);
+
+
+-- public.ideologia definition
+
+-- Drop table
+
+-- DROP TABLE public.ideologia;
+
+CREATE TABLE public.ideologia (
+	ideologia_id serial4 NOT NULL,
+	nombre varchar(50) NOT NULL,
+	CONSTRAINT ideologia_pkey PRIMARY KEY (ideologia_id)
+);
+
+
+-- public.influencer definition
+
+-- Drop table
+
+-- DROP TABLE public.influencer;
+
+CREATE TABLE public.influencer (
+	influencer_id serial4 NOT NULL,
+	nombre varchar(255) NOT NULL,
+	plataforma varchar(255) NULL,
+	username varchar(255) NULL,
+	seguidores int4 NULL,
+	url varchar(255) NULL,
+	CONSTRAINT influencer_pkey PRIMARY KEY (influencer_id)
+);
+
+
+-- public.periodista definition
+
+-- Drop table
+
+-- DROP TABLE public.periodista;
+
+CREATE TABLE public.periodista (
+	periodista_id serial4 NOT NULL,
+	nombre varchar(255) NOT NULL,
+	apellido varchar(255) NOT NULL,
+	email varchar(255) NULL,
+	telefono varchar(50) NULL,
+	biografia text NULL,
+	fecha_nacimiento date NULL,
+	nacionalidad varchar(255) NULL,
+	foto varchar(255) NULL,
+	CONSTRAINT periodista_pkey PRIMARY KEY (periodista_id)
+);
+
+
+-- public.region definition
+
+-- Drop table
+
+-- DROP TABLE public.region;
+
+CREATE TABLE public.region (
+	region_id serial4 NOT NULL,
+	region_nombre varchar(255) NOT NULL,
+	pais_iso_code varchar(2) NULL,
+	iso31662_subdivision_code varchar NULL,
+	pais_nombre varchar NULL,
+	CONSTRAINT region_pkey PRIMARY KEY (region_id)
+);
+
+
+-- public.periodico definition
+
+-- Drop table
+
+-- DROP TABLE public.periodico;
+
+CREATE TABLE public.periodico (
+	periodico_id serial4 NOT NULL,
+	nombre varchar(255) NOT NULL,
+	pais_iso_code varchar(2) NULL,
+	idioma varchar(50) NULL,
+	sitio_web varchar(255) NULL,
+	logo_url varchar(255) NULL,
+	tipo varchar(50) NULL,
+	circulacion int4 NULL,
+	suscriptores int4 NULL,
+	ideologia_id int4 NULL,
+	CONSTRAINT periodico_pkey PRIMARY KEY (periodico_id),
+	CONSTRAINT periodico_ideologia_id_fkey FOREIGN KEY (ideologia_id) REFERENCES public.ideologia(ideologia_id)
+);
+
+
+-- public.subcategoria definition
+
+-- Drop table
+
+-- DROP TABLE public.subcategoria;
+
+CREATE TABLE public.subcategoria (
+	subcategoria_id int4 NOT NULL DEFAULT nextval('subcategoria_id_seq'::regclass),
+	nombre varchar(255) NOT NULL,
+	descripcion text NULL,
+	categoria_id int4 NOT NULL,
+	palabras_clave text NULL,
+	palabras_clave_embeddings varchar NULL,
+	CONSTRAINT subcategoria_pkey PRIMARY KEY (subcategoria_id),
+	CONSTRAINT subcategoria_categoria_id_fkey FOREIGN KEY (categoria_id) REFERENCES public.categoria(categoria_id)
+);
+
+
+-- public.subgrupo_de_eventos definition
+
+-- Drop table
+
+-- DROP TABLE public.subgrupo_de_eventos;
+
+CREATE TABLE public.subgrupo_de_eventos (
+	subgrupo_de_eventos_id serial4 NOT NULL,
+	nombre varchar(255) NOT NULL,
+	descripcion text NULL,
+	grupo_de_eventos_id int4 NOT NULL,
+	CONSTRAINT subgrupo_de_eventos_pkey PRIMARY KEY (subgrupo_de_eventos_id),
+	CONSTRAINT subgrupo_de_eventos_grupo_de_eventos_id_fkey FOREIGN KEY (grupo_de_eventos_id) REFERENCES public.grupo_de_eventos(grupo_de_eventos_id)
+);
+
+
+-- public.articulo definition
+
+-- Drop table
+
+-- DROP TABLE public.articulo;
+
+CREATE TABLE public.articulo (
+	articulo_id serial4 NOT NULL,
+	titular varchar(1000) NOT NULL,
+	subtitular text NULL,
+	gpt_palabras_clave varchar(1000) NULL,
+	numero_de_palabras int4 NULL,
+	likes int4 NULL,
+	tipo varchar(50) NOT NULL,
+	url varchar(255) NULL,
+	paywall bool NULL DEFAULT false,
+	fecha_publicacion date NULL,
+	updated_on timestamp NULL,
+	periodico_id int4 NOT NULL,
+	periodista_id int4 NULL,
+	ideologia_id int4 NULL,
+	cuerpo text NULL,
+	gpt_titular varchar(1000) NULL,
+	gpt_sentimiento public."sentimiento_enum" NULL DEFAULT 'neutral'::sentimiento_enum,
+	gpt_titular_clickbait bool NULL DEFAULT false,
+	agencia public."agencia_enum" NULL,
+	gpt_importancia int4 NULL,
+	gpt_cantidad_fuentes_citadas int4 NULL,
+	gpt_opinion varchar NULL,
+	gpt_resumen varchar NULL,
+	palabras_clave_embeddings varchar NULL,
+	embeddings varchar NULL,
+	subcategoria_id int4 NULL,
+	CONSTRAINT articulo_pkey PRIMARY KEY (articulo_id),
+	CONSTRAINT articulo_ideologia_id_fkey FOREIGN KEY (ideologia_id) REFERENCES public.ideologia(ideologia_id),
+	CONSTRAINT articulo_periodico_id_fkey FOREIGN KEY (periodico_id) REFERENCES public.periodico(periodico_id),
+	CONSTRAINT articulo_periodista_id_fkey FOREIGN KEY (periodista_id) REFERENCES public.periodista(periodista_id),
+	CONSTRAINT articulo_subcategoria_id_fkey FOREIGN KEY (subcategoria_id) REFERENCES public.subcategoria(subcategoria_id)
+);
+
+
+-- public.articulo_influencer_mencion definition
+
+-- Drop table
+
+-- DROP TABLE public.articulo_influencer_mencion;
+
+CREATE TABLE public.articulo_influencer_mencion (
+	articulo_id int4 NOT NULL,
+	influencer_id int4 NOT NULL,
+	fecha_mencion timestamp NULL DEFAULT now(),
+	plataforma varchar(255) NULL,
+	url varchar(255) NULL,
+	CONSTRAINT articulo_influencer_mencion_pkey PRIMARY KEY (articulo_id, influencer_id),
+	CONSTRAINT articulo_influencer_mencion_articulo_id_fkey FOREIGN KEY (articulo_id) REFERENCES public.articulo(articulo_id),
+	CONSTRAINT articulo_influencer_mencion_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES public.influencer(influencer_id)
+);
+
+
+-- public.evento definition
+
+-- Drop table
+
+-- DROP TABLE public.evento;
+
+CREATE TABLE public.evento (
+	evento_id serial4 NOT NULL,
+	titulo varchar(255) NOT NULL,
+	descripcion text NULL,
+	fecha_evento date NULL,
+	impacto varchar(255) NULL,
+	grupo_de_eventos_id int4 NULL,
+	subgrupo_de_eventos_id int4 NULL,
+	gpt_sujeto_activo varchar(255) NULL,
+	gpt_sujeto_pasivo varchar(255) NULL,
+	gpt_importancia int4 NULL,
+	gpt_tiene_contexto bool NULL DEFAULT false,
+	embeddings varchar NULL,
+	gpt_palabras_clave varchar NULL,
+	subcategoria_id int4 NULL,
+	CONSTRAINT evento_pkey PRIMARY KEY (evento_id),
+	CONSTRAINT evento_subcategoria_id_fkey FOREIGN KEY (subcategoria_id) REFERENCES public.subcategoria(subcategoria_id)
+);
+
+
+-- public.evento_region definition
+
+-- Drop table
+
+-- DROP TABLE public.evento_region;
+
+CREATE TABLE public.evento_region (
+	evento_id int4 NOT NULL,
+	region_id int4 NOT NULL,
+	CONSTRAINT evento_region_pkey PRIMARY KEY (evento_id, region_id),
+	CONSTRAINT evento_region_evento_id_fkey FOREIGN KEY (evento_id) REFERENCES public.evento(evento_id),
+	CONSTRAINT evento_region_region_id_fkey FOREIGN KEY (region_id) REFERENCES public.region(region_id)
+);
+
+
+-- public.influencer_opinion definition
+
+-- Drop table
+
+-- DROP TABLE public.influencer_opinion;
+
+CREATE TABLE public.influencer_opinion (
+	opinion_id serial4 NOT NULL,
+	influencer_id int4 NOT NULL,
+	evento_id int4 NOT NULL,
+	contenido text NULL,
+	fecha_publicacion timestamp NULL DEFAULT now(),
+	url varchar(255) NULL,
+	CONSTRAINT influencer_opinion_pkey PRIMARY KEY (opinion_id),
+	CONSTRAINT influencer_opinion_evento_id_fkey FOREIGN KEY (evento_id) REFERENCES public.evento(evento_id),
+	CONSTRAINT influencer_opinion_influencer_id_fkey FOREIGN KEY (influencer_id) REFERENCES public.influencer(influencer_id)
+);
+
+
+-- public.user_log definition
+
+-- Drop table
+
+-- DROP TABLE public.user_log;
+
+CREATE TABLE public.user_log (
+	log_id serial4 NOT NULL,
+	user_id int4 NULL,
+	"timestamp" timestamp NULL DEFAULT now(),
+	articulo_id int4 NULL,
+	evento_id int4 NULL,
+	tipo varchar(50) NULL,
+	ip varchar(50) NULL,
+	navegador varchar(255) NULL,
+	puntos_otorgados int4 NULL DEFAULT 0,
+	CONSTRAINT user_log_pkey PRIMARY KEY (log_id),
+	CONSTRAINT user_log_articulo_id_fkey FOREIGN KEY (articulo_id) REFERENCES public.articulo(articulo_id),
+	CONSTRAINT user_log_evento_id_fkey FOREIGN KEY (evento_id) REFERENCES public.evento(evento_id),
+	CONSTRAINT user_log_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."USER"(user_id)
+);
+
+
+-- public.articulo_evento definition
+
+-- Drop table
+
+-- DROP TABLE public.articulo_evento;
+
+CREATE TABLE public.articulo_evento (
+	articulo_id int4 NOT NULL,
+	evento_id int4 NOT NULL,
+	cluster_id int4 NULL,
+	cluster_descripcion varchar(255) NULL,
+	CONSTRAINT articulo_evento_pkey PRIMARY KEY (articulo_id, evento_id),
+	CONSTRAINT articulo_evento_articulo_id_fkey FOREIGN KEY (articulo_id) REFERENCES public.articulo(articulo_id),
+	CONSTRAINT articulo_evento_evento_id_fkey FOREIGN KEY (evento_id) REFERENCES public.evento(evento_id)
+);
