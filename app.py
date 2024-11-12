@@ -128,9 +128,7 @@ def index():
 
         # Query categories with article counts
         categories_query = db.session.query(
-            Categoria.categoria_id,
-            Categoria.nombre,
-            Categoria.descripcion,
+            Categoria,
             func.count(distinct(Articulo.articulo_id)).label('article_count')
         ).outerjoin(
             Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
@@ -156,9 +154,9 @@ def index():
         for category in categories_query:
             categories.append({
                 'Categoria': {
-                    'categoria_id': category.categoria_id,
-                    'nombre': category.nombre,
-                    'descripcion': category.descripcion
+                    'categoria_id': category.Categoria.categoria_id,
+                    'nombre': category.Categoria.nombre,
+                    'descripcion': category.Categoria.descripcion
                 },
                 'article_count': category.article_count or 0
             })
