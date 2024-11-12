@@ -71,8 +71,8 @@ def seed_categories(app):
     try:
         # Clear existing data
         logger.info("Clearing existing categories and subcategories...")
-        db.session.execute(text('TRUNCATE TABLE app.subcategoria CASCADE;'))
-        db.session.execute(text('TRUNCATE TABLE app.categoria CASCADE;'))
+        db.session.execute(text('TRUNCATE TABLE public.subcategoria CASCADE;'))
+        db.session.execute(text('TRUNCATE TABLE public.categoria CASCADE;'))
         db.session.commit()
 
         # Insert new categories and subcategories

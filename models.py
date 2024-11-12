@@ -8,25 +8,25 @@ from sqlalchemy.orm import relationship
 import re
 
 # Define ENUM types
-sentimiento_enum = ENUM('positivo', 'negativo', 'neutral', name='sentimiento_enum', schema='app', create_type=False)
-agencia_enum = ENUM('Reuters', 'EFE', 'Otro', name='agencia_enum', schema='app', create_type=False)
+sentimiento_enum = ENUM('positivo', 'negativo', 'neutral', name='sentimiento_enum', schema='public', create_type=False)
+agencia_enum = ENUM('Reuters', 'EFE', 'Otro', name='agencia_enum', schema='public', create_type=False)
 
 # Association tables
 articulo_evento = Table('articulo_evento', db.Model.metadata,
-    Column('articulo_id', Integer, ForeignKey('app.articulo.articulo_id'), primary_key=True),
-    Column('evento_id', Integer, ForeignKey('app.evento.evento_id'), primary_key=True),
-    schema='app'
+    Column('articulo_id', Integer, ForeignKey('public.articulo.articulo_id'), primary_key=True),
+    Column('evento_id', Integer, ForeignKey('public.evento.evento_id'), primary_key=True),
+    schema='public'
 )
 
 evento_region = Table('evento_region', db.Model.metadata,
-    Column('evento_id', Integer, ForeignKey('app.evento.evento_id'), primary_key=True),
-    Column('region_id', Integer, ForeignKey('app.region.region_id'), primary_key=True),
-    schema='app'
+    Column('evento_id', Integer, ForeignKey('public.evento.evento_id'), primary_key=True),
+    Column('region_id', Integer, ForeignKey('public.region.region_id'), primary_key=True),
+    schema='public'
 )
 
 class User(UserMixin, db.Model):
     __tablename__ = 'usuario'
-    __table_args__ = {'schema': 'app'}
+    __table_args__ = {'schema': 'public'}
 
     id = Column('usuario_id', Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
@@ -89,13 +89,13 @@ class User(UserMixin, db.Model):
 
 class UserLog(db.Model):
     __tablename__ = 'user_log'
-    __table_args__ = {'schema': 'app'}
+    __table_args__ = {'schema': 'public'}
 
     log_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('app.usuario.usuario_id'))
+    user_id = Column(Integer, ForeignKey('public.usuario.usuario_id'))
     timestamp = Column(TIMESTAMP, default=datetime.utcnow)
-    articulo_id = Column(Integer, ForeignKey('app.articulo.articulo_id'))
-    evento_id = Column(Integer, ForeignKey('app.evento.evento_id'))
+    articulo_id = Column(Integer, ForeignKey('public.articulo.articulo_id'))
+    evento_id = Column(Integer, ForeignKey('public.evento.evento_id'))
     tipo = Column(String(50))
     ip = Column(String(50))
     navegador = Column(String(255))
@@ -107,10 +107,10 @@ class UserLog(db.Model):
 
 class Articulo(db.Model):
     __tablename__ = 'articulo'
-    __table_args__ = {'schema': 'app'}
+    __table_args__ = {'schema': 'public'}
 
     articulo_id = Column(Integer, primary_key=True)
-    periodico_id = Column(Integer, ForeignKey('app.periodico.periodico_id'))
+    periodico_id = Column(Integer, ForeignKey('public.periodico.periodico_id'))
     titular = Column(String(1000), nullable=False)
     subtitulo = Column(Text)
     url = Column(String(255))
@@ -134,10 +134,10 @@ class Articulo(db.Model):
 
 class Evento(db.Model):
     __tablename__ = 'evento'
-    __table_args__ = {'schema': 'app'}
+    __table_args__ = {'schema': 'public'}
 
     evento_id = Column(Integer, primary_key=True)
-    subcategoria_id = Column(Integer, ForeignKey('app.subcategoria.subcategoria_id'))
+    subcategoria_id = Column(Integer, ForeignKey('public.subcategoria.subcategoria_id'))
     titulo = Column(String(255), nullable=False)
     descripcion = Column(Text)
     fecha_evento = Column(Date)
@@ -156,7 +156,7 @@ class Evento(db.Model):
 
 class Categoria(db.Model):
     __tablename__ = 'categoria'
-    __table_args__ = {'schema': 'app'}
+    __table_args__ = {'schema': 'public'}
 
     categoria_id = Column(Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
@@ -168,10 +168,10 @@ class Categoria(db.Model):
 
 class Subcategoria(db.Model):
     __tablename__ = 'subcategoria'
-    __table_args__ = {'schema': 'app'}
+    __table_args__ = {'schema': 'public'}
 
     subcategoria_id = Column(Integer, primary_key=True)
-    categoria_id = Column(Integer, ForeignKey('app.categoria.categoria_id'))
+    categoria_id = Column(Integer, ForeignKey('public.categoria.categoria_id'))
     nombre = Column(String(255), nullable=False)
     descripcion = Column(Text)
     palabras_clave = Column(Text)
@@ -184,7 +184,7 @@ class Subcategoria(db.Model):
 
 class Periodico(db.Model):
     __tablename__ = 'periodico'
-    __table_args__ = {'schema': 'app'}
+    __table_args__ = {'schema': 'public'}
 
     periodico_id = Column(Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
