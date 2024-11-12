@@ -73,9 +73,7 @@ def register():
         
         # Create new user
         try:
-            user = User()
-            user.nombre = nombre
-            user.email = email
+            user = User(nombre=nombre, email=email)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
@@ -122,7 +120,7 @@ def logout():
 @app.route('/')
 def index():
     try:
-        time_filter = request.args.get('time_filter', '72h')
+        time_filter = request.args.get('time_filter', '24h')
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
@@ -154,7 +152,6 @@ def index():
             Categoria.nombre
         ).all()
 
-        # Update the categories list creation
         categories = []
         for category in categories_query:
             categories.append({
@@ -169,23 +166,21 @@ def index():
         return render_template('index.html', 
                            categories=categories,
                            initial_data={'categories': categories},
-                           selected_date=datetime.now().date(),
-                           time_filter=time_filter)
+                           selected_date=datetime.now().date())
                            
     except Exception as e:
         logger.error(f"Error in index route: {str(e)}", exc_info=True)
         return render_template('index.html', 
                            categories=[],
                            initial_data={'categories': []},
-                           selected_date=datetime.now().date(),
-                           time_filter=time_filter)
+                           selected_date=datetime.now().date())
 
 @app.route('/api/articles')
 def get_articles():
     try:
         category_id = request.args.get('category_id', type=int)
         subcategory_id = request.args.get('subcategory_id', type=int)
-        time_filter = request.args.get('time_filter', '72h')
+        time_filter = request.args.get('time_filter', '24h')
         
         if not category_id and not subcategory_id:
             logger.error("Missing required parameters: category_id or subcategory_id")
@@ -194,7 +189,7 @@ def get_articles():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        # Get category and subcategory info
+        # Get category and subcategory info with specific columns
         category_info = None
         subcategory_info = None
         
@@ -326,13 +321,8 @@ def get_articles():
 def get_subcategories():
     try:
         category_id = request.args.get('category_id', type=int)
-        time_filter = request.args.get('time_filter', '72h')
-        
         if not category_id:
             return jsonify({'error': 'Category ID is required'}), 400
-
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
         subcategories = db.session.query(
             Subcategoria.subcategoria_id.label('id'),
@@ -343,19 +333,13 @@ def get_subcategories():
         ).outerjoin(
             articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).outerjoin(
-            Articulo, and_(
-                Articulo.articulo_id == articulo_evento.c.articulo_id,
-                Articulo.fecha_publicacion.between(start_date, end_date)
-            )
+            Articulo, Articulo.articulo_id == articulo_evento.c.articulo_id
         ).filter(
             Subcategoria.categoria_id == category_id
         ).group_by(
             Subcategoria.subcategoria_id,
             Subcategoria.nombre
-        ).order_by(
-            desc('article_count'),
-            Subcategoria.nombre
-        ).all()
+        ).order_by(desc('article_count')).all()
 
         return jsonify([{
             'id': s.id,
@@ -370,16 +354,13 @@ def get_subcategories():
 @app.route('/api/article/<int:article_id>')
 def get_article(article_id):
     try:
-        if not article_id:
-            return jsonify({'error': 'Article ID is required'}), 400
-
         article = db.session.query(
-            Articulo.articulo_id.label('id'),
+            Articulo.articulo_id,
             Articulo.titular,
-            Articulo.subtitular,
+            Articulo.subtitulo,
             Articulo.url,
             Articulo.fecha_publicacion,
-            Articulo.periodista_id,
+            Articulo.autor,
             Articulo.agencia,
             Articulo.paywall,
             Articulo.gpt_resumen,
@@ -393,29 +374,26 @@ def get_article(article_id):
         ).first()
 
         if not article:
-            logger.error(f"Article not found with ID: {article_id}")
             return jsonify({'error': 'Article not found'}), 404
 
-        article_data = {
-            'id': article.id,
+        return jsonify({
+            'id': article.articulo_id,
             'titular': article.titular,
-            'subtitular': article.subtitular,
+            'subtitular': article.subtitulo,
             'url': article.url,
             'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
-            'periodista': article.periodista_id,
-            'agencia': str(article.agencia) if article.agencia else None,
+            'periodista': article.autor,
+            'agencia': article.agencia,
             'paywall': article.paywall,
             'gpt_resumen': article.gpt_resumen,
             'gpt_opinion': article.gpt_opinion,
             'periodico_nombre': article.periodico_nombre,
             'periodico_logo': article.periodico_logo
-        }
-
-        return jsonify(article_data)
+        })
 
     except Exception as e:
-        logger.error(f"Error fetching article details for ID {article_id}: {str(e)}", exc_info=True)
-        return jsonify({'error': 'Failed to fetch article details', 'details': str(e)}), 500
+        logger.error(f"Error fetching article details: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

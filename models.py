@@ -8,22 +8,25 @@ from sqlalchemy.orm import relationship
 import re
 
 # Define ENUM types
-sentimiento_enum = ENUM('positivo', 'negativo', 'neutral', name='sentimiento_enum', create_type=False)
-agencia_enum = ENUM('Reuters', 'EFE', 'Otro', name='agencia_enum', create_type=False)
+sentimiento_enum = ENUM('positivo', 'negativo', 'neutral', name='sentimiento_enum', schema='app', create_type=False)
+agencia_enum = ENUM('Reuters', 'EFE', 'Otro', name='agencia_enum', schema='app', create_type=False)
 
 # Association tables
 articulo_evento = Table('articulo_evento', db.Model.metadata,
-    Column('articulo_id', Integer, ForeignKey('articulo.articulo_id'), primary_key=True),
-    Column('evento_id', Integer, ForeignKey('evento.evento_id'), primary_key=True)
+    Column('articulo_id', Integer, ForeignKey('app.articulo.articulo_id'), primary_key=True),
+    Column('evento_id', Integer, ForeignKey('app.evento.evento_id'), primary_key=True),
+    schema='app'
 )
 
 evento_region = Table('evento_region', db.Model.metadata,
-    Column('evento_id', Integer, ForeignKey('evento.evento_id'), primary_key=True),
-    Column('region_id', Integer, ForeignKey('region.region_id'), primary_key=True)
+    Column('evento_id', Integer, ForeignKey('app.evento.evento_id'), primary_key=True),
+    Column('region_id', Integer, ForeignKey('app.region.region_id'), primary_key=True),
+    schema='app'
 )
 
 class User(UserMixin, db.Model):
     __tablename__ = 'usuario'
+    __table_args__ = {'schema': 'app'}
 
     id = Column('usuario_id', Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
@@ -86,12 +89,13 @@ class User(UserMixin, db.Model):
 
 class UserLog(db.Model):
     __tablename__ = 'user_log'
+    __table_args__ = {'schema': 'app'}
 
     log_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('usuario.usuario_id'))
+    user_id = Column(Integer, ForeignKey('app.usuario.usuario_id'))
     timestamp = Column(TIMESTAMP, default=datetime.utcnow)
-    articulo_id = Column(Integer, ForeignKey('articulo.articulo_id'))
-    evento_id = Column(Integer, ForeignKey('evento.evento_id'))
+    articulo_id = Column(Integer, ForeignKey('app.articulo.articulo_id'))
+    evento_id = Column(Integer, ForeignKey('app.evento.evento_id'))
     tipo = Column(String(50))
     ip = Column(String(50))
     navegador = Column(String(255))
@@ -101,41 +105,20 @@ class UserLog(db.Model):
     articulo = relationship('Articulo', back_populates='user_logs')
     evento = relationship('Evento', back_populates='user_logs')
 
-class Categoria(db.Model):
-    __tablename__ = 'categoria'
-
-    categoria_id = Column(Integer, primary_key=True)
-    nombre = Column(String(255), nullable=False)
-    descripcion = Column(Text)
-
-    subcategorias = relationship('Subcategoria', back_populates='categoria')
-
-class Subcategoria(db.Model):
-    __tablename__ = 'subcategoria'
-
-    subcategoria_id = Column(Integer, primary_key=True)
-    categoria_id = Column(Integer, ForeignKey('categoria.categoria_id'))
-    nombre = Column(String(255), nullable=False)
-    descripcion = Column(Text)
-    palabras_clave = Column(Text)
-    palabras_clave_embeddings = Column(Text)
-
-    categoria = relationship('Categoria', back_populates='subcategorias')
-    eventos = relationship('Evento', back_populates='subcategoria')
-
 class Articulo(db.Model):
     __tablename__ = 'articulo'
+    __table_args__ = {'schema': 'app'}
 
     articulo_id = Column(Integer, primary_key=True)
-    periodico_id = Column(Integer, ForeignKey('periodico.periodico_id'))
+    periodico_id = Column(Integer, ForeignKey('app.periodico.periodico_id'))
     titular = Column(String(1000), nullable=False)
-    subtitular = Column(Text)
+    subtitulo = Column(Text)
     url = Column(String(255))
     fecha_publicacion = Column(Date)
     fecha_modificacion = Column(Date)
     agencia = Column(agencia_enum)
     seccion = Column(String(100))
-    periodista_id = Column(Integer)
+    autor = Column(String(100))
     contenido = Column(Text)
     sentimiento = Column(sentimiento_enum, default='neutral')
     gpt_resumen = Column(Text)
@@ -151,9 +134,10 @@ class Articulo(db.Model):
 
 class Evento(db.Model):
     __tablename__ = 'evento'
+    __table_args__ = {'schema': 'app'}
 
     evento_id = Column(Integer, primary_key=True)
-    subcategoria_id = Column(Integer, ForeignKey('subcategoria.subcategoria_id'))
+    subcategoria_id = Column(Integer, ForeignKey('app.subcategoria.subcategoria_id'))
     titulo = Column(String(255), nullable=False)
     descripcion = Column(Text)
     fecha_evento = Column(Date)
@@ -170,8 +154,37 @@ class Evento(db.Model):
     articulos = relationship('Articulo', secondary=articulo_evento, back_populates='eventos')
     user_logs = relationship('UserLog', back_populates='evento')
 
+class Categoria(db.Model):
+    __tablename__ = 'categoria'
+    __table_args__ = {'schema': 'app'}
+
+    categoria_id = Column(Integer, primary_key=True)
+    nombre = Column(String(255), nullable=False)
+    descripcion = Column(Text)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    subcategorias = relationship('Subcategoria', back_populates='categoria')
+
+class Subcategoria(db.Model):
+    __tablename__ = 'subcategoria'
+    __table_args__ = {'schema': 'app'}
+
+    subcategoria_id = Column(Integer, primary_key=True)
+    categoria_id = Column(Integer, ForeignKey('app.categoria.categoria_id'))
+    nombre = Column(String(255), nullable=False)
+    descripcion = Column(Text)
+    palabras_clave = Column(Text)
+    palabras_clave_embeddings = Column(Text)
+    created_at = Column(TIMESTAMP, default=datetime.utcnow)
+    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    categoria = relationship('Categoria', back_populates='subcategorias')
+    eventos = relationship('Evento', back_populates='subcategoria')
+
 class Periodico(db.Model):
     __tablename__ = 'periodico'
+    __table_args__ = {'schema': 'app'}
 
     periodico_id = Column(Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
