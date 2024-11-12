@@ -383,7 +383,7 @@ def get_article(article_id):
             Articulo.subtitular,
             Articulo.url,
             Articulo.fecha_publicacion,
-            Articulo.periodista_id.label('periodista'),  # Changed from periodista to periodista_id
+            Articulo.periodista_id.label('periodista'),
             Articulo.agencia,
             Articulo.paywall,
             Articulo.gpt_resumen,
