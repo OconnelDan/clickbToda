@@ -4,7 +4,6 @@ import logging
 from config import Config
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
-from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -79,7 +78,6 @@ def seed_categories(app):
         logger.info("Inserting new categories and subcategories...")
         for cat_data in categories_data:
             # Create new category
-            now = datetime.utcnow()
             category = Categoria()
             category.nombre = cat_data['nombre']
             category.descripcion = cat_data['descripcion']

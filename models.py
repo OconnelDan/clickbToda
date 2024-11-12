@@ -101,6 +101,28 @@ class UserLog(db.Model):
     articulo = relationship('Articulo', back_populates='user_logs')
     evento = relationship('Evento', back_populates='user_logs')
 
+class Categoria(db.Model):
+    __tablename__ = 'categoria'
+
+    categoria_id = Column(Integer, primary_key=True)
+    nombre = Column(String(255), nullable=False)
+    descripcion = Column(Text)
+
+    subcategorias = relationship('Subcategoria', back_populates='categoria')
+
+class Subcategoria(db.Model):
+    __tablename__ = 'subcategoria'
+
+    subcategoria_id = Column(Integer, primary_key=True)
+    categoria_id = Column(Integer, ForeignKey('categoria.categoria_id'))
+    nombre = Column(String(255), nullable=False)
+    descripcion = Column(Text)
+    palabras_clave = Column(Text)
+    palabras_clave_embeddings = Column(Text)
+
+    categoria = relationship('Categoria', back_populates='subcategorias')
+    eventos = relationship('Evento', back_populates='subcategoria')
+
 class Articulo(db.Model):
     __tablename__ = 'articulo'
 
@@ -113,7 +135,7 @@ class Articulo(db.Model):
     fecha_modificacion = Column(Date)
     agencia = Column(agencia_enum)
     seccion = Column(String(100))
-    periodista_id = Column(Integer)  # Changed from periodista to periodista_id
+    periodista_id = Column(Integer)
     contenido = Column(Text)
     sentimiento = Column(sentimiento_enum, default='neutral')
     gpt_resumen = Column(Text)
@@ -147,32 +169,6 @@ class Evento(db.Model):
     subcategoria = relationship('Subcategoria', back_populates='eventos')
     articulos = relationship('Articulo', secondary=articulo_evento, back_populates='eventos')
     user_logs = relationship('UserLog', back_populates='evento')
-
-class Categoria(db.Model):
-    __tablename__ = 'categoria'
-
-    categoria_id = Column(Integer, primary_key=True)
-    nombre = Column(String(255), nullable=False)
-    descripcion = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    subcategorias = relationship('Subcategoria', back_populates='categoria')
-
-class Subcategoria(db.Model):
-    __tablename__ = 'subcategoria'
-
-    subcategoria_id = Column(Integer, primary_key=True)
-    categoria_id = Column(Integer, ForeignKey('categoria.categoria_id'))
-    nombre = Column(String(255), nullable=False)
-    descripcion = Column(Text)
-    palabras_clave = Column(Text)
-    palabras_clave_embeddings = Column(Text)
-    created_at = Column(TIMESTAMP, default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    categoria = relationship('Categoria', back_populates='subcategorias')
-    eventos = relationship('Evento', back_populates='subcategoria')
 
 class Periodico(db.Model):
     __tablename__ = 'periodico'
