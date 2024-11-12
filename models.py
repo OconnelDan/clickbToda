@@ -139,19 +139,35 @@ class Evento(db.Model):
     regiones = relationship('Region', secondary=evento_region, back_populates='eventos')
     user_logs = relationship('UserLog', back_populates='evento')
 
+class Periodista(db.Model):
+    __tablename__ = 'periodista'
+    __table_args__ = {'schema': 'public'}
+
+    periodista_id = Column(Integer, primary_key=True)
+    nombre = Column(String(255), nullable=False)
+    apellido = Column(String(255), nullable=False)
+    email = Column(String(255))
+    telefono = Column(String(50))
+    biografia = Column(Text)
+    fecha_nacimiento = Column(Date)
+    nacionalidad = Column(String(255))
+    foto = Column(String(255))
+
+    articulos = relationship('Articulo', back_populates='periodista')
+
 class Articulo(db.Model):
     __tablename__ = 'articulo'
     __table_args__ = {'schema': 'public'}
 
     articulo_id = Column(Integer, primary_key=True)
     periodico_id = Column(Integer, ForeignKey('public.periodico.periodico_id'))
+    periodista_id = Column(Integer, ForeignKey('public.periodista.periodista_id'))
     titular = Column(String(1000), nullable=False)
     subtitular = Column(Text)
     url = Column(String(255))
     fecha_publicacion = Column(Date)
     updated_on = Column(TIMESTAMP)
     agencia = Column(agencia_enum)
-    autor = Column(String(100))
     contenido = Column(Text)
     paywall = Column(Boolean, default=False)
     gpt_resumen = Column(Text)
@@ -160,6 +176,7 @@ class Articulo(db.Model):
     embeddings = Column(String)
 
     periodico = relationship('Periodico', back_populates='articulos')
+    periodista = relationship('Periodista', back_populates='articulos')
     eventos = relationship('Evento', secondary=articulo_evento, back_populates='articulos')
     user_logs = relationship('UserLog', back_populates='articulo')
 

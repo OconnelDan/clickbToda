@@ -9,7 +9,7 @@ import sys
 from config import Config
 from flask_caching import Cache
 from database import db
-from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, articulo_evento
+from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, Periodista, articulo_evento
 
 # Configure logging
 logging.basicConfig(
@@ -142,9 +142,12 @@ def index():
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).group_by(
-            Categoria.categoria_id
+            Categoria.categoria_id,
+            Categoria.nombre,
+            Categoria.descripcion
         ).order_by(
-            desc('article_count')
+            desc('article_count'),
+            Categoria.nombre
         )
 
         categories_result = categories_query.all()
@@ -377,13 +380,15 @@ def get_article(article_id):
             Articulo.subtitular,
             Articulo.url,
             Articulo.fecha_publicacion,
-            Articulo.autor,
             Articulo.agencia,
             Articulo.paywall,
             Articulo.gpt_resumen,
             Articulo.gpt_opinion,
+            Periodista.nombre.label('periodista_nombre'),
             Periodico.nombre.label('periodico_nombre'),
             Periodico.logo_url.label('periodico_logo')
+        ).outerjoin(
+            Periodista, Periodista.periodista_id == Articulo.periodista_id
         ).join(
             Periodico, Periodico.periodico_id == Articulo.periodico_id
         ).filter(
@@ -399,7 +404,7 @@ def get_article(article_id):
             'subtitular': article.subtitular,
             'url': article.url,
             'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
-            'periodista': article.autor,
+            'periodista': article.periodista_nombre,
             'agencia': article.agencia,
             'paywall': article.paywall,
             'gpt_resumen': article.gpt_resumen,
