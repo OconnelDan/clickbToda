@@ -26,6 +26,73 @@ evento_region = Table('evento_region', db.Model.metadata,
     schema='public'
 )
 
+class User(UserMixin, db.Model):
+    __tablename__ = 'USER'  # Changed from 'usuario'
+    __table_args__ = {'schema': 'public'}
+
+    id = Column('user_id', Integer, primary_key=True)  # Changed from usuario_id
+    nombre = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False, unique=True)
+    password_hash = Column(String(1000))
+    is_admin = Column(Boolean, default=False)
+    es_suscriptor = Column(Boolean, default=False)
+    fin_fecha_suscripcion = Column(TIMESTAMP)
+    status = Column(String(255))
+    puntos = Column(Integer, default=0)
+    
+    user_logs = relationship('UserLog', back_populates='user')
+
+    @staticmethod
+    def validate_password(password):
+        if len(password) < 8:
+            return False, "Password must be at least 8 characters long"
+        if not re.search(r"[A-Z]", password):
+            return False, "Password must contain at least one uppercase letter"
+        if not re.search(r"[a-z]", password):
+            return False, "Password must contain at least one lowercase letter"
+        if not re.search(r"\d", password):
+            return False, "Password must contain at least one number"
+        return True, ""
+
+    @staticmethod
+    def validate_email(email):
+        email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+        return bool(email_pattern.match(email))
+
+    def set_password(self, password):
+        if not password:
+            raise ValueError("Password cannot be empty")
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not password or not self.password_hash:
+            return False
+        try:
+            return check_password_hash(str(self.password_hash), password)
+        except Exception:
+            return False
+
+    def get_id(self):
+        return str(self.id)
+
+class UserLog(db.Model):
+    __tablename__ = 'user_log'
+    __table_args__ = {'schema': 'public'}
+
+    log_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('public.USER.user_id'))  # Updated foreign key
+    timestamp = Column(TIMESTAMP, default=datetime.utcnow)
+    articulo_id = Column(Integer, ForeignKey('public.articulo.articulo_id'))
+    evento_id = Column(Integer, ForeignKey('public.evento.evento_id'))
+    tipo = Column(String(50))
+    ip = Column(String(50))
+    navegador = Column(String(255))
+    puntos_otorgados = Column(Integer, default=0)
+
+    user = relationship('User', back_populates='user_logs')
+    articulo = relationship('Articulo', back_populates='user_logs')
+    evento = relationship('Evento', back_populates='user_logs')
+
 class Categoria(db.Model):
     __tablename__ = 'categoria'
     __table_args__ = {'schema': 'public'}
@@ -111,85 +178,6 @@ class Periodico(db.Model):
     suscriptores = Column(Integer)
 
     articulos = relationship('Articulo', back_populates='periodico')
-
-class User(UserMixin, db.Model):
-    __tablename__ = 'usuario'
-    __table_args__ = {'schema': 'public'}
-
-    id = Column('usuario_id', Integer, primary_key=True)
-    nombre = Column(String(255), nullable=False)
-    email = Column(String(255), nullable=False, unique=True)
-    password_hash = Column(String(1000))
-    is_admin = Column(Boolean, default=False)
-    es_suscriptor = Column(Boolean, default=False)
-    fin_fecha_suscripcion = Column(TIMESTAMP)
-    status = Column(String(255))
-    puntos = Column(Integer, default=0)
-    
-    user_logs = relationship('UserLog', back_populates='user')
-
-    @staticmethod
-    def validate_password(password):
-        if len(password) < 8:
-            return False, "Password must be at least 8 characters long"
-        if not re.search(r"[A-Z]", password):
-            return False, "Password must contain at least one uppercase letter"
-        if not re.search(r"[a-z]", password):
-            return False, "Password must contain at least one lowercase letter"
-        if not re.search(r"\d", password):
-            return False, "Password must contain at least one number"
-        return True, ""
-
-    @staticmethod
-    def validate_email(email):
-        email_pattern = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-        return bool(email_pattern.match(email))
-
-    def set_password(self, password):
-        if not password:
-            raise ValueError("Password cannot be empty")
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        if not password or not self.password_hash:
-            return False
-        try:
-            return check_password_hash(str(self.password_hash), password)
-        except Exception:
-            return False
-
-    def get_id(self):
-        return str(self.id)
-
-    @property
-    def is_active(self):
-        return True
-
-    @property
-    def is_authenticated(self):
-        return True
-
-    @property
-    def is_anonymous(self):
-        return False
-
-class UserLog(db.Model):
-    __tablename__ = 'user_log'
-    __table_args__ = {'schema': 'public'}
-
-    log_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('public.usuario.usuario_id'))
-    timestamp = Column(TIMESTAMP, default=datetime.utcnow)
-    articulo_id = Column(Integer, ForeignKey('public.articulo.articulo_id'))
-    evento_id = Column(Integer, ForeignKey('public.evento.evento_id'))
-    tipo = Column(String(50))
-    ip = Column(String(50))
-    navegador = Column(String(255))
-    puntos_otorgados = Column(Integer, default=0)
-
-    user = relationship('User', back_populates='user_logs')
-    articulo = relationship('Articulo', back_populates='user_logs')
-    evento = relationship('Evento', back_populates='user_logs')
 
 class Region(db.Model):
     __tablename__ = 'region'
