@@ -131,15 +131,9 @@ def index():
             Categoria,
             func.count(distinct(Articulo.articulo_id)).label('article_count')
         ).outerjoin(
-            Subcategoria, and_(
-                Categoria.categoria_id == Subcategoria.categoria_id,
-                Subcategoria.__table_args__['schema'] == 'public'
-            )
+            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
         ).outerjoin(
-            Evento, and_(
-                Evento.subcategoria_id == Subcategoria.subcategoria_id,
-                Evento.__table_args__['schema'] == 'public'
-            )
+            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).outerjoin(
             articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).outerjoin(
@@ -148,20 +142,20 @@ def index():
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).group_by(
-            Categoria.categoria_id,
-            Categoria.nombre,
-            Categoria.descripcion
+            Categoria.categoria_id
         ).order_by(
             desc('article_count')
-        ).all()
+        )
 
-        if not categories_query:
+        categories_result = categories_query.all()
+
+        if not categories_result:
             logger.warning("No categories found in the database")
             flash('No categories available at the moment', 'warning')
             categories = []
         else:
             categories = []
-            for category in categories_query:
+            for category in categories_result:
                 categories.append({
                     'Categoria': {
                         'categoria_id': category.Categoria.categoria_id,
@@ -199,15 +193,14 @@ def get_articles():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        # Get category and subcategory info with specific columns
+        # Get category and subcategory info
         category_info = None
         subcategory_info = None
         
         if category_id:
             category_info = db.session.query(
                 Categoria.categoria_id,
-                Categoria.nombre,
-                Categoria.descripcion
+                Categoria.nombre
             ).filter(
                 Categoria.categoria_id == category_id
             ).first()
@@ -218,8 +211,7 @@ def get_articles():
         if subcategory_id:
             subcategory_info = db.session.query(
                 Subcategoria.subcategoria_id,
-                Subcategoria.nombre,
-                Subcategoria.descripcion
+                Subcategoria.nombre
             ).filter(
                 Subcategoria.subcategoria_id == subcategory_id
             ).first()
@@ -227,11 +219,25 @@ def get_articles():
             if not subcategory_info:
                 return jsonify({'error': 'Subcategory not found'}), 404
 
-        # Query events with related articles using schema references
+        # Query events with related articles
         events_query = db.session.query(
-            Evento,
-            Articulo,
-            Periodico
+            Evento.evento_id,
+            Evento.titulo,
+            Evento.descripcion,
+            Evento.fecha_evento,
+            Evento.gpt_sujeto_activo,
+            Evento.gpt_sujeto_pasivo,
+            Evento.gpt_importancia,
+            Evento.gpt_tiene_contexto,
+            Evento.gpt_palabras_clave,
+            Articulo.articulo_id,
+            Articulo.titular,
+            Articulo.url,
+            Articulo.fecha_publicacion,
+            Articulo.paywall,
+            Articulo.gpt_opinion,
+            Periodico.nombre,
+            Periodico.logo_url
         ).join(
             Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
@@ -274,37 +280,35 @@ def get_articles():
         # Process results
         events_dict = {}
         for result in events_results:
-            evento = result[0]  # Evento object
-            articulo = result[1]  # Articulo object
-            periodico = result[2]  # Periodico object
-            
-            if evento.evento_id not in events_dict:
-                events_dict[evento.evento_id] = {
-                    'titulo': evento.titulo,
-                    'descripcion': evento.descripcion,
-                    'fecha_evento': evento.fecha_evento.isoformat() if evento.fecha_evento else None,
-                    'gpt_sujeto_activo': evento.gpt_sujeto_activo,
-                    'gpt_sujeto_pasivo': evento.gpt_sujeto_pasivo,
-                    'gpt_importancia': evento.gpt_importancia,
-                    'gpt_tiene_contexto': evento.gpt_tiene_contexto,
-                    'gpt_palabras_clave': evento.gpt_palabras_clave,
+            evento_id = result[0]
+            if evento_id not in events_dict:
+                events_dict[evento_id] = {
+                    'titulo': result[1],
+                    'descripcion': result[2],
+                    'fecha_evento': result[3].isoformat() if result[3] else None,
+                    'gpt_sujeto_activo': result[4],
+                    'gpt_sujeto_pasivo': result[5],
+                    'gpt_importancia': result[6],
+                    'gpt_tiene_contexto': result[7],
+                    'gpt_palabras_clave': result[8],
                     'article_count': 0,
                     'articles': []
                 }
 
-            article_exists = any(a['id'] == articulo.articulo_id for a in events_dict[evento.evento_id]['articles'])
+            article_id = result[9]
+            article_exists = any(a['id'] == article_id for a in events_dict[evento_id]['articles'])
             if not article_exists:
-                events_dict[evento.evento_id]['articles'].append({
-                    'id': articulo.articulo_id,
-                    'titular': articulo.titular,
-                    'url': articulo.url,
-                    'fecha_publicacion': articulo.fecha_publicacion.isoformat() if articulo.fecha_publicacion else None,
-                    'paywall': articulo.paywall,
-                    'gpt_opinion': articulo.gpt_opinion,
-                    'periodico_nombre': periodico.nombre,
-                    'periodico_logo': periodico.logo_url
+                events_dict[evento_id]['articles'].append({
+                    'id': article_id,
+                    'titular': result[10],
+                    'url': result[11],
+                    'fecha_publicacion': result[12].isoformat() if result[12] else None,
+                    'paywall': result[13],
+                    'gpt_opinion': result[14],
+                    'periodico_nombre': result[15],
+                    'periodico_logo': result[16]
                 })
-                events_dict[evento.evento_id]['article_count'] += 1
+                events_dict[evento_id]['article_count'] += 1
 
         # Sort events by article count and date
         sorted_events = sorted(

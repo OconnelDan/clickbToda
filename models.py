@@ -27,10 +27,10 @@ evento_region = Table('evento_region', db.Model.metadata,
 )
 
 class User(UserMixin, db.Model):
-    __tablename__ = 'USER'  # Changed from 'usuario'
+    __tablename__ = 'USER'
     __table_args__ = {'schema': 'public'}
 
-    id = Column('user_id', Integer, primary_key=True)  # Changed from usuario_id
+    id = Column('user_id', Integer, primary_key=True)
     nombre = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False, unique=True)
     password_hash = Column(String(1000))
@@ -80,7 +80,7 @@ class UserLog(db.Model):
     __table_args__ = {'schema': 'public'}
 
     log_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('public.USER.user_id'))  # Updated foreign key
+    user_id = Column(Integer, ForeignKey('public.USER.user_id'))
     timestamp = Column(TIMESTAMP, default=datetime.utcnow)
     articulo_id = Column(Integer, ForeignKey('public.articulo.articulo_id'))
     evento_id = Column(Integer, ForeignKey('public.evento.evento_id'))
@@ -146,10 +146,10 @@ class Articulo(db.Model):
     articulo_id = Column(Integer, primary_key=True)
     periodico_id = Column(Integer, ForeignKey('public.periodico.periodico_id'))
     titular = Column(String(1000), nullable=False)
-    subtitular = Column(Text)  # Changed from subtitulo to subtitular
+    subtitular = Column(Text)
     url = Column(String(255))
     fecha_publicacion = Column(Date)
-    fecha_modificacion = Column(Date)
+    updated_on = Column(TIMESTAMP)
     agencia = Column(agencia_enum)
     autor = Column(String(100))
     contenido = Column(Text)
