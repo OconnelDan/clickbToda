@@ -126,6 +126,7 @@ def index():
 
         logger.info(f"Loading index page with time_filter: {time_filter}")
 
+        # Query categories with article counts using correct schema references
         categories_query = db.session.query(
             Categoria,
             func.count(distinct(Articulo.articulo_id)).label('article_count')
@@ -164,7 +165,7 @@ def index():
                         'nombre': category.Categoria.nombre,
                         'descripcion': category.Categoria.descripcion
                     },
-                    'article_count': int(category.article_count or 0)
+                    'article_count': category.article_count or 0
                 })
             logger.info(f"Found {len(categories)} categories")
 
@@ -194,11 +195,11 @@ def get_articles():
 
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
-        # Get base category and subcategory info
+        
+        # Get category and subcategory info
         category_info = None
         subcategory_info = None
-
+        
         if category_id:
             category_info = db.session.query(
                 Categoria.categoria_id,
@@ -206,10 +207,10 @@ def get_articles():
             ).filter(
                 Categoria.categoria_id == category_id
             ).first()
-
+            
             if not category_info:
                 return jsonify({'error': 'Category not found'}), 404
-
+            
         if subcategory_id:
             subcategory_info = db.session.query(
                 Subcategoria.subcategoria_id,
@@ -217,11 +218,11 @@ def get_articles():
             ).filter(
                 Subcategoria.subcategoria_id == subcategory_id
             ).first()
-
+            
             if not subcategory_info:
                 return jsonify({'error': 'Subcategory not found'}), 404
 
-        # Query events with related articles using optimized joins
+        # Query events with related articles
         events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,
@@ -238,8 +239,8 @@ def get_articles():
             Articulo.fecha_publicacion,
             Articulo.paywall,
             Articulo.gpt_opinion,
-            Periodico.nombre.label('periodico_nombre'),
-            Periodico.logo_url.label('periodico_logo')
+            Periodico.nombre,
+            Periodico.logo_url
         ).join(
             Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
@@ -259,9 +260,8 @@ def get_articles():
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
-        # Execute query with proper ordering
+        # Execute query
         events_results = events_query.order_by(
-            desc(Evento.gpt_importancia),
             desc(Evento.fecha_evento),
             desc(Articulo.fecha_publicacion)
         ).all()
@@ -280,7 +280,7 @@ def get_articles():
                 }]
             })
 
-        # Process results with optimized event grouping
+        # Process results
         events_dict = {}
         for result in events_results:
             evento_id = result[0]
@@ -313,10 +313,10 @@ def get_articles():
                 })
                 events_dict[evento_id]['article_count'] += 1
 
-        # Sort events by importance, article count, and date
+        # Sort events by article count and date
         sorted_events = sorted(
             events_dict.values(),
-            key=lambda x: (-x.get('gpt_importancia', 0), -x['article_count'], x['fecha_evento'] or '1900-01-01')
+            key=lambda x: (-x['article_count'], x['fecha_evento'] or '1900-01-01')
         )
 
         response_data = {
@@ -344,10 +344,6 @@ def get_subcategories():
         if not category_id:
             return jsonify({'error': 'Category ID is required'}), 400
 
-        time_filter = request.args.get('time_filter', '24h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
         subcategories = db.session.query(
             Subcategoria.subcategoria_id.label('id'),
             Subcategoria.nombre,
@@ -357,24 +353,18 @@ def get_subcategories():
         ).outerjoin(
             articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).outerjoin(
-            Articulo, and_(
-                Articulo.articulo_id == articulo_evento.c.articulo_id,
-                Articulo.fecha_publicacion.between(start_date, end_date)
-            )
+            Articulo, Articulo.articulo_id == articulo_evento.c.articulo_id
         ).filter(
             Subcategoria.categoria_id == category_id
         ).group_by(
             Subcategoria.subcategoria_id,
             Subcategoria.nombre
-        ).order_by(
-            desc('article_count'),
-            Subcategoria.nombre
-        ).all()
+        ).order_by(desc('article_count')).all()
 
         return jsonify([{
             'id': s.id,
             'nombre': s.nombre,
-            'article_count': int(s.article_count or 0)
+            'article_count': s.article_count or 0
         } for s in subcategories])
 
     except Exception as e:
