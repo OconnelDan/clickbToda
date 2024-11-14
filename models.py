@@ -9,7 +9,6 @@ import re
 
 # Define ENUM types
 sentimiento_enum = ENUM('positivo', 'negativo', 'neutral', name='sentimiento_enum', schema='public', create_type=False)
-agencia_enum = ENUM('Reuters', 'EFE', 'Otro', name='agencia_enum', schema='public', create_type=False)
 
 # Association tables
 articulo_evento = Table('articulo_evento', db.Model.metadata,
@@ -167,7 +166,7 @@ class Articulo(db.Model):
     url = Column(String(255))
     fecha_publicacion = Column(Date)
     updated_on = Column(TIMESTAMP)
-    agencia = Column(agencia_enum)
+    agencia = Column(Text)  # Changed from ENUM to Text as per database schema
     contenido = Column(Text)
     paywall = Column(Boolean, default=False)
     gpt_resumen = Column(Text)
