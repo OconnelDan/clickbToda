@@ -222,7 +222,7 @@ def get_articles():
             if not subcategory_info:
                 return jsonify({'error': 'Subcategory not found'}), 404
 
-        # Query events with related articles
+        # Query events with related articles and newspaper information
         events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,
@@ -239,19 +239,18 @@ def get_articles():
             Articulo.fecha_publicacion,
             Articulo.paywall,
             Articulo.gpt_opinion,
-            Periodico.nombre,
-            Periodico.logo_url
+            Periodico.nombre.label('periodico_nombre'),
+            Periodico.logo_url.label('periodico_logo')
         ).join(
             Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
             articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).join(
-            Articulo, and_(
-                Articulo.articulo_id == articulo_evento.c.articulo_id,
-                Articulo.fecha_publicacion.between(start_date, end_date)
-            )
+            Articulo, Articulo.articulo_id == articulo_evento.c.articulo_id
         ).join(
             Periodico, Periodico.periodico_id == Articulo.periodico_id
+        ).filter(
+            Articulo.fecha_publicacion.between(start_date, end_date)
         )
 
         # Apply filters
@@ -260,7 +259,7 @@ def get_articles():
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
-        # Execute query
+        # Execute query and order by event date and article publication date
         events_results = events_query.order_by(
             desc(Evento.fecha_evento),
             desc(Articulo.fecha_publicacion)
@@ -299,6 +298,7 @@ def get_articles():
                 }
 
             article_id = result[9]
+            # Check if article already exists in the event's articles list
             article_exists = any(a['id'] == article_id for a in events_dict[evento_id]['articles'])
             if not article_exists:
                 events_dict[evento_id]['articles'].append({
@@ -344,6 +344,7 @@ def get_subcategories():
         if not category_id:
             return jsonify({'error': 'Category ID is required'}), 400
 
+        # Query subcategories with article counts from all newspapers
         subcategories = db.session.query(
             Subcategoria.subcategoria_id.label('id'),
             Subcategoria.nombre,
@@ -374,6 +375,7 @@ def get_subcategories():
 @app.route('/api/article/<int:article_id>')
 def get_article(article_id):
     try:
+        # Enhanced query to include all newspaper information
         article = db.session.query(
             Articulo.articulo_id,
             Articulo.titular,
@@ -384,9 +386,12 @@ def get_article(article_id):
             Articulo.paywall,
             Articulo.gpt_resumen,
             Articulo.gpt_opinion,
+            Articulo.gpt_palabras_clave,
             Periodista.nombre.label('periodista_nombre'),
             Periodico.nombre.label('periodico_nombre'),
-            Periodico.logo_url.label('periodico_logo')
+            Periodico.logo_url.label('periodico_logo'),
+            Periodico.pais_iso_code.label('periodico_pais'),
+            Periodico.tipo.label('periodico_tipo')
         ).outerjoin(
             Periodista, Periodista.periodista_id == Articulo.periodista_id
         ).join(
@@ -409,8 +414,11 @@ def get_article(article_id):
             'paywall': article.paywall,
             'gpt_resumen': article.gpt_resumen,
             'gpt_opinion': article.gpt_opinion,
+            'gpt_palabras_clave': article.gpt_palabras_clave,
             'periodico_nombre': article.periodico_nombre,
-            'periodico_logo': article.periodico_logo
+            'periodico_logo': article.periodico_logo,
+            'periodico_pais': article.periodico_pais,
+            'periodico_tipo': article.periodico_tipo
         })
 
     except Exception as e:
