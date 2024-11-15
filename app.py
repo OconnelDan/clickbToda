@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
-from sqlalchemy import func, text, desc, and_, or_, distinct
+from sqlalchemy import func, text, desc, and_, or_, distinct, Integer, cast, String
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
 import logging
@@ -385,10 +385,11 @@ def get_article(article_id):
             Articulo.gpt_resumen,
             Articulo.gpt_opinion,
             Periodista.nombre.label('periodista_nombre'),
+            Periodista.apellido.label('periodista_apellido'),
             Periodico.nombre.label('periodico_nombre'),
             Periodico.logo_url.label('periodico_logo')
         ).outerjoin(
-            Periodista, Periodista.periodista_id == Articulo.periodista_id
+            Periodista, cast(Articulo.periodista_id, String) == cast(Periodista.periodista_id, String)
         ).join(
             Periodico, Periodico.periodico_id == Articulo.periodico_id
         ).filter(
@@ -396,7 +397,12 @@ def get_article(article_id):
         ).first()
 
         if not article:
+            logger.warning(f"Article not found: {article_id}")
             return jsonify({'error': 'Article not found'}), 404
+
+        periodista_nombre = None
+        if article.periodista_nombre and article.periodista_apellido:
+            periodista_nombre = f"{article.periodista_nombre} {article.periodista_apellido}"
 
         return jsonify({
             'id': article.articulo_id,
@@ -404,7 +410,7 @@ def get_article(article_id):
             'subtitular': article.subtitular,
             'url': article.url,
             'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
-            'periodista': article.periodista_nombre,
+            'periodista': periodista_nombre,
             'agencia': article.agencia,
             'paywall': article.paywall,
             'gpt_resumen': article.gpt_resumen,
@@ -414,8 +420,8 @@ def get_article(article_id):
         })
 
     except Exception as e:
-        logger.error(f"Error fetching article details: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error fetching article details: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
