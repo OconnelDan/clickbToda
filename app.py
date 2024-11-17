@@ -199,31 +199,52 @@ def get_subcategories():
         category_id = request.args.get('category_id', type=int)
         time_filter = request.args.get('time_filter', '72h')
         
-        if not category_id:
+        if category_id is None:  # Change condition to check for None instead
             return jsonify({'error': 'Category ID is required'}), 400
 
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
-        subcategories = db.session.query(
-            Subcategoria.subcategoria_id.label('id'),
-            Subcategoria.nombre,
-            func.count(distinct(Articulo.articulo_id)).label('article_count')
-        ).outerjoin(
-            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).outerjoin(
-            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
-        ).outerjoin(
-            Articulo, and_(
-                Articulo.articulo_id == articulo_evento.c.articulo_id,
-                Articulo.fecha_publicacion.between(start_date, end_date)
-            )
-        ).filter(
-            Subcategoria.categoria_id == category_id
-        ).group_by(
-            Subcategoria.subcategoria_id,
-            Subcategoria.nombre
-        ).order_by(desc('article_count')).all()
+        # For "All" category, return all subcategories
+        if category_id == 0:
+            subcategories = db.session.query(
+                Subcategoria.subcategoria_id.label('id'),
+                Subcategoria.nombre,
+                func.count(distinct(Articulo.articulo_id)).label('article_count')
+            ).outerjoin(
+                Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
+            ).outerjoin(
+                articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+            ).outerjoin(
+                Articulo, and_(
+                    Articulo.articulo_id == articulo_evento.c.articulo_id,
+                    Articulo.fecha_publicacion.between(start_date, end_date)
+                )
+            ).group_by(
+                Subcategoria.subcategoria_id,
+                Subcategoria.nombre
+            ).order_by(desc('article_count')).all()
+        else:
+            # Existing query for specific category
+            subcategories = db.session.query(
+                Subcategoria.subcategoria_id.label('id'),
+                Subcategoria.nombre,
+                func.count(distinct(Articulo.articulo_id)).label('article_count')
+            ).outerjoin(
+                Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
+            ).outerjoin(
+                articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+            ).outerjoin(
+                Articulo, and_(
+                    Articulo.articulo_id == articulo_evento.c.articulo_id,
+                    Articulo.fecha_publicacion.between(start_date, end_date)
+                )
+            ).filter(
+                Subcategoria.categoria_id == category_id
+            ).group_by(
+                Subcategoria.subcategoria_id,
+                Subcategoria.nombre
+            ).order_by(desc('article_count')).all()
 
         return jsonify([{
             'id': s.id,
@@ -242,7 +263,7 @@ def get_articles():
         subcategory_id = request.args.get('subcategory_id', type=int)
         time_filter = request.args.get('time_filter', '72h')
         
-        if not category_id and not subcategory_id:
+        if category_id is None and subcategory_id is None:  # Change condition
             logger.error("Missing required parameters: category_id or subcategory_id")
             return jsonify({'error': 'category_id or subcategory_id is required'}), 400
 
