@@ -157,7 +157,16 @@ def index():
             flash('No categories available at the moment', 'warning')
             categories = []
         else:
-            categories = []
+            # Add "All" category with total article count
+            categories = [{
+                'Categoria': {
+                    'categoria_id': 0,  # Use 0 for the "All" category
+                    'nombre': 'All',
+                    'descripcion': 'All categories'
+                },
+                'article_count': sum(cat.article_count or 0 for cat in categories_result)
+            }]
+            # Then add the rest of the categories
             for category in categories_result:
                 categories.append({
                     'Categoria': {
@@ -299,7 +308,10 @@ def get_articles():
         )
 
         # Apply filters
-        if category_id:
+        if category_id == 0:  # "All" category
+            # Remove category filter
+            events_query = events_query
+        elif category_id:
             events_query = events_query.filter(Subcategoria.categoria_id == category_id)
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)

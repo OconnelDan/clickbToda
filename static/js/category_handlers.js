@@ -81,9 +81,9 @@ function loadDefaultCategory() {
         if (categoryTabs.length > 0) {
             // Remove active class from any previously active tabs
             categoryTabs.forEach(tab => tab.classList.remove('active'));
-            // Set the first category as active
+            // Set the first category (All) as active
             categoryTabs[0].classList.add('active');
-            // Load content for the first category
+            // Load content for the All category
             const categoryId = categoryTabs[0].dataset.categoryId;
             if (categoryId) {
                 loadCategoryContent(categoryId);
