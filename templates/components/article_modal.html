@@ -1,6 +1,6 @@
 <div class="modal fade" id="articleModal" tabindex="-1" aria-labelledby="articleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+        <div class="modal-content article-modal-content">
             <div class="modal-header">
                 <div class="d-flex flex-column w-100">
                     <div class="mb-2">
@@ -27,17 +27,9 @@
                     <div id="articleSubtitle" class="text-muted mb-3"></div>
                     <div class="article-meta mb-3">
                         <span id="articleDate" class="me-3"></span>
-                        <span id="articleAuthor" class="me-3"></span>
                         <span id="articleAgency"></span>
                     </div>
-                    <div class="mb-3">
-                        <h6>Summary</h6>
-                        <div id="articleSummary"></div>
-                    </div>
-                    <div class="mb-3">
-                        <h6>Sources</h6>
-                        <div id="articleSources"></div>
-                    </div>
+                    <div id="articleSummary" class="mb-3"></div>
                     <div id="paywallWarning" class="alert alert-warning d-none">
                         This article is behind a paywall. You may need a subscription to read the full content.
                     </div>
@@ -50,3 +42,23 @@
         </div>
     </div>
 </div>
+
+<style>
+.article-modal-content {
+  border-radius: 10px;
+}
+</style>
+
+<script>
+    // Handle author display removal in article_modal.js
+    document.addEventListener('DOMContentLoaded', function() {
+        const articleModal = document.getElementById('articleModal');
+        if (articleModal) {
+            // Find the articleAuthor element and remove it
+            const articleAuthor = articleModal.querySelector('#articleAuthor');
+            if (articleAuthor) {
+                articleAuthor.remove();
+            }
+        }
+    });
+</script>

@@ -70,12 +70,9 @@ function resetModalContent() {
         'articleModalLabel': { type: 'text', value: '' },
         'articleSubtitle': { type: 'text', value: '' },
         'articleDate': { type: 'text', value: '' },
-        'articleAuthor': { type: 'text', value: '' },
         'articleAgency': { type: 'text', value: '' },
         'articleSummary': { type: 'text', value: '' },
-        'articleOpinion': { type: 'text', value: '' },
-        'articleKeywords': { type: 'html', value: '' },
-        'articleSources': { type: 'text', value: '' }
+        'articleAuthor': { type: 'text', value: '' }
     };
     
     for (const [id, config] of Object.entries(elements)) {
@@ -83,8 +80,6 @@ function resetModalContent() {
         if (element) {
             if (config.type === 'img') {
                 element.src = config.value;
-            } else if (config.type === 'html') {
-                element.innerHTML = config.value;
             } else {
                 element.textContent = config.value;
             }
@@ -190,10 +185,9 @@ function updateModalContent(article) {
             'articleModalLabel': { type: 'text', value: article.titular || 'No Title' },
             'articleSubtitle': { type: 'text', value: article.subtitular || '' },
             'articleDate': { type: 'text', value: formatDate(article.fecha_publicacion) },
-            'articleAuthor': { type: 'text', value: article.periodista || 'Unknown Author' },
             'articleAgency': { type: 'text', value: article.agencia || '' },
             'articleSummary': { type: 'text', value: article.gpt_resumen || 'No summary available' },
-            'articleOpinion': { type: 'text', value: article.gpt_opinion || 'No opinion available' }
+            'articleAuthor': { type: 'text', value: article.periodista || 'Unknown Author' }
         };
         
         for (const [id, config] of Object.entries(elements)) {
@@ -204,13 +198,9 @@ function updateModalContent(article) {
                 } else {
                     element.textContent = config.value;
                 }
-            } else {
-                console.warn(`Element with id '${id}' not found`);
             }
         }
         
-        updateKeywords(article.gpt_palabras_clave);
-        updateSources(article.gpt_cantidad_fuentes_citadas);
         updatePaywallWarning(article.paywall);
         updateArticleLink(article.url);
         
@@ -234,37 +224,6 @@ function formatDate(dateString) {
         console.warn('Error formatting date:', error);
         return dateString;
     }
-}
-
-function updateKeywords(keywords) {
-    const keywordsDiv = document.getElementById('articleKeywords');
-    if (!keywordsDiv) {
-        console.error('Keywords element not found');
-        return;
-    }
-    
-    if (keywords) {
-        const badges = keywords.split(',')
-            .map(keyword => keyword.trim())
-            .filter(keyword => keyword)
-            .map(keyword => `<span class="badge bg-secondary me-1 mb-1">${keyword}</span>`)
-            .join('');
-        keywordsDiv.innerHTML = badges || '<span class="text-muted">No keywords available</span>';
-    } else {
-        keywordsDiv.innerHTML = '<span class="text-muted">No keywords available</span>';
-    }
-}
-
-function updateSources(sourcesCount) {
-    const sourcesDiv = document.getElementById('articleSources');
-    if (!sourcesDiv) {
-        console.error('Sources element not found');
-        return;
-    }
-    
-    sourcesDiv.textContent = sourcesCount ? 
-        `${sourcesCount} source${sourcesCount !== 1 ? 's' : ''} cited` : 
-        'No source information available';
 }
 
 function updatePaywallWarning(hasPaywall) {

@@ -246,3 +246,8 @@
     background: rgba(var(--bs-secondary-rgb), 0.1);
     border-radius: 0.25rem;
 }
+
+.article-modal-content {
+    border: 4px solid var(--bs-primary);
+    border-radius: 8px;
+}
