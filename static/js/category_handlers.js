@@ -117,7 +117,7 @@ function loadCategoryContent(categoryId) {
     
     // Fetch subcategories and articles simultaneously
     Promise.all([
-        fetch(`/api/subcategories?category_id=${categoryId}`).then(response => {
+        fetch(`/api/subcategories?category_id=${categoryId}&time_filter=${timeFilter}`).then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         }),
