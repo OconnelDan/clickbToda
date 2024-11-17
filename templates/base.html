@@ -15,7 +15,19 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <div class="navbar-nav me-auto">
+                    <div class="nav-item btn-group time-filter-group" role="group" aria-label="Time filter">
+                        <input type="radio" class="btn-check" name="timeFilter" id="24h" value="24h" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="24h">24h</label>
+
+                        <input type="radio" class="btn-check" name="timeFilter" id="48h" value="48h" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="48h">48h</label>
+
+                        <input type="radio" class="btn-check" name="timeFilter" id="72h" value="72h" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary" for="72h">72h</label>
+                    </div>
+                </div>
+                <ul class="navbar-nav">
                     {% if current_user.is_authenticated %}
                         <li class="nav-item">
                             <span class="nav-link">{{ current_user.nombre }}</span>
@@ -48,7 +60,6 @@
             {% endif %}
         {% endwith %}
         
-        {% include "components/time_filter.html" %}
         {% block content %}{% endblock %}
     </div>
 

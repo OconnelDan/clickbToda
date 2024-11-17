@@ -22,6 +22,17 @@
     display: none;
 }
 
+/* Time Filter Styles */
+.time-filter-group {
+    margin-right: 1rem;
+}
+
+.time-filter-group .btn {
+    --bs-btn-padding-y: 0.25rem;
+    --bs-btn-padding-x: 0.75rem;
+    --bs-btn-font-size: 0.875rem;
+}
+
 /* Category Navigation Styles */
 .category-nav {
     position: sticky;
@@ -168,6 +179,11 @@
     .nav-tabs .nav-link, .nav-pills .nav-link {
         padding: 0.25rem 0.5rem;
         font-size: 0.85rem;
+    }
+
+    /* Adjust time filter for mobile */
+    .time-filter-group {
+        margin: 0.5rem 0;
     }
 }
 
