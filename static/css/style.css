@@ -27,8 +27,6 @@
     height: 30px;
     width: auto;
     object-fit: contain;
-    background: transparent;
-    mix-blend-mode: multiply;
 }
 
 @media (min-width: 768px) {
