@@ -120,7 +120,7 @@ def logout():
 @app.route('/')
 def index():
     try:
-        time_filter = request.args.get('time_filter', '24h')
+        time_filter = request.args.get('time_filter', '72h')
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
@@ -172,7 +172,8 @@ def index():
         return render_template('index.html',
                            categories=categories,
                            initial_data={'categories': categories},
-                           selected_date=datetime.now().date())
+                           selected_date=datetime.now().date(),
+                           time_filter=time_filter)
 
     except Exception as e:
         logger.error(f"Error in index route: {str(e)}", exc_info=True)
@@ -180,14 +181,57 @@ def index():
         return render_template('index.html',
                            categories=[],
                            initial_data={'categories': []},
-                           selected_date=datetime.now().date())
+                           selected_date=datetime.now().date(),
+                           time_filter=time_filter)
+
+@app.route('/api/subcategories')
+def get_subcategories():
+    try:
+        category_id = request.args.get('category_id', type=int)
+        time_filter = request.args.get('time_filter', '72h')
+        
+        if not category_id:
+            return jsonify({'error': 'Category ID is required'}), 400
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+
+        subcategories = db.session.query(
+            Subcategoria.subcategoria_id.label('id'),
+            Subcategoria.nombre,
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
+        ).outerjoin(
+            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).outerjoin(
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+        ).outerjoin(
+            Articulo, and_(
+                Articulo.articulo_id == articulo_evento.c.articulo_id,
+                Articulo.fecha_publicacion.between(start_date, end_date)
+            )
+        ).filter(
+            Subcategoria.categoria_id == category_id
+        ).group_by(
+            Subcategoria.subcategoria_id,
+            Subcategoria.nombre
+        ).order_by(desc('article_count')).all()
+
+        return jsonify([{
+            'id': s.id,
+            'nombre': s.nombre,
+            'article_count': s.article_count or 0
+        } for s in subcategories])
+
+    except Exception as e:
+        logger.error(f"Error fetching subcategories: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/articles')
 def get_articles():
     try:
         category_id = request.args.get('category_id', type=int)
         subcategory_id = request.args.get('subcategory_id', type=int)
-        time_filter = request.args.get('time_filter', '24h')
+        time_filter = request.args.get('time_filter', '72h')
         
         if not category_id and not subcategory_id:
             logger.error("Missing required parameters: category_id or subcategory_id")
@@ -336,40 +380,6 @@ def get_articles():
     except Exception as e:
         logger.error(f"Error in get_articles: {str(e)}", exc_info=True)
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
-
-@app.route('/api/subcategories')
-def get_subcategories():
-    try:
-        category_id = request.args.get('category_id', type=int)
-        if not category_id:
-            return jsonify({'error': 'Category ID is required'}), 400
-
-        subcategories = db.session.query(
-            Subcategoria.subcategoria_id.label('id'),
-            Subcategoria.nombre,
-            func.count(distinct(Articulo.articulo_id)).label('article_count')
-        ).outerjoin(
-            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).outerjoin(
-            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
-        ).outerjoin(
-            Articulo, Articulo.articulo_id == articulo_evento.c.articulo_id
-        ).filter(
-            Subcategoria.categoria_id == category_id
-        ).group_by(
-            Subcategoria.subcategoria_id,
-            Subcategoria.nombre
-        ).order_by(desc('article_count')).all()
-
-        return jsonify([{
-            'id': s.id,
-            'nombre': s.nombre,
-            'article_count': s.article_count or 0
-        } for s in subcategories])
-
-    except Exception as e:
-        logger.error(f"Error fetching subcategories: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/article/<int:article_id>')
 def get_article(article_id):
