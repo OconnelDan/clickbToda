@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize article modal
+    const modalElement = document.getElementById('articleModal');
+    if (modalElement) {
+        articleModal = new bootstrap.Modal(modalElement);
+    }
+    
     loadPosturas();
 });
 
@@ -79,8 +85,6 @@ function updatePosturasDisplay(data) {
     document.querySelectorAll('.article-link').forEach(button => {
         button.addEventListener('click', function() {
             const articleId = this.dataset.articleId;
-            const articleModal = new bootstrap.Modal(document.getElementById('articleModal'));
-            articleModal.show();
             fetchArticleDetails(articleId);
         });
     });
