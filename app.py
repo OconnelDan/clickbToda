@@ -430,6 +430,8 @@ from sklearn.cluster import KMeans
 from collections import Counter
 import plotly.express as px
 import json
+import ast
+from statistics import mode
 
 @app.route('/mapa')
 def mapa():
@@ -501,40 +503,29 @@ def get_mapa_data():
                 'message': 'No se encontraron artículos con embeddings válidos para el período seleccionado'
             })
 
-        # Convert embeddings to numpy array and prepare data
+        def parse_embedding(x):
+            try:
+                if isinstance(x, np.ndarray):
+                    return x
+                elif isinstance(x, str):
+                    embedding = ast.literal_eval(x)
+                    if isinstance(embedding, set):
+                        embedding = list(embedding)
+                    return np.array(embedding, dtype=float)
+                else:
+                    raise ValueError(f"Tipo de dato inesperado: {type(x)}")
+            except Exception as e:
+                logger.error(f"Error procesando embedding: {e}")
+                return None
+
+        # Process embeddings
         embeddings_list = []
         articles_data = []
-        keywords_list = []
-        processed_count = 0
-        error_count = 0
-        
+        valid_articles = []
+
         for article in articles:
-            try:
-                if not article.embeddings:
-                    logger.warning(f"Empty embeddings for article {article.articulo_id}")
-                    continue
-                    
-                # Clean the embedding string
-                embedding_str = article.embeddings.strip()
-                if embedding_str.startswith('"') and embedding_str.endswith('"'):
-                    embedding_str = embedding_str[1:-1]
-                    
-                # Parse embedding with error handling
-                try:
-                    embedding = json.loads(embedding_str)
-                    if isinstance(embedding, str):
-                        embedding = json.loads(embedding)
-                except json.JSONDecodeError:
-                    # Try parsing as direct array string
-                    embedding_str = embedding_str.strip('{}[]')
-                    embedding = [float(x) for x in embedding_str.split(',') if x.strip()]
-                    
-                embedding = np.array(embedding)
-                
-                if embedding.size == 0:
-                    logger.warning(f"Zero-size embedding for article {article.articulo_id}")
-                    continue
-                    
+            embedding = parse_embedding(article.embeddings)
+            if embedding is not None:
                 embeddings_list.append(embedding)
                 articles_data.append({
                     'id': article.articulo_id,
@@ -545,22 +536,27 @@ def get_mapa_data():
                     'keywords': article.gpt_palabras_clave,
                     'resumen': article.gpt_resumen
                 })
-                
-                if article.gpt_palabras_clave:
-                    keywords = [k.strip() for k in article.gpt_palabras_clave.split(',')]
-                    keywords_list.extend(keywords)
-                    
-                processed_count += 1
-                
-            except Exception as e:
-                error_count += 1
-                logger.error(f"Error processing article {article.articulo_id}: {str(e)}")
-                continue
-                
-        logger.info(f"Successfully processed {processed_count} articles, {error_count} errors")
+                valid_articles.append(article)
 
         if not embeddings_list:
-            return jsonify([])
+            return jsonify({
+                'error': 'no_articles',
+                'message': 'No se encontraron artículos con embeddings válidos'
+            })
+
+        # Get embedding lengths and find most common length
+        embedding_lengths = [len(emb) for emb in embeddings_list]
+        target_length = mode(embedding_lengths)
+
+        # Pad or trim embeddings
+        def pad_embedding(embedding, target_length):
+            if len(embedding) < target_length:
+                return np.pad(embedding, (0, target_length - len(embedding)), mode='constant')
+            elif len(embedding) > target_length:
+                return embedding[:target_length]
+            return embedding
+
+        embeddings_list = [pad_embedding(emb, target_length) for emb in embeddings_list]
 
         # Perform t-SNE
         embeddings_array = np.vstack(embeddings_list)
