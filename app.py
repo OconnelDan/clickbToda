@@ -193,6 +193,7 @@ def get_posturas():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
+        # Modificar la query para incluir todas las columnas necesarias en el GROUP BY
         query = db.session.query(
             Evento,
             Subcategoria,
@@ -211,31 +212,43 @@ def get_posturas():
             Evento.gpt_desinformacion.isnot(None)
         ).group_by(
             Evento.evento_id,
+            Evento.titulo,
+            Evento.descripcion,
+            Evento.fecha_evento,
+            Evento.subcategoria_id,
+            Evento.gpt_desinformacion,
             Subcategoria.subcategoria_id,
-            Categoria.categoria_id
-        ).order_by(
-            desc('article_count')
+            Subcategoria.nombre,
+            Categoria.categoria_id,
+            Categoria.nombre
         )
         
         # Aplicar filtros de categoría
-        if category_id:
-            if category_id != 0:  # Skip for "All" category
-                query = query.filter(Categoria.categoria_id == category_id)
+        if category_id and category_id != 0:
+            query = query.filter(Categoria.categoria_id == category_id)
         
         if subcategory_id:
             query = query.filter(Evento.subcategoria_id == subcategory_id)
         
-        eventos = query.order_by(desc(Evento.fecha_evento)).all()
+        # Ordenar por cantidad de artículos y fecha
+        query = query.order_by(desc('article_count'), desc(Evento.fecha_evento))
+        
+        eventos = query.all()
         
         eventos_data = []
-        for evento, subcategoria, categoria in eventos:
+        for evento, subcategoria, categoria, article_count in eventos:
             try:
                 if evento.gpt_desinformacion:
-                    json_str = evento.gpt_desinformacion.replace('\"', '"').replace('\\', '')
-                    if json_str.startswith('"') and json_str.endswith('"'):
-                        json_str = json_str[1:-1]
+                    # Limpiar y normalizar el JSON string
+                    json_str = evento.gpt_desinformacion
+                    if isinstance(json_str, str):
+                        json_str = json_str.replace('\"', '"').replace('\\', '')
+                        if json_str.startswith('"') and json_str.endswith('"'):
+                            json_str = json_str[1:-1]
                     
                     posturas = json.loads(json_str)
+                    if not isinstance(posturas, list):
+                        posturas = [posturas]
                     
                     eventos_data.append({
                         'evento_id': evento.evento_id,
@@ -244,7 +257,8 @@ def get_posturas():
                         'fecha': evento.fecha_evento.strftime('%Y-%m-%d') if evento.fecha_evento else None,
                         'categoria_nombre': categoria.nombre,
                         'subcategoria_nombre': subcategoria.nombre,
-                        'posturas': posturas if isinstance(posturas, list) else [posturas]
+                        'article_count': article_count,
+                        'posturas': posturas
                     })
             except Exception as e:
                 logger.error(f"Error processing evento {evento.evento_id}: {str(e)}")
@@ -254,7 +268,7 @@ def get_posturas():
         
     except Exception as e:
         logger.error(f"Error fetching posturas: {str(e)}")
-        return jsonify([])  # Return empty list instead of 500 error
+        return jsonify([])
 
 @app.route('/')
 def index():
