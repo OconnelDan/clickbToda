@@ -5,13 +5,27 @@ document.addEventListener('DOMContentLoaded', function() {
         articleModal = new bootstrap.Modal(modalElement);
     }
     
-    loadPosturas();
+    // Initialize category navigation
+    initializeTabNavigation();
+    loadDefaultCategory();
 });
 
-function loadPosturas() {
+function loadPosturas(categoryId = null, subcategoryId = null) {
     const posturasContent = document.getElementById('posturas-content');
+    const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
     
-    fetch('/api/posturas')
+    let url = '/api/posturas';
+    const params = new URLSearchParams();
+    
+    if (categoryId) params.append('category_id', categoryId);
+    if (subcategoryId) params.append('subcategory_id', subcategoryId);
+    params.append('time_filter', timeFilter);
+    
+    url += `?${params.toString()}`;
+    
+    showLoading();
+    
+    fetch(url)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -27,12 +41,13 @@ function loadPosturas() {
 
 function updatePosturasDisplay(data) {
     const posturasContent = document.getElementById('posturas-content');
+    hideLoading();
     
     if (!Array.isArray(data) || data.length === 0) {
         posturasContent.innerHTML = `
             <div class="col-12">
                 <div class="alert alert-info">
-                    No hay posturas disponibles en este momento.
+                    No hay posturas disponibles en este momento para la categoría seleccionada.
                 </div>
             </div>
         `;
@@ -43,17 +58,22 @@ function updatePosturasDisplay(data) {
         <div class="postura-card mb-4">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">${postura.titulo || 'Sin título'}</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">${postura.titulo || 'Sin título'}</h3>
+                        <span class="badge bg-primary">${postura.categoria_nombre || ''}</span>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 border-end">
                             <div class="opinion-box p-3">
-                                <h4 class="h5 mb-3">Perspectiva 1</h4>
-                                <p>${postura.opinion_conjunto_1 || ''}</p>
+                                <h4 class="h5 mb-3">
+                                    <span class="badge bg-success me-2">Perspectiva 1</span>
+                                </h4>
+                                <p class="mb-4">${postura.opinion_conjunto_1 || ''}</p>
                                 <div class="articles-list mt-3">
                                     ${(postura.articulos_ids_conjunto_1 || []).map(id => `
-                                        <button class="btn btn-link article-link" 
+                                        <button class="btn btn-outline-primary btn-sm article-link m-1" 
                                                 data-article-id="${id}">
                                             Ver artículo
                                         </button>
@@ -63,11 +83,13 @@ function updatePosturasDisplay(data) {
                         </div>
                         <div class="col-md-6">
                             <div class="opinion-box p-3">
-                                <h4 class="h5 mb-3">Perspectiva 2</h4>
-                                <p>${postura.opinion_conjunto_2 || ''}</p>
+                                <h4 class="h5 mb-3">
+                                    <span class="badge bg-danger me-2">Perspectiva 2</span>
+                                </h4>
+                                <p class="mb-4">${postura.opinion_conjunto_2 || ''}</p>
                                 <div class="articles-list mt-3">
                                     ${(postura.articulos_ids_conjunto_2 || []).map(id => `
-                                        <button class="btn btn-link article-link" 
+                                        <button class="btn btn-outline-primary btn-sm article-link m-1" 
                                                 data-article-id="${id}">
                                             Ver artículo
                                         </button>
@@ -85,13 +107,31 @@ function updatePosturasDisplay(data) {
     document.querySelectorAll('.article-link').forEach(button => {
         button.addEventListener('click', function() {
             const articleId = this.dataset.articleId;
-            // Mostrar el modal antes de cargar los detalles
             if (articleModal) {
                 articleModal.show();
             }
             fetchArticleDetails(articleId);
         });
     });
+}
+
+function showLoading() {
+    const posturasContent = document.getElementById('posturas-content');
+    posturasContent.innerHTML = `
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando posturas...</p>
+        </div>
+    `;
+}
+
+function hideLoading() {
+    const loadingDiv = document.querySelector('#posturas-content .text-center');
+    if (loadingDiv) {
+        loadingDiv.remove();
+    }
 }
 
 function showError(message) {
@@ -103,4 +143,24 @@ function showError(message) {
             </div>
         </div>
     `;
+}
+
+// Override category handlers for posturas page
+function loadCategoryContent(categoryId) {
+    if (!categoryId) {
+        console.error('No category ID provided');
+        showError('Invalid category selection');
+        return;
+    }
+
+    loadPosturas(categoryId);
+}
+
+function loadArticlesForSubcategory(subcategoryId) {
+    if (!subcategoryId) {
+        console.error('No subcategory ID provided');
+        return;
+    }
+
+    loadPosturas(null, subcategoryId);
 }

@@ -282,35 +282,70 @@
 }
 
 .postura-card .card {
-    border: 2px solid var(--bs-primary);
-    border-radius: 8px;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+.postura-card .card:hover {
+    transform: translateY(-2px);
 }
 
 .postura-card .card-header {
-    background-color: var(--bs-primary);
+    background-color: var(--bs-dark);
     color: var(--bs-light);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    padding: 1rem;
+}
+
+.postura-card .card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
 }
 
 .opinion-box {
-    background-color: rgba(var(--bs-primary-rgb), 0.05);
-    border-radius: 6px;
+    background-color: rgba(var(--bs-dark-rgb), 0.05);
+    border-radius: 8px;
     height: 100%;
+    transition: background-color 0.2s ease;
+}
+
+.opinion-box:hover {
+    background-color: rgba(var(--bs-dark-rgb), 0.08);
 }
 
 .articles-list {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: rgba(var(--bs-dark-rgb), 0.03);
+    border-radius: 6px;
 }
 
 .article-link {
-    padding: 0.25rem 0.5rem;
+    padding: 0.375rem 0.75rem;
     font-size: 0.875rem;
-    background-color: rgba(var(--bs-primary-rgb), 0.1);
-    border-radius: 4px;
+    border-radius: 20px;
     text-decoration: none;
+    transition: all 0.2s ease;
+    margin: 0.25rem;
+    white-space: nowrap;
 }
 
 .article-link:hover {
-    background-color: rgba(var(--bs-primary-rgb), 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.postura-card .badge {
+    font-size: 0.875rem;
+    padding: 0.5em 0.75em;
+    border-radius: 20px;
+}
+
+.border-end {
+    border-color: rgba(var(--bs-dark-rgb), 0.1) !important;
 }

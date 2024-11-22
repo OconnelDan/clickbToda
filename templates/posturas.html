@@ -2,7 +2,8 @@
 
 {% block content %}
 <div class="container">
-    <h1 class="mb-4">Posturas</h1>
+    {% include "components/category_selectors.html" %}
+
     <div class="row">
         <div class="col-md-12">
             <div class="card">
@@ -31,6 +32,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/category_handlers.js') }}"></script>
 <script src="{{ url_for('static', filename='js/article_modal.js') }}"></script>
 <script src="{{ url_for('static', filename='js/posturas.js') }}"></script>
 {% endblock %}

@@ -120,33 +120,127 @@ def logout():
 
 @app.route('/posturas')
 def posturas():
-    return render_template('posturas.html')
+    try:
+        time_filter = request.args.get('time_filter', '72h')
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+
+        # Query categories with event counts
+        categories_query = db.session.query(
+            Categoria,
+            func.count(distinct(Evento.evento_id)).label('event_count')
+        ).outerjoin(
+            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
+        ).outerjoin(
+            Evento, and_(
+                Evento.subcategoria_id == Subcategoria.subcategoria_id,
+                Evento.gpt_desinformacion.isnot(None)
+            )
+        ).group_by(
+            Categoria.categoria_id,
+            Categoria.nombre,
+            Categoria.descripcion
+        ).order_by(
+            desc('event_count'),
+            Categoria.nombre
+        )
+
+        categories_result = categories_query.all()
+
+        if not categories_result:
+            logger.warning("No categories found in the database")
+            categories = []
+        else:
+            # Add "All" category with total event count
+            categories = [{
+                'Categoria': {
+                    'categoria_id': 0,
+                    'nombre': 'All',
+                    'descripcion': 'All categories'
+                },
+                'article_count': sum(cat.event_count or 0 for cat in categories_result)
+            }]
+            # Then add the rest of the categories
+            for category in categories_result:
+                categories.append({
+                    'Categoria': {
+                        'categoria_id': category.Categoria.categoria_id,
+                        'nombre': category.Categoria.nombre,
+                        'descripcion': category.Categoria.descripcion
+                    },
+                    'article_count': category.event_count or 0
+                })
+            logger.info(f"Found {len(categories)} categories for posturas page")
+
+        return render_template('posturas.html',
+                           categories=categories,
+                           time_filter=time_filter)
+
+    except Exception as e:
+        logger.error(f"Error in posturas route: {str(e)}", exc_info=True)
+        flash('Error loading categories. Please try again later.', 'error')
+        return render_template('posturas.html',
+                           categories=[],
+                           time_filter='72h')
 
 @app.route('/api/posturas')
 def get_posturas():
     try:
         time_filter = request.args.get('time_filter', '72h')
+        category_id = request.args.get('category_id', type=int)
+        subcategory_id = request.args.get('subcategory_id', type=int)
+        
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        eventos = db.session.query(Evento).filter(
+        # Build base query
+        query = db.session.query(Evento).filter(
             Evento.gpt_desinformacion.isnot(None)
-        ).order_by(desc(Evento.fecha_evento)).all()
+        )
+        
+        # Apply category filters
+        if category_id:
+            if category_id == 0:  # "All" category
+                query = query
+            else:
+                query = query.join(
+                    Subcategoria,
+                    Evento.subcategoria_id == Subcategoria.subcategoria_id
+                ).filter(
+                    Subcategoria.categoria_id == category_id
+                )
+        
+        if subcategory_id:
+            query = query.filter(Evento.subcategoria_id == subcategory_id)
+        
+        # Execute query with ordering
+        eventos = query.order_by(desc(Evento.fecha_evento)).all()
         
         posturas_data = []
         for evento in eventos:
             try:
                 if evento.gpt_desinformacion:
-                    # Limpiar el string JSON antes de parsearlo
+                    # Clean JSON string before parsing
                     json_str = evento.gpt_desinformacion.replace('\"', '"').replace('\\', '')
                     if json_str.startswith('"') and json_str.endswith('"'):
                         json_str = json_str[1:-1]
                     
                     desinformacion = json.loads(json_str)
-                    if isinstance(desinformacion, list):
-                        posturas_data.extend(desinformacion)
-                    elif isinstance(desinformacion, dict):
-                        posturas_data.append(desinformacion)
+                    
+                    # Add category information to each postura
+                    if evento.subcategoria:
+                        categoria_nombre = evento.subcategoria.categoria.nombre if evento.subcategoria.categoria else None
+                        subcategoria_nombre = evento.subcategoria.nombre
+                        
+                        if isinstance(desinformacion, list):
+                            for item in desinformacion:
+                                item['categoria_nombre'] = categoria_nombre
+                                item['subcategoria_nombre'] = subcategoria_nombre
+                            posturas_data.extend(desinformacion)
+                        elif isinstance(desinformacion, dict):
+                            desinformacion['categoria_nombre'] = categoria_nombre
+                            desinformacion['subcategoria_nombre'] = subcategoria_nombre
+                            posturas_data.append(desinformacion)
                         
             except json.JSONDecodeError as e:
                 logger.error(f"Error decoding JSON for evento {evento.evento_id}: {str(e)}")
@@ -159,7 +253,7 @@ def get_posturas():
         
     except Exception as e:
         logger.error(f"Error fetching posturas: {str(e)}")
-        return jsonify([])  # Retornar lista vacía en lugar de error 500
+        return jsonify([])  # Return empty list instead of 500 error
 
 @app.route('/')
 def index():
