@@ -134,6 +134,70 @@ def logout():
     return redirect(url_for('index'))
 
 @app.route('/posturas')
+def posturas():
+    try:
+        time_filter = request.args.get('time_filter', '72h')
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+
+        # Query categories with event counts
+        categories_query = db.session.query(
+            Categoria,
+            func.count(distinct(Evento.evento_id)).label('event_count')
+        ).outerjoin(
+            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
+        ).outerjoin(
+            Evento, and_(
+                Evento.subcategoria_id == Subcategoria.subcategoria_id,
+                Evento.gpt_desinformacion.isnot(None)
+            )
+        ).group_by(
+            Categoria.categoria_id,
+            Categoria.nombre,
+            Categoria.descripcion
+        ).order_by(
+            desc('event_count'),
+            Categoria.nombre
+        )
+
+        categories_result = categories_query.all()
+
+        if not categories_result:
+            logger.warning("No categories found in the database")
+            categories = []
+        else:
+            # Add "All" category with total event count
+            categories = [{
+                'Categoria': {
+                    'categoria_id': 0,
+                    'nombre': 'All',
+                    'descripcion': 'All categories'
+                },
+                'article_count': sum(cat.event_count or 0 for cat in categories_result)
+            }]
+            # Then add the rest of the categories
+            for category in categories_result:
+                categories.append({
+                    'Categoria': {
+                        'categoria_id': category.Categoria.categoria_id,
+                        'nombre': category.Categoria.nombre,
+                        'descripcion': category.Categoria.descripcion
+                    },
+                    'article_count': category.event_count or 0
+                })
+            logger.info(f"Found {len(categories)} categories for posturas page")
+
+        return render_template('posturas.html',
+                           categories=categories,
+                           time_filter=time_filter)
+
+    except Exception as e:
+        logger.error(f"Error in posturas route: {str(e)}", exc_info=True)
+        flash('Error loading categories. Please try again later.', 'error')
+        return render_template('posturas.html',
+                           categories=[],
+                           time_filter='72h')
+
 @app.route('/visualizacion')
 def visualizacion():
     try:
