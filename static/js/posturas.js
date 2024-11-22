@@ -85,6 +85,10 @@ function updatePosturasDisplay(data) {
     document.querySelectorAll('.article-link').forEach(button => {
         button.addEventListener('click', function() {
             const articleId = this.dataset.articleId;
+            // Mostrar el modal antes de cargar los detalles
+            if (articleModal) {
+                articleModal.show();
+            }
             fetchArticleDetails(articleId);
         });
     });
