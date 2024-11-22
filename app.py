@@ -189,10 +189,10 @@ def get_posturas():
         time_filter = request.args.get('time_filter', '72h')
         category_id = request.args.get('category_id', type=int)
         subcategory_id = request.args.get('subcategory_id', type=int)
-
+        
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
+        
         # Modificar la query para incluir información del evento
         query = db.session.query(
             Evento,
@@ -207,17 +207,17 @@ def get_posturas():
         ).filter(
             Evento.gpt_desinformacion.isnot(None)
         )
-
+        
         # Aplicar filtros de categoría
         if category_id:
             if category_id != 0:  # Skip for "All" category
                 query = query.filter(Categoria.categoria_id == category_id)
-
+        
         if subcategory_id:
             query = query.filter(Evento.subcategoria_id == subcategory_id)
-
+        
         eventos = query.order_by(desc(Evento.fecha_evento)).all()
-
+        
         eventos_data = []
         for evento, subcategoria, categoria in eventos:
             try:
@@ -225,9 +225,9 @@ def get_posturas():
                     json_str = evento.gpt_desinformacion.replace('\"', '"').replace('\\', '')
                     if json_str.startswith('"') and json_str.endswith('"'):
                         json_str = json_str[1:-1]
-
+                    
                     posturas = json.loads(json_str)
-
+                    
                     eventos_data.append({
                         'evento_id': evento.evento_id,
                         'titulo': evento.titulo,
@@ -240,9 +240,9 @@ def get_posturas():
             except Exception as e:
                 logger.error(f"Error processing evento {evento.evento_id}: {str(e)}")
                 continue
-
+        
         return jsonify(eventos_data)
-
+        
     except Exception as e:
         logger.error(f"Error fetching posturas: {str(e)}")
         return jsonify([])  # Return empty list instead of 500 error
@@ -597,4 +597,4 @@ def get_article(article_id):
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
