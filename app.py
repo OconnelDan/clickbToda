@@ -1,38 +1,3 @@
-import os
-import numpy as np
-import pandas as pd
-import plotly.express as px
-import plotly.utils
-import json
-import ast
-from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, flash, Markup
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from flask_wtf.csrf import CSRFProtect
-from sklearn.manifold import TSNE
-from sqlalchemy import func, text, desc, and_, or_, distinct, Integer, cast, String, exists
-from flask_caching import Cache
-from database import db
-from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, Periodista, articulo_evento
-from config import Config
-import logging
-import sys
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    stream=sys.stdout
-)
-logger = logging.getLogger(__name__)
-
-app = Flask(__name__)
-app.config.from_object(Config)
-import plotly.utils
-import json
-import ast
-from markupsafe import Markup
-from sklearn.manifold import TSNE
 from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
@@ -421,546 +386,86 @@ def get_subcategories():
         logger.error(f"Error fetching subcategories: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/mapa')
-def mapa():
-    try:
-        # Query articles and their embeddings from the last 72 hours
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=72)
-        
-        # Query articles with their embeddings
-        query = db.session.query(
-            Articulo.titular,
-            Articulo.embeddings,
-            Articulo.gpt_palabras_clave,
-            Articulo.gpt_resumen,
-            Periodico.nombre.label('periodico_nombre')
-        ).join(
-            Periodico,
-            Articulo.periodico_id == Periodico.periodico_id
-        ).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.embeddings.isnot(None)
-        )
-        
-        # Convert to DataFrame
-        df = pd.read_sql(query.statement, db.session.bind)
-        
-        if len(df) == 0:
-            flash('No hay suficientes datos para generar el mapa.', 'warning')
-            return render_template('mapa.html')
-            
-        # Process embeddings
-        def parse_embedding(x):
-            if pd.isna(x):
-                return None
-            try:
-                if isinstance(x, str):
-                    clean_str = x.replace("'", '"').replace('\\', '')
-                    if clean_str.startswith('"') and clean_str.endswith('"'):
-                        clean_str = clean_str[1:-1]
-                    return np.array(json.loads(clean_str))
-                return x
-            except:
-                return None
-
-        # Process embeddings
-        df['embeddings'] = df['embeddings'].apply(parse_embedding)
-        df = df.dropna(subset=['embeddings'])
-        
-        if len(df) < 2:
-            flash('No hay suficientes datos para generar el mapa.', 'warning')
-            return render_template('mapa.html')
-
-        # Convert embeddings to numpy array
-        embeddings_array = np.stack(df['embeddings'].values)
-        
-        # Apply t-SNE
-        tsne = TSNE(n_components=2, random_state=42)
-        embeddings_2d = tsne.fit_transform(embeddings_array)
-        
-        # Create visualization DataFrame
-        plot_df = pd.DataFrame(embeddings_2d, columns=['x', 'y'])
-        plot_df['Periódico'] = df['periodico_nombre']
-        plot_df['Titular'] = df['titular']
-        plot_df['Keywords'] = df['gpt_palabras_clave']
-        plot_df['Resumen'] = df['gpt_resumen']
-        
-        # Create scatter plot
-        fig = px.scatter(
-            plot_df, 
-            x='x', 
-            y='y',
-            color='Periódico',
-            hover_data={
-                'x': False,
-                'y': False,
-                'Periódico': True,
-                'Titular': True,
-                'Keywords': True,
-                'Resumen': True
-            },
-            title='Mapa de Noticias'
-        )
-        
-        # Update layout
-        fig.update_layout(
-            showlegend=True,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            xaxis_title='',
-            yaxis_title='',
-            height=800,
-            template='plotly_dark'
-        )
-        
-        # Convert to HTML
-        plot_div = fig.to_html(
-            full_html=False,
-            include_plotlyjs=True,
-            div_id='newsMap'
-        )
-        
-        return render_template('mapa.html', plot_div=plot_div)
-        
-    except Exception as e:
-        logger.error(f"Error generating map: {str(e)}", exc_info=True)
-        flash('Error al generar el mapa de noticias.', 'error')
-        return render_template('mapa.html')
-
 @app.route('/api/articles')
-def get_articles():  # 1
+def get_articles():
     try:
         category_id = request.args.get('category_id', type=int)
         subcategory_id = request.args.get('subcategory_id', type=int)
         time_filter = request.args.get('time_filter', '72h')
         
-        if category_id is None and subcategory_id is None:
+        if category_id is None and subcategory_id is None:  # Change condition
             logger.error("Missing required parameters: category_id or subcategory_id")
             return jsonify({'error': 'category_id or subcategory_id is required'}), 400
 
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        # Get category and subcategory info
+        category_info = None
+        subcategory_info = None
+        
+        if category_id:
+            category_info = db.session.query(
+                Categoria.categoria_id,
+                Categoria.nombre
+            ).filter(
+                Categoria.categoria_id == category_id
+            ).first()
+            
+            if not category_info:
+                return jsonify({'error': 'Category not found'}), 404
+            
+        if subcategory_id:
+            subcategory_info = db.session.query(
+                Subcategoria.subcategoria_id,
+                Subcategoria.nombre
+            ).filter(
+                Subcategoria.subcategoria_id == subcategory_id
+            ).first()
+            
+            if not subcategory_info:
+                return jsonify({'error': 'Subcategory not found'}), 404
 
-        query = db.session.query(
+        # Query events with related articles
+        events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,
             Evento.descripcion,
             Evento.fecha_evento,
-            Categoria.categoria_id,
-            Categoria.nombre.label('categoria_nombre'),
-            Subcategoria.subcategoria_id,
-            Subcategoria.nombre.label('subcategoria_nombre'),
-            Articulo
+            Evento.gpt_sujeto_activo,
+            Evento.gpt_sujeto_pasivo,
+            Evento.gpt_importancia,
+            Evento.gpt_tiene_contexto,
+            Evento.gpt_palabras_clave,
+            Articulo.articulo_id,
+            Articulo.titular,
+            Articulo.url,
+            Articulo.fecha_publicacion,
+            Articulo.paywall,
+            Articulo.gpt_opinion,
+            Periodico.nombre,
+            Periodico.logo_url
         ).join(
             Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
-            Categoria, Subcategoria.categoria_id == Categoria.categoria_id
-        ).join(
-            articulo_evento, Evento.evento_id == articulo_evento.c.evento_id
+            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
         ).join(
             Articulo, and_(
                 Articulo.articulo_id == articulo_evento.c.articulo_id,
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
-        )
-
-        if category_id:
-            if category_id != 0:  # Skip for "All" category
-                query = query.filter(Categoria.categoria_id == category_id)
-        
-        if subcategory_id:
-            query = query.filter(Subcategoria.subcategoria_id == subcategory_id)
-
-        articles_data = query.all()
-        
-        if not articles_data:
-            return jsonify({'categories': []})
-
-        # Process the query results
-        categories_dict = {}
-        for row in articles_data:
-            categoria_id = row.categoria_id
-            if categoria_id not in categories_dict:
-                categories_dict[categoria_id] = {
-                    'categoria_id': categoria_id,
-                    'nombre': row.categoria_nombre,
-                    'subcategories': {}
-                }
-            
-            subcategoria_id = row.subcategoria_id
-            if subcategoria_id not in categories_dict[categoria_id]['subcategories']:
-                categories_dict[categoria_id]['subcategories'][subcategoria_id] = {
-                    'id': subcategoria_id,
-                    'nombre': row.subcategoria_nombre,
-                    'events': {}
-                }
-            
-            evento_id = row.evento_id
-            if evento_id not in categories_dict[categoria_id]['subcategories'][subcategoria_id]['events']:
-                categories_dict[categoria_id]['subcategories'][subcategoria_id]['events'][evento_id] = {
-                    'id': evento_id,
-                    'titulo': row.titulo,
-                    'descripcion': row.descripcion,
-                    'fecha_evento': row.fecha_evento.strftime('%Y-%m-%d') if row.fecha_evento else None,
-                    'articles': []
-                }
-            
-            article = row.Articulo
-            categories_dict[categoria_id]['subcategories'][subcategoria_id]['events'][evento_id]['articles'].append({
-                'id': article.articulo_id,
-                'titular': article.titular,
-                'url': article.url,
-                'fecha_publicacion': article.fecha_publicacion.strftime('%Y-%m-%d') if article.fecha_publicacion else None,
-                'paywall': article.paywall,
-                'periodico_logo': article.periodico.logo_url if article.periodico else None,
-                'gpt_opinion': article.gpt_opinion
-            })
-
-        # Convert the nested dictionaries to lists
-        categories = []
-        for cat_id, cat_data in categories_dict.items():
-            category = {
-                'categoria_id': cat_data['categoria_id'],
-                'nombre': cat_data['nombre'],
-                'subcategories': []
-            }
-            
-            for subcat_id, subcat_data in cat_data['subcategories'].items():
-                subcategory = {
-                    'id': subcat_data['id'],
-                    'nombre': subcat_data['nombre'],
-                    'events': list(subcat_data['events'].values())
-                }
-                category['subcategories'].append(subcategory)
-            
-            categories.append(category)
-
-        return jsonify({'categories': categories})
-
-    except Exception as e:
-        logger.error(f"Error fetching articles: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
-
-
-
-
-@app.route('/mapa')
-def mapa():
-    try:
-        # Get time filter and calculate date range
-        time_filter = request.args.get('time_filter', '72h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        # Query articles with their embeddings
-        articles_query = db.session.query(
-            Articulo.titular,
-            Articulo.embeddings,
-            Articulo.gpt_palabras_clave,
-            Articulo.gpt_resumen,
-            Periodico.nombre.label('periodico_nombre')
         ).join(
-            Periodico,
-            Articulo.periodico_id == Periodico.periodico_id
-        ).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.embeddings.isnot(None)
+            Periodico, Periodico.periodico_id == Articulo.periodico_id
         )
-        
-        # Convert to DataFrame
-        df = pd.read_sql(articles_query.statement, db.session.bind)
-        
-        if len(df) == 0:
-            flash('No hay suficientes datos para generar el mapa.', 'warning')
-            return render_template('mapa.html')
-            
-        # Process embeddings
-        def parse_embedding(x):
-            if pd.isna(x):
-                return None
-            try:
-                if isinstance(x, str):
-                    clean_str = x.replace("'", '"').replace('\\', '')
-                    if clean_str.startswith('"') and clean_str.endswith('"'):
-                        clean_str = clean_str[1:-1]
-                    return np.array(json.loads(clean_str))
-                return x
-            except:
-                return None
 
-        # Process embeddings
-        df['embeddings'] = df['embeddings'].apply(parse_embedding)
-        df = df.dropna(subset=['embeddings'])
-        
-        if len(df) < 2:
-            flash('No hay suficientes datos para generar el mapa.', 'warning')
-            return render_template('mapa.html')
-
-        # Convert embeddings to numpy array
-        embeddings_array = np.stack(df['embeddings'].values)
-        
-        # Apply t-SNE
-        tsne = TSNE(n_components=2, random_state=42)
-        embeddings_2d = tsne.fit_transform(embeddings_array)
-        
-        # Create visualization DataFrame
-        plot_df = pd.DataFrame(embeddings_2d, columns=['x', 'y'])
-        plot_df['Periódico'] = df['periodico_nombre']
-        plot_df['Titular'] = df['titular']
-        plot_df['Keywords'] = df['gpt_palabras_clave']
-        plot_df['Resumen'] = df['gpt_resumen']
-        
-        # Create scatter plot
-        fig = px.scatter(
-            plot_df, 
-            x='x', 
-            y='y',
-            color='Periódico',
-            hover_data={
-                'x': False,
-                'y': False,
-                'Periódico': True,
-                'Titular': True,
-                'Keywords': True,
-                'Resumen': True
-            },
-            title='Mapa de Noticias'
-        )
-        
-        # Update layout
-        fig.update_layout(
-            showlegend=True,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            xaxis_title='',
-            yaxis_title='',
-            height=800,
-            template='plotly_dark'
-        )
-        
-        # Convert to HTML
-        plot_div = fig.to_html(
-            full_html=False,
-            include_plotlyjs=True,
-            div_id='newsMap'
-        )
-        
-        return render_template('mapa.html', plot_div=plot_div)
-        
-    except Exception as e:
-        logger.error(f"Error generating map: {str(e)}", exc_info=True)
-        flash('Error al generar el mapa de noticias.', 'error')
-        return render_template('mapa.html')
-        SELECT 
-            e.titulo as evento_titulo,
-            e.descripcion as evento_descripcion,
-            e.embeddings as evento_embeddings,
-            a.titular,
-            a.embeddings as articulo_embeddings,
-            a.gpt_palabras_clave,
-            a.gpt_resumen,
-            p.nombre as periodico_nombre,
-            c.nombre as categoria_nombre,
-            s.nombre as subcategoria_nombre
-        FROM evento e
-        JOIN articulo_evento ae ON e.evento_id = ae.evento_id
-        JOIN articulo a ON ae.articulo_id = a.articulo_id
-        JOIN periodico p ON a.periodico_id = p.periodico_id
-        LEFT JOIN subcategoria s ON e.subcategoria_id = s.subcategoria_id
-        LEFT JOIN categoria c ON s.categoria_id = c.categoria_id
-        WHERE a.fecha_publicacion BETWEEN :start_date AND :end_date
-        '''
-        
-        result = db.session.execute(text(query), {
-            'start_date': start_date,
-            'end_date': end_date
-        })
-        
-        # Convert result to DataFrame
-        df = pd.DataFrame(result)
-        
-        if df.empty:
-            flash('No hay suficientes datos para generar el mapa.', 'warning')
-            return render_template('mapa.html')
-        
-        # Process embeddings
-        def parse_embedding(x):
-            if pd.isna(x):
-                return None
-            try:
-                if isinstance(x, str):
-                    # Remove potential string artifacts and convert to list
-                    clean_str = x.replace("'", '"').replace('\\', '')
-                    if clean_str.startswith('"') and clean_str.endswith('"'):
-                        clean_str = clean_str[1:-1]
-                    return np.array(json.loads(clean_str))
-                return x
-            except:
-                return None
-
-        # Process embeddings
-        df['embeddings'] = df['articulo_embeddings'].apply(parse_embedding)
-        df = df.dropna(subset=['embeddings'])
-        
-        if len(df) < 2:
-            flash('No hay suficientes datos para generar el mapa.', 'warning')
-            return render_template('mapa.html')
-
-        # Convert embeddings to numpy array
-        embeddings_array = np.stack(df['embeddings'].values)
-        
-        # Apply t-SNE
-        tsne = TSNE(n_components=2, random_state=42)
-        embeddings_2d = tsne.fit_transform(embeddings_array)
-        
-        # Create visualization DataFrame
-        plot_df = pd.DataFrame(embeddings_2d, columns=['x', 'y'])
-        plot_df['Periódico'] = df['periodico_nombre']
-        plot_df['Titular'] = df['titular']
-        plot_df['Categoría'] = df['categoria_nombre']
-        plot_df['Subcategoría'] = df['subcategoria_nombre']
-        plot_df['Resumen'] = df['gpt_resumen']
-        
-        # Create scatter plot
-        fig = px.scatter(
-            plot_df, 
-            x='x', 
-            y='y',
-            color='Periódico',
-            hover_data={
-                'x': False,
-                'y': False,
-                'Periódico': True,
-                'Titular': True,
-                'Categoría': True,
-                'Subcategoría': True,
-                'Resumen': True
-            },
-            title='Mapa de Noticias'
-        )
-        
-        # Update layout
-        fig.update_layout(
-            showlegend=True,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            xaxis_title='',
-            yaxis_title='',
-            height=800
-        )
-        
-        # Convert to HTML
-        plot_div = fig.to_html(
-            full_html=False,
-            include_plotlyjs=True,
-            div_id='newsMap'
-        )
-        
-        return render_template('mapa.html', plot_div=plot_div)
-        
-    except Exception as e:
-        logger.error(f"Error generating map: {str(e)}", exc_info=True)
-        flash('Error al generar el mapa de noticias.', 'error')
-        return render_template('mapa.html')
-def mapa():
-    try:
-        # Query recent articles with their embeddings
-        query = '''
-        SELECT c.nombre AS categoria, 
-               s.nombre AS subcategoria, 
-               e.titulo AS evento, 
-               a.titular, 
-               a.gpt_palabras_clave,
-               a.palabras_clave_embeddings,
-               e.embeddings,
-               p.nombre AS periodico,
-               a.gpt_resumen
-        FROM articulo a
-        LEFT JOIN articulo_evento ae ON a.articulo_id = ae.articulo_id
-        FULL OUTER JOIN evento e ON ae.evento_id = e.evento_id
-        LEFT JOIN subcategoria s ON e.subcategoria_id = s.subcategoria_id
-        LEFT JOIN categoria c ON c.categoria_id = s.categoria_id
-        LEFT JOIN evento_region er ON e.evento_id = er.evento_id
-        LEFT JOIN region r ON er.region_id = r.region_id
-        LEFT JOIN periodico p ON a.periodico_id = p.periodico_id
-        WHERE a.updated_on >= NOW() - INTERVAL '3 days'
-        '''
-        
-        df = pd.read_sql(query, db.engine)
-        
-        # Process embeddings
-        def parse_embedding(x):
-            try:
-                if pd.isna(x):
-                    return None
-                if isinstance(x, str):
-                    embedding = ast.literal_eval(x)
-                    return np.array(embedding, dtype=float)
-                return None
-            except:
-                return None
-
-        df['embeddings'] = df['embeddings'].apply(parse_embedding)
-        df = df.dropna(subset=['embeddings'])
-        
-        if len(df) == 0:
-            flash('No hay suficientes datos para generar el mapa.', 'warning')
-            return render_template('mapa.html')
-            
-        # Convert embeddings to numpy array
-        embeddings_array = np.stack(df['embeddings'].values)
-        
-        # Use t-SNE for dimensionality reduction
-        tsne = TSNE(n_components=2, random_state=42)
-        embeddings_2d = tsne.fit_transform(embeddings_array)
-        
-        # Create visualization dataframe
-        plot_df = pd.DataFrame(embeddings_2d, columns=['Component 1', 'Component 2'])
-        plot_df['Categoria'] = df['categoria']
-        plot_df['Subcategoria'] = df['subcategoria']
-        plot_df['Titular'] = df['titular']
-        plot_df['Periodico'] = df['periodico']
-        plot_df['Resumen'] = df['gpt_resumen']
-        
-        # Create scatter plot
-        fig = px.scatter(
-            plot_df,
-            x='Component 1',
-            y='Component 2',
-            color='Periodico',
-            hover_data={
-                'Component 1': False,
-                'Component 2': False,
-                'Categoria': True,
-                'Subcategoria': True,
-                'Periodico': True,
-                'Titular': True
-            },
-            title='Mapa de Noticias'
-        )
-        
-        # Update layout
-        fig.update_layout(
-            showlegend=True,
-            legend_title_text='Periódico',
-            xaxis_title='',
-            yaxis_title='',
-            template='plotly_dark'
-        )
-        
-        # Generate plot components
-        plot_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-        
-        return render_template(
-            'mapa.html',
-            plot_div=Markup(plot_json)
-        )
-        
-    except Exception as e:
-        logger.error(f"Error generating map: {str(e)}", exc_info=True)
-        flash('Error al generar el mapa de noticias.', 'error')
-        return render_template('mapa.html')
+        # Apply filters
+        if category_id == 0:  # "All" category
+            # Remove category filter
+            events_query = events_query
+        elif category_id:
+            events_query = events_query.filter(Subcategoria.categoria_id == category_id)
+        if subcategory_id:
+            events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
         # Execute query
         events_results = events_query.order_by(

@@ -6,7 +6,6 @@
     <title>News App</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-    {% block head %}{% endblock %}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
@@ -20,7 +19,6 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <div class="navbar-nav me-auto">
                     <a class="nav-link" href="{{ url_for('posturas') }}">Posturas</a>
-                    <a class="nav-link" href="{{ url_for('mapa') }}">Mapa</a>
                     <div class="nav-item btn-group time-filter-group" role="group" aria-label="Time filter">
                         <input type="radio" class="btn-check" name="timeFilter" id="24h" value="24h" autocomplete="off">
                         <label class="btn btn-outline-primary" for="24h">24h</label>
