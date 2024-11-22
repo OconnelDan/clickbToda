@@ -487,11 +487,12 @@ def get_mapa_data():
             Categoria, Subcategoria.categoria_id == Categoria.categoria_id
         ).filter(
             Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.embeddings.isnot(None),
-            func.length(func.trim(Articulo.embeddings)) > 2  # Ensure non-empty JSON arrays
+            Articulo.embeddings.isnot(None)
         ).all()
 
-        logger.info(f"Found {len(articles)} articles with embeddings")
+        logger.info(f"Query executed, found {len(articles)} articles")
+        for idx, article in enumerate(articles[:5]):  # Log first 5 articles
+            logger.info(f"Article {idx+1} embeddings sample: {article.embeddings[:100] if article.embeddings else 'None'}")
 
         if not articles:
             logger.warning("No articles found with valid embeddings")
@@ -510,23 +511,30 @@ def get_mapa_data():
         for article in articles:
             try:
                 if not article.embeddings:
+                    logger.warning(f"Empty embeddings for article {article.articulo_id}")
                     continue
                     
-                # Parse and validate embedding
+                # Clean the embedding string
                 embedding_str = article.embeddings.strip()
-                if not (embedding_str.startswith('[') and embedding_str.endswith(']')):
-                    logger.warning(f"Invalid embedding format for article {article.articulo_id}")
-                    error_count += 1
+                if embedding_str.startswith('"') and embedding_str.endswith('"'):
+                    embedding_str = embedding_str[1:-1]
+                    
+                # Parse embedding with error handling
+                try:
+                    embedding = json.loads(embedding_str)
+                    if isinstance(embedding, str):
+                        embedding = json.loads(embedding)
+                except json.JSONDecodeError:
+                    # Try parsing as direct array string
+                    embedding_str = embedding_str.strip('{}[]')
+                    embedding = [float(x) for x in embedding_str.split(',') if x.strip()]
+                    
+                embedding = np.array(embedding)
+                
+                if embedding.size == 0:
+                    logger.warning(f"Zero-size embedding for article {article.articulo_id}")
                     continue
                     
-                embedding = np.array(json.loads(embedding_str))
-                
-                # Validate embedding dimensions
-                if embedding.size == 0 or embedding.ndim != 1:
-                    logger.warning(f"Invalid embedding dimensions for article {article.articulo_id}")
-                    error_count += 1
-                    continue
-                
                 embeddings_list.append(embedding)
                 articles_data.append({
                     'id': article.articulo_id,
@@ -544,9 +552,9 @@ def get_mapa_data():
                     
                 processed_count += 1
                 
-            except (json.JSONDecodeError, ValueError) as e:
+            except Exception as e:
                 error_count += 1
-                logger.error(f"Error processing embedding for article {article.articulo_id}: {str(e)}")
+                logger.error(f"Error processing article {article.articulo_id}: {str(e)}")
                 continue
                 
         logger.info(f"Successfully processed {processed_count} articles, {error_count} errors")
