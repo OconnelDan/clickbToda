@@ -426,7 +426,8 @@ def get_articles():
             if not subcategory_info:
                 return jsonify({'error': 'Subcategory not found'}), 404
 
-        # Query events with related articles
+
+# Query events with related articles
         events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,

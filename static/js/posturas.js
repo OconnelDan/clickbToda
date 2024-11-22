@@ -86,9 +86,12 @@ function updatePosturasDisplay(data) {
                                                     <p class="mb-3">${postura.opinion_conjunto_1 || ''}</p>
                                                     <div class="articles-list">
                                                         ${(postura.articulos_ids_conjunto_1 || []).map(id => `
-                                                            <button class="btn btn-outline-primary btn-sm article-link m-1" 
+                                                            <button class="btn btn-article article-link m-1" 
                                                                     data-article-id="${id}">
-                                                                Ver artículo
+                                                                <img src="/static/img/default-newspaper.svg" 
+                                                                     class="newspaper-logo-small" 
+                                                                     alt="Logo periódico"
+                                                                     data-article-id="${id}">
                                                             </button>
                                                         `).join('')}
                                                     </div>
@@ -100,9 +103,12 @@ function updatePosturasDisplay(data) {
                                                     <p class="mb-3">${postura.opinion_conjunto_2 || ''}</p>
                                                     <div class="articles-list">
                                                         ${(postura.articulos_ids_conjunto_2 || []).map(id => `
-                                                            <button class="btn btn-outline-primary btn-sm article-link m-1" 
+                                                            <button class="btn btn-article article-link m-1" 
                                                                     data-article-id="${id}">
-                                                                Ver artículo
+                                                                <img src="/static/img/default-newspaper.svg" 
+                                                                     class="newspaper-logo-small" 
+                                                                     alt="Logo periódico"
+                                                                     data-article-id="${id}">
                                                             </button>
                                                         `).join('')}
                                                     </div>
