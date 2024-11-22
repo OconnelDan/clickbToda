@@ -129,33 +129,25 @@ def get_posturas():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        # Update the query to properly filter and join with articles
         eventos = db.session.query(Evento).filter(
-            Evento.gpt_desinformacion.isnot(None),
-            # Join with articulo_evento and Articulo to filter by date
-            exists().where(
-                and_(
-                    articulo_evento.c.evento_id == Evento.evento_id,
-                    articulo_evento.c.articulo_id == Articulo.articulo_id,
-                    Articulo.fecha_publicacion.between(start_date, end_date)
-                )
-            )
+            Evento.gpt_desinformacion.isnot(None)
         ).order_by(desc(Evento.fecha_evento)).all()
         
         posturas_data = []
         for evento in eventos:
             try:
-                # Properly decode the JSON string
                 if evento.gpt_desinformacion:
-                    desinformacion = json.loads(evento.gpt_desinformacion.replace('\"', '"'))
+                    # Limpiar el string JSON antes de parsearlo
+                    json_str = evento.gpt_desinformacion.replace('\"', '"').replace('\\', '')
+                    if json_str.startswith('"') and json_str.endswith('"'):
+                        json_str = json_str[1:-1]
+                    
+                    desinformacion = json.loads(json_str)
                     if isinstance(desinformacion, list):
-                        for item in desinformacion:
-                            if isinstance(item, dict):
-                                item['evento_id'] = evento.evento_id
-                                posturas_data.append(item)
+                        posturas_data.extend(desinformacion)
                     elif isinstance(desinformacion, dict):
-                        desinformacion['evento_id'] = evento.evento_id
                         posturas_data.append(desinformacion)
+                        
             except json.JSONDecodeError as e:
                 logger.error(f"Error decoding JSON for evento {evento.evento_id}: {str(e)}")
                 continue
@@ -163,14 +155,11 @@ def get_posturas():
                 logger.error(f"Error processing evento {evento.evento_id}: {str(e)}")
                 continue
         
-        if not posturas_data:
-            logger.warning("No posturas found in the database")
-            
         return jsonify(posturas_data)
         
     except Exception as e:
         logger.error(f"Error fetching posturas: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify([])  # Retornar lista vacía en lugar de error 500
 
 @app.route('/')
 def index():
