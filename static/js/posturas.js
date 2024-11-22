@@ -1,15 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-// Function to get newspaper logo from article ID
-async function getNewspaperLogo(articleId) {
-    try {
-        const response = await fetch(`/api/article/${articleId}`);
-        const article = await response.json();
-        return article.periodico_logo || '/static/img/default-newspaper.svg';
-    } catch (error) {
-        console.error('Error fetching article details:', error);
-        return '/static/img/default-newspaper.svg';
-    }
-}
     // Initialize article modal
     const modalElement = document.getElementById('articleModal');
     if (modalElement) {
@@ -97,11 +86,9 @@ function updatePosturasDisplay(data) {
                                                     <p class="mb-3">${postura.opinion_conjunto_1 || ''}</p>
                                                     <div class="articles-list">
                                                         ${(postura.articulos_ids_conjunto_1 || []).map(id => `
-                                                            <button class="btn btn-link article-link m-1" 
+                                                            <button class="btn btn-outline-primary btn-sm article-link m-1" 
                                                                     data-article-id="${id}">
-                                                                <img src="${getNewspaperLogo(id)}" 
-                                                                     alt="Logo periódico" 
-                                                                     class="newspaper-logo-button">
+                                                                Ver artículo
                                                             </button>
                                                         `).join('')}
                                                     </div>
@@ -113,11 +100,9 @@ function updatePosturasDisplay(data) {
                                                     <p class="mb-3">${postura.opinion_conjunto_2 || ''}</p>
                                                     <div class="articles-list">
                                                         ${(postura.articulos_ids_conjunto_2 || []).map(id => `
-                                                            <button class="btn btn-link article-link m-1" 
+                                                            <button class="btn btn-outline-primary btn-sm article-link m-1" 
                                                                     data-article-id="${id}">
-                                                                <img src="${getNewspaperLogo(id)}" 
-                                                                     alt="Logo periódico" 
-                                                                     class="newspaper-logo-button">
+                                                                Ver artículo
                                                             </button>
                                                         `).join('')}
                                                     </div>
