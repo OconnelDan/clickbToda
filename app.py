@@ -193,33 +193,44 @@ def get_posturas():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        # Modificar la query para incluir información del evento
+        # Modificar la query para incluir el conteo de artículos
         query = db.session.query(
             Evento,
             Subcategoria,
-            Categoria
+            Categoria,
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
         ).join(
             Subcategoria,
             Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
             Categoria,
             Subcategoria.categoria_id == Categoria.categoria_id
+        ).outerjoin(
+            articulo_evento,
+            Evento.evento_id == articulo_evento.c.evento_id
+        ).outerjoin(
+            Articulo,
+            Articulo.articulo_id == articulo_evento.c.articulo_id
         ).filter(
             Evento.gpt_desinformacion.isnot(None)
+        ).group_by(
+            Evento.evento_id,
+            Subcategoria.subcategoria_id,
+            Categoria.categoria_id
         )
         
         # Aplicar filtros de categoría
-        if category_id:
-            if category_id != 0:  # Skip for "All" category
-                query = query.filter(Categoria.categoria_id == category_id)
+        if category_id and category_id != 0:
+            query = query.filter(Categoria.categoria_id == category_id)
         
         if subcategory_id:
             query = query.filter(Evento.subcategoria_id == subcategory_id)
         
-        eventos = query.order_by(desc(Evento.fecha_evento)).all()
+        # Ordenar por número de artículos de forma descendente
+        eventos = query.order_by(desc('article_count')).all()
         
         eventos_data = []
-        for evento, subcategoria, categoria in eventos:
+        for evento, subcategoria, categoria, article_count in eventos:
             try:
                 if evento.gpt_desinformacion:
                     json_str = evento.gpt_desinformacion.replace('\"', '"').replace('\\', '')
@@ -235,6 +246,7 @@ def get_posturas():
                         'fecha': evento.fecha_evento.strftime('%Y-%m-%d') if evento.fecha_evento else None,
                         'categoria_nombre': categoria.nombre,
                         'subcategoria_nombre': subcategoria.nombre,
+                        'article_count': article_count,
                         'posturas': posturas if isinstance(posturas, list) else [posturas]
                     })
             except Exception as e:
