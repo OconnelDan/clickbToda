@@ -1,6 +1,21 @@
 from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
+import argparse
+from datetime import datetime, timedelta
+from sqlalchemy import and_, desc, distinct, func, text, Integer, cast, String, exists
+import json
+import logging
+import os
+import sys
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
+logger = logging.getLogger(__name__)
 from sqlalchemy import func, text, desc, and_, or_, distinct, Integer, cast, String, exists
 import json
 from sqlalchemy.orm import joinedload
@@ -119,6 +134,87 @@ def logout():
     return redirect(url_for('index'))
 
 @app.route('/posturas')
+@app.route('/visualizacion')
+def visualizacion():
+    try:
+        time_filter = request.args.get('time_filter', '72h')
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        return render_template('visualizacion.html', time_filter=time_filter)
+    except Exception as e:
+        logger.error(f"Error in visualization route: {str(e)}", exc_info=True)
+        flash('Error loading visualization. Please try again later.', 'error')
+        return render_template('visualizacion.html', time_filter='72h')
+
+@app.route('/api/visualizacion')
+def get_visualization_data():
+    try:
+        end_date = datetime.now()
+        time_filter = request.args.get('time_filter', '72h')
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        articles = db.session.query(
+            Articulo.articulo_id,
+            Articulo.titular,
+            Articulo.embeddings,
+            Subcategoria.nombre.label('subcategoria_nombre'),
+            Categoria.nombre.label('categoria_nombre')
+        ).join(
+            articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id
+        ).join(
+            Evento, Evento.evento_id == articulo_evento.c.evento_id
+        ).join(
+            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).join(
+            Categoria, Subcategoria.categoria_id == Categoria.categoria_id
+        ).filter(
+            Articulo.fecha_publicacion.between(start_date, end_date),
+            Articulo.embeddings.isnot(None)
+        ).all()
+
+        if not articles:
+            return jsonify({'error': 'No articles found'}), 404
+
+        # Process embeddings and create visualization data
+        import numpy as np
+        from sklearn.manifold import TSNE
+        from sklearn.cluster import KMeans
+        import json
+
+        # Convert embeddings to numpy array
+        embeddings = []
+        for article in articles:
+            try:
+                if article.embeddings:
+                    embedding = json.loads(article.embeddings)
+                    embeddings.append(embedding)
+            except:
+                continue
+
+        if not embeddings:
+            return jsonify({'error': 'No valid embeddings found'}), 404
+
+        embeddings_array = np.array(embeddings)
+        
+        # Reduce dimensionality with t-SNE
+        tsne = TSNE(n_components=2, random_state=42)
+        embeddings_2d = tsne.fit_transform(embeddings_array)
+
+        # Prepare response data
+        result = {
+            'x': embeddings_2d[:, 0].tolist(),
+            'y': embeddings_2d[:, 1].tolist(),
+            'titles': [a.titular for a in articles[:len(embeddings)]],
+            'categories': [a.categoria_nombre for a in articles[:len(embeddings)]],
+            'subcategories': [a.subcategoria_nombre for a in articles[:len(embeddings)]],
+            'ids': [a.articulo_id for a in articles[:len(embeddings)]]
+        }
+
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error in visualization API: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
 def posturas():
     try:
         time_filter = request.args.get('time_filter', '72h')
@@ -597,4 +693,7 @@ def get_article(article_id):
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=5000, help='Port number to run the server on')
+    args = parser.parse_args()
+    app.run(host='0.0.0.0', port=args.port, debug=True)

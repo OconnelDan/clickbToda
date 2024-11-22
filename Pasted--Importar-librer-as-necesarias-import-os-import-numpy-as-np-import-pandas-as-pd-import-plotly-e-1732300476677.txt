@@ -1,0 +1,153 @@
+# Importar librerías necesarias
+import os
+import numpy as np
+import pandas as pd
+import plotly.express as px
+from sqlalchemy import create_engine
+from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
+from collections import Counter
+import ast
+
+# Conectar a la base de datos
+engine = create_engine(os.environ["BBDD_NEWS"])
+
+# Consultar datos
+query = '''
+SELECT c.nombre AS categoria, 
+       s.nombre AS subcategoria, 
+       e.titulo AS evento, 
+       a.titular, 
+       a.gpt_palabras_clave,
+       a.palabras_clave_embeddings,
+       e.embeddings
+FROM articulo a
+LEFT JOIN articulo_evento ae ON a.articulo_id = ae.articulo_id
+FULL OUTER JOIN evento e ON ae.evento_id = e.evento_id
+LEFT JOIN subcategoria s ON e.subcategoria_id = s.subcategoria_id
+LEFT JOIN categoria c ON c.categoria_id = s.categoria_id
+LEFT JOIN evento_region er ON e.evento_id = er.evento_id
+LEFT JOIN region r ON er.region_id = r.region_id
+WHERE a.fecha_publicacion >= NOW() - INTERVAL '3 days'
+'''
+
+# Cargar los datos en un DataFrame
+df = pd.read_sql(query, engine)
+
+def parse_embedding(x):
+    try:
+        if isinstance(x, np.ndarray):  # Si ya es un numpy array
+            return x
+        elif isinstance(x, str):  # Si es un string
+            embedding = ast.literal_eval(x)
+            if isinstance(embedding, set):  # Convertir set a lista
+                embedding = list(embedding)
+            return np.array(embedding, dtype=float)
+        else:
+            raise ValueError(f"Tipo de dato inesperado: {type(x)}")
+    except Exception as e:
+        print(f"Error procesando embedding: {e}")
+        return np.nan  # Devolver NaN para embeddings inválidos
+
+# Aplicar la función a la columna 'embeddings'
+df['embeddings'] = df['embeddings'].apply(parse_embedding)
+
+# Eliminar filas con embeddings inválidos
+df = df.dropna(subset=['embeddings'])
+
+# Verificar longitudes de embeddings
+embedding_lengths = df['embeddings'].apply(len)
+#print("Distribución de longitudes:")
+#print(embedding_lengths.value_counts())
+
+# Identificar la longitud más frecuente
+target_length = embedding_lengths.mode()[0]
+
+# Función para rellenar embeddings
+def pad_embedding(embedding, target_length):
+    if len(embedding) < target_length:
+        return np.pad(embedding, (0, target_length - len(embedding)), mode='constant')
+    elif len(embedding) > target_length:
+        return embedding[:target_length]
+    return embedding
+
+# Aplicar el relleno
+df['embeddings'] = df['embeddings'].apply(lambda x: pad_embedding(x, target_length))
+
+# Validar que todos los embeddings tienen la misma longitud
+embedding_lengths = df['embeddings'].apply(len)
+assert embedding_lengths.nunique() == 1, "No todos los embeddings tienen la misma longitud."
+
+# Convertir los embeddings a un array de numpy
+embeddings_array = np.stack(df['embeddings'].values)
+
+# Usar t-SNE para reducir a 2 dimensiones
+tsne = TSNE(n_components=2, random_state=42)
+embeddings_2d = tsne.fit_transform(embeddings_array)
+
+# Crear un DataFrame para la visualización
+plot_df = pd.DataFrame(embeddings_2d, columns=['Component 1', 'Component 2'])
+plot_df['Categoria'] = df['categoria']
+plot_df['Subcategoria'] = df['subcategoria']
+plot_df['Titular'] = df['titular']
+plot_df['Keywords'] = df['gpt_palabras_clave']
+
+# Continuar con el resto del código de visualización y clustering
+
+# Agrupar puntos en clusters
+n_clusters = 16  # Ajustar según el análisis
+kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+clusters = kmeans.fit_predict(embeddings_2d)
+plot_df['Cluster'] = clusters
+
+# Procesar palabras clave
+plot_df['Keywords_list'] = plot_df['Keywords'].str.split(',')
+
+# Agregar palabras clave más representativas por cluster
+def flatten_keywords(keyword_lists):
+    flat_list = []
+    for sublist in keyword_lists:
+        if isinstance(sublist, list):
+            flat_list.extend([item.strip() for item in sublist])
+    return flat_list
+
+cluster_keywords = plot_df.groupby('Cluster')['Keywords_list'].apply(flatten_keywords)
+
+# Obtener las palabras clave más frecuentes por cluster
+cluster_top_keywords = {}
+for cluster_label, keywords_list in cluster_keywords.items():
+    keyword_counts = Counter(keywords_list)
+    top_keyword = keyword_counts.most_common(1)[0][0]  # Obtener solo la palabra más frecuente
+    cluster_top_keywords[cluster_label] = top_keyword
+
+# Visualización interactiva con palabras clave
+fig = px.scatter(
+    plot_df, x='Component 1', y='Component 2',
+    color='Categoria',
+    hover_data=['Titular', 'Subcategoria'],
+    title=''
+)
+
+# Agregar anotaciones para cada cluster
+for cluster_label, keyword in cluster_top_keywords.items():
+    cluster_points = plot_df[plot_df['Cluster'] == cluster_label]
+    x_center = cluster_points['Component 1'].mean()
+    y_center = cluster_points['Component 2'].mean()
+    fig.add_annotation(
+        x=x_center, y=y_center,
+        text=keyword,
+        showarrow=False,
+        font=dict(size=12, color='grey'),
+        xanchor='center',
+        yanchor='middle',
+        opacity=0.7
+    )
+
+# Configurar diseño y mostrar gráfico
+fig.update_layout(
+    legend_title_text='Categoría',
+    xaxis_title='Componente t-SNE 1',
+    yaxis_title='Componente t-SNE 2'
+)
+
+fig.show()
