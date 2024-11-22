@@ -117,6 +117,19 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('index'))
 
+@app.route('/posturas')
+def posturas():
+    return render_template('posturas.html')
+
+@app.route('/api/posturas')
+def get_posturas():
+    try:
+        # This will be implemented with actual data later
+        return jsonify([])
+    except Exception as e:
+        logger.error(f"Error fetching posturas: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 @app.route('/')
 def index():
     try:
