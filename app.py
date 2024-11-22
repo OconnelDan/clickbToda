@@ -1,7 +1,8 @@
 from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
-from sqlalchemy import func, text, desc, and_, or_, distinct, Integer, cast, String
+from sqlalchemy import func, text, desc, and_, or_, distinct, Integer, cast, String, exists
+import json
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
 import logging
@@ -128,21 +129,45 @@ def get_posturas():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
+        # Update the query to properly filter and join with articles
         eventos = db.session.query(Evento).filter(
-            Evento.gpt_desinformacion.isnot(None)
+            Evento.gpt_desinformacion.isnot(None),
+            # Join with articulo_evento and Articulo to filter by date
+            exists().where(
+                and_(
+                    articulo_evento.c.evento_id == Evento.evento_id,
+                    articulo_evento.c.articulo_id == Articulo.articulo_id,
+                    Articulo.fecha_publicacion.between(start_date, end_date)
+                )
+            )
         ).order_by(desc(Evento.fecha_evento)).all()
         
         posturas_data = []
         for evento in eventos:
             try:
-                desinformacion = json.loads(evento.gpt_desinformacion)
-                for item in desinformacion:
-                    item['evento_id'] = evento.evento_id
-                posturas_data.extend(desinformacion)
-            except:
+                # Properly decode the JSON string
+                if evento.gpt_desinformacion:
+                    desinformacion = json.loads(evento.gpt_desinformacion.replace('\"', '"'))
+                    if isinstance(desinformacion, list):
+                        for item in desinformacion:
+                            if isinstance(item, dict):
+                                item['evento_id'] = evento.evento_id
+                                posturas_data.append(item)
+                    elif isinstance(desinformacion, dict):
+                        desinformacion['evento_id'] = evento.evento_id
+                        posturas_data.append(desinformacion)
+            except json.JSONDecodeError as e:
+                logger.error(f"Error decoding JSON for evento {evento.evento_id}: {str(e)}")
                 continue
-                
+            except Exception as e:
+                logger.error(f"Error processing evento {evento.evento_id}: {str(e)}")
+                continue
+        
+        if not posturas_data:
+            logger.warning("No posturas found in the database")
+            
         return jsonify(posturas_data)
+        
     except Exception as e:
         logger.error(f"Error fetching posturas: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
