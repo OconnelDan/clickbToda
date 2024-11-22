@@ -426,8 +426,7 @@ def get_articles():
             if not subcategory_info:
                 return jsonify({'error': 'Subcategory not found'}), 404
 
-
-# Query events with related articles
+        # Query events with related articles
         events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,
@@ -590,7 +589,7 @@ def get_article(article_id):
             'gpt_resumen': article.gpt_resumen,
             'gpt_opinion': article.gpt_opinion,
             'periodico_nombre': article.periodico_nombre,
-            'periodico_logo': article.periodico_logo or '/static/img/default-newspaper.svg'
+            'periodico_logo': article.periodico_logo
         })
 
     except Exception as e:

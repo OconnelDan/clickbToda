@@ -130,13 +130,6 @@ function showError(message, error = null, retryCallback = null) {
     errorDiv.classList.remove('d-none');
 }
 
-
-function updateArticleLogos(articleId, logoUrl) {
-    if (!logoUrl) return;
-    document.querySelectorAll(`img[data-article-id="${articleId}"]`).forEach(img => {
-        img.src = logoUrl;
-    });
-}
 function fetchArticleDetails(articleId, retryCount = 0) {
     console.log('Fetching article details:', articleId);
     
@@ -164,9 +157,6 @@ function fetchArticleDetails(articleId, retryCount = 0) {
                 throw new Error('Invalid article data received');
             }
             updateModalContent(article);
-            if (article.periodico_logo) {
-                updateArticleLogos(articleId, article.periodico_logo);
-            }
         })
         .catch(error => {
             clearTimeout(timeoutId);
