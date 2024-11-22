@@ -193,63 +193,55 @@ def get_posturas():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        # Build base query
-        query = db.session.query(Evento).filter(
+        # Modificar la query para incluir información del evento
+        query = db.session.query(
+            Evento,
+            Subcategoria,
+            Categoria
+        ).join(
+            Subcategoria,
+            Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).join(
+            Categoria,
+            Subcategoria.categoria_id == Categoria.categoria_id
+        ).filter(
             Evento.gpt_desinformacion.isnot(None)
         )
         
-        # Apply category filters
+        # Aplicar filtros de categoría
         if category_id:
-            if category_id == 0:  # "All" category
-                query = query
-            else:
-                query = query.join(
-                    Subcategoria,
-                    Evento.subcategoria_id == Subcategoria.subcategoria_id
-                ).filter(
-                    Subcategoria.categoria_id == category_id
-                )
+            if category_id != 0:  # Skip for "All" category
+                query = query.filter(Categoria.categoria_id == category_id)
         
         if subcategory_id:
             query = query.filter(Evento.subcategoria_id == subcategory_id)
         
-        # Execute query with ordering
         eventos = query.order_by(desc(Evento.fecha_evento)).all()
         
-        posturas_data = []
-        for evento in eventos:
+        eventos_data = []
+        for evento, subcategoria, categoria in eventos:
             try:
                 if evento.gpt_desinformacion:
-                    # Clean JSON string before parsing
                     json_str = evento.gpt_desinformacion.replace('\"', '"').replace('\\', '')
                     if json_str.startswith('"') and json_str.endswith('"'):
                         json_str = json_str[1:-1]
                     
-                    desinformacion = json.loads(json_str)
+                    posturas = json.loads(json_str)
                     
-                    # Add category information to each postura
-                    if evento.subcategoria:
-                        categoria_nombre = evento.subcategoria.categoria.nombre if evento.subcategoria.categoria else None
-                        subcategoria_nombre = evento.subcategoria.nombre
-                        
-                        if isinstance(desinformacion, list):
-                            for item in desinformacion:
-                                item['categoria_nombre'] = categoria_nombre
-                                item['subcategoria_nombre'] = subcategoria_nombre
-                            posturas_data.extend(desinformacion)
-                        elif isinstance(desinformacion, dict):
-                            desinformacion['categoria_nombre'] = categoria_nombre
-                            desinformacion['subcategoria_nombre'] = subcategoria_nombre
-                            posturas_data.append(desinformacion)
-                        
-            except json.JSONDecodeError as e:
-                logger.error(f"Error decoding JSON for evento {evento.evento_id}: {str(e)}")
-                continue
+                    eventos_data.append({
+                        'evento_id': evento.evento_id,
+                        'titulo': evento.titulo,
+                        'descripcion': evento.descripcion,
+                        'fecha': evento.fecha_evento.strftime('%Y-%m-%d') if evento.fecha_evento else None,
+                        'categoria_nombre': categoria.nombre,
+                        'subcategoria_nombre': subcategoria.nombre,
+                        'posturas': posturas if isinstance(posturas, list) else [posturas]
+                    })
             except Exception as e:
                 logger.error(f"Error processing evento {evento.evento_id}: {str(e)}")
                 continue
         
-        return jsonify(posturas_data)
+        return jsonify(eventos_data)
         
     except Exception as e:
         logger.error(f"Error fetching posturas: {str(e)}")

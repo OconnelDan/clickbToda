@@ -349,3 +349,30 @@
 .border-end {
     border-color: rgba(var(--bs-dark-rgb), 0.1) !important;
 }
+.evento-card .card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.evento-info {
+    padding: 1rem;
+    background-color: rgba(var(--bs-dark-rgb), 0.03);
+    border-radius: 8px;
+    height: 100%;
+}
+
+.evento-descripcion {
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+.posturas-container {
+    padding: 0.5rem;
+}
+
+.postura-box {
+    background-color: rgba(var(--bs-dark-rgb), 0.02);
+    border-radius: 8px;
+    padding: 1rem;
+}

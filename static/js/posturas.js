@@ -47,54 +47,70 @@ function updatePosturasDisplay(data) {
         posturasContent.innerHTML = `
             <div class="col-12">
                 <div class="alert alert-info">
-                    No hay posturas disponibles en este momento para la categoría seleccionada.
+                    No hay posturas disponibles en este momento.
                 </div>
             </div>
         `;
         return;
     }
 
-    posturasContent.innerHTML = data.map(postura => `
-        <div class="postura-card mb-4">
+    posturasContent.innerHTML = data.map(evento => `
+        <div class="evento-card mb-4">
             <div class="card">
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h3 class="card-title mb-0">${postura.titulo || 'Sin título'}</h3>
-                        <span class="badge bg-primary">${postura.categoria_nombre || ''}</span>
+                        <h3 class="card-title mb-0">${evento.titulo || 'Sin título'}</h3>
+                        <div>
+                            <span class="badge bg-primary me-2">${evento.categoria_nombre || ''}</span>
+                            <span class="badge bg-secondary">${evento.subcategoria_nombre || ''}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6 border-end">
-                            <div class="opinion-box p-3">
-                                <h4 class="h5 mb-3">
-                                    <span class="badge bg-success me-2">Perspectiva 1</span>
-                                </h4>
-                                <p class="mb-4">${postura.opinion_conjunto_1 || ''}</p>
-                                <div class="articles-list mt-3">
-                                    ${(postura.articulos_ids_conjunto_1 || []).map(id => `
-                                        <button class="btn btn-outline-primary btn-sm article-link m-1" 
-                                                data-article-id="${id}">
-                                            Ver artículo
-                                        </button>
-                                    `).join('')}
-                                </div>
+                        <div class="col-md-4">
+                            <div class="evento-info">
+                                <p class="evento-descripcion">${evento.descripcion || ''}</p>
+                                <small class="text-muted">${evento.fecha || ''}</small>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="opinion-box p-3">
-                                <h4 class="h5 mb-3">
-                                    <span class="badge bg-danger me-2">Perspectiva 2</span>
-                                </h4>
-                                <p class="mb-4">${postura.opinion_conjunto_2 || ''}</p>
-                                <div class="articles-list mt-3">
-                                    ${(postura.articulos_ids_conjunto_2 || []).map(id => `
-                                        <button class="btn btn-outline-primary btn-sm article-link m-1" 
-                                                data-article-id="${id}">
-                                            Ver artículo
-                                        </button>
-                                    `).join('')}
-                                </div>
+                        <div class="col-md-8">
+                            <div class="posturas-container">
+                                ${evento.posturas.map(postura => `
+                                    <div class="postura-box mb-3">
+                                        <h4 class="h5 mb-3">${postura.titulo || ''}</h4>
+                                        <div class="row">
+                                            <div class="col-md-6 border-end">
+                                                <div class="opinion-box p-3">
+                                                    <span class="badge bg-success mb-2">Perspectiva 1</span>
+                                                    <p class="mb-3">${postura.opinion_conjunto_1 || ''}</p>
+                                                    <div class="articles-list">
+                                                        ${(postura.articulos_ids_conjunto_1 || []).map(id => `
+                                                            <button class="btn btn-outline-primary btn-sm article-link m-1" 
+                                                                    data-article-id="${id}">
+                                                                Ver artículo
+                                                            </button>
+                                                        `).join('')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="opinion-box p-3">
+                                                    <span class="badge bg-danger mb-2">Perspectiva 2</span>
+                                                    <p class="mb-3">${postura.opinion_conjunto_2 || ''}</p>
+                                                    <div class="articles-list">
+                                                        ${(postura.articulos_ids_conjunto_2 || []).map(id => `
+                                                            <button class="btn btn-outline-primary btn-sm article-link m-1" 
+                                                                    data-article-id="${id}">
+                                                                Ver artículo
+                                                            </button>
+                                                        `).join('')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>
                     </div>
