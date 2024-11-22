@@ -29,16 +29,27 @@ function loadMapData() {
             return response.json();
         })
         .then(data => {
-            if (!data.points || data.points.length === 0) {
-                showError('No hay suficientes datos para generar la visualización.');
+            if (data.error === 'no_articles') {
+                showError(data.message || 'No hay suficientes datos para generar la visualización.');
                 return;
+            }
+            
+            if (!data.points || data.points.length === 0) {
+                showError('No hay suficientes artículos con embeddings válidos para generar la visualización.');
+                return;
+            }
+            
+            // Update articles count in the UI
+            const countBadge = document.querySelector('.badge.bg-info');
+            if (countBadge) {
+                countBadge.textContent = `Artículos visualizados: ${data.points.length}`;
             }
             
             createVisualization(data);
         })
         .catch(error => {
             console.error('Error loading map data:', error);
-            showError('Error al cargar los datos del mapa.');
+            showError('Error al cargar los datos del mapa. Por favor, intente nuevamente.');
         });
 }
 

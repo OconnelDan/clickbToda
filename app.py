@@ -462,8 +462,10 @@ def get_mapa_data():
         time_filter = request.args.get('time_filter', '72h')
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        logger.info(f"Fetching articles between {start_date} and {end_date}")
 
-        # Get articles with embeddings
+        # Get articles with valid embeddings
         articles = db.session.query(
             Articulo.articulo_id,
             Articulo.titular,
@@ -485,37 +487,69 @@ def get_mapa_data():
             Categoria, Subcategoria.categoria_id == Categoria.categoria_id
         ).filter(
             Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.embeddings.isnot(None)
+            Articulo.embeddings.isnot(None),
+            func.length(func.trim(Articulo.embeddings)) > 2  # Ensure non-empty JSON arrays
         ).all()
 
+        logger.info(f"Found {len(articles)} articles with embeddings")
+
         if not articles:
-            return jsonify([])
+            logger.warning("No articles found with valid embeddings")
+            return jsonify({
+                'error': 'no_articles',
+                'message': 'No se encontraron artículos con embeddings válidos para el período seleccionado'
+            })
 
         # Convert embeddings to numpy array and prepare data
         embeddings_list = []
         articles_data = []
         keywords_list = []
+        processed_count = 0
+        error_count = 0
         
         for article in articles:
             try:
-                if article.embeddings:
-                    embedding = np.array(json.loads(article.embeddings))
-                    embeddings_list.append(embedding)
-                    articles_data.append({
-                        'id': article.articulo_id,
-                        'titular': article.titular,
-                        'periodico': article.periodico_nombre,
-                        'categoria': article.categoria_nombre,
-                        'subcategoria': article.subcategoria_nombre,
-                        'keywords': article.gpt_palabras_clave,
-                        'resumen': article.gpt_resumen
-                    })
-                    if article.gpt_palabras_clave:
-                        keywords = [k.strip() for k in article.gpt_palabras_clave.split(',')]
-                        keywords_list.extend(keywords)
+                if not article.embeddings:
+                    continue
+                    
+                # Parse and validate embedding
+                embedding_str = article.embeddings.strip()
+                if not (embedding_str.startswith('[') and embedding_str.endswith(']')):
+                    logger.warning(f"Invalid embedding format for article {article.articulo_id}")
+                    error_count += 1
+                    continue
+                    
+                embedding = np.array(json.loads(embedding_str))
+                
+                # Validate embedding dimensions
+                if embedding.size == 0 or embedding.ndim != 1:
+                    logger.warning(f"Invalid embedding dimensions for article {article.articulo_id}")
+                    error_count += 1
+                    continue
+                
+                embeddings_list.append(embedding)
+                articles_data.append({
+                    'id': article.articulo_id,
+                    'titular': article.titular,
+                    'periodico': article.periodico_nombre,
+                    'categoria': article.categoria_nombre,
+                    'subcategoria': article.subcategoria_nombre,
+                    'keywords': article.gpt_palabras_clave,
+                    'resumen': article.gpt_resumen
+                })
+                
+                if article.gpt_palabras_clave:
+                    keywords = [k.strip() for k in article.gpt_palabras_clave.split(',')]
+                    keywords_list.extend(keywords)
+                    
+                processed_count += 1
+                
             except (json.JSONDecodeError, ValueError) as e:
-                logging.error(f"Error processing embedding for article {article.articulo_id}: {str(e)}")
+                error_count += 1
+                logger.error(f"Error processing embedding for article {article.articulo_id}: {str(e)}")
                 continue
+                
+        logger.info(f"Successfully processed {processed_count} articles, {error_count} errors")
 
         if not embeddings_list:
             return jsonify([])
