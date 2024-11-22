@@ -184,50 +184,62 @@ def posturas():
                            time_filter='72h')
 
 @app.route('/api/posturas')
+
 def get_posturas():
     try:
         time_filter = request.args.get('time_filter', '72h')
         category_id = request.args.get('category_id', type=int)
         subcategory_id = request.args.get('subcategory_id', type=int)
-        
+
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        # Modificar la query para incluir información del evento
+
+        # Subconsulta para contar los artículos por evento
+        articulo_counts_subquery = db.session.query(
+            ArticuloEvento.evento_id,
+            func.count(ArticuloEvento.articulo_id).label('articulo_count')
+        ).group_by(ArticuloEvento.evento_id).subquery()
+
+        # Modificar la query principal para incluir el conteo
         query = db.session.query(
             Evento,
             Subcategoria,
-            Categoria
+            Categoria,
+            func.coalesce(articulo_counts_subquery.c.articulo_count, 0).label('articulo_count')
         ).join(
             Subcategoria,
             Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
             Categoria,
             Subcategoria.categoria_id == Categoria.categoria_id
+        ).outerjoin(
+            articulo_counts_subquery,
+            Evento.evento_id == articulo_counts_subquery.c.evento_id
         ).filter(
             Evento.gpt_desinformacion.isnot(None)
         )
-        
+
         # Aplicar filtros de categoría
         if category_id:
-            if category_id != 0:  # Skip for "All" category
+            if category_id != 0:  # Omitir para la categoría "Todos"
                 query = query.filter(Categoria.categoria_id == category_id)
-        
+
         if subcategory_id:
             query = query.filter(Evento.subcategoria_id == subcategory_id)
-        
-        eventos = query.order_by(desc(Evento.fecha_evento)).all()
-        
+
+        # Ordenar por conteo de artículos descendente
+        eventos = query.order_by(desc('articulo_count')).all()
+
         eventos_data = []
-        for evento, subcategoria, categoria in eventos:
+        for evento, subcategoria, categoria, articulo_count in eventos:
             try:
                 if evento.gpt_desinformacion:
                     json_str = evento.gpt_desinformacion.replace('\"', '"').replace('\\', '')
                     if json_str.startswith('"') and json_str.endswith('"'):
                         json_str = json_str[1:-1]
-                    
+
                     posturas = json.loads(json_str)
-                    
+
                     eventos_data.append({
                         'evento_id': evento.evento_id,
                         'titulo': evento.titulo,
@@ -235,17 +247,21 @@ def get_posturas():
                         'fecha': evento.fecha_evento.strftime('%Y-%m-%d') if evento.fecha_evento else None,
                         'categoria_nombre': categoria.nombre,
                         'subcategoria_nombre': subcategoria.nombre,
+                        'articulo_count': articulo_count,
                         'posturas': posturas if isinstance(posturas, list) else [posturas]
                     })
             except Exception as e:
                 logger.error(f"Error processing evento {evento.evento_id}: {str(e)}")
                 continue
-        
+
         return jsonify(eventos_data)
-        
+
     except Exception as e:
         logger.error(f"Error fetching posturas: {str(e)}")
-        return jsonify([])  # Return empty list instead of 500 error
+        return jsonify([])  # Retorna una lista vacía en lugar de un error 500
+
+
+
 
 @app.route('/')
 def index():
