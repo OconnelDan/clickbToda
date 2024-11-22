@@ -1,6 +1,43 @@
+from flask import Flask, render_template, request, jsonify, flash
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from werkzeug.security import check_password_hash
+from datetime import datetime, timedelta
+from sqlalchemy import desc, cast, String, and_
+import numpy as np
+from sklearn.manifold import TSNE
+import logging
+import json
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your_secret_key_here'  # Change this in production
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+from database import db
+from models import User, Articulo, Categoria, Subcategoria, Evento, Periodico, articulo_evento, Periodista
 from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
+import numpy as np
+from sklearn.manifold import TSNE
+import json
+import logging
+from datetime import datetime, timedelta
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
+from datetime import datetime, timedelta
+from sqlalchemy import func, and_, desc
+from sklearn.manifold import TSNE
+import numpy as np
+import json
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 from sqlalchemy import func, text, desc, and_, or_, distinct, Integer, cast, String, exists
 import json
 from sqlalchemy.orm import joinedload
@@ -386,24 +423,179 @@ def get_subcategories():
         logger.error(f"Error fetching subcategories: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+# Required imports for t-SNE visualization
+import numpy as np
+from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
+from collections import Counter
+import plotly.express as px
+import json
+
+@app.route('/mapa')
+def mapa():
+    """Render the map visualization page."""
+    try:
+        time_filter = request.args.get('time_filter', '72h')
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+
+        # Get the count of articles with embeddings
+        articles_count = db.session.query(func.count(Articulo.articulo_id)).filter(
+            Articulo.fecha_publicacion.between(start_date, end_date),
+            Articulo.embeddings.isnot(None)
+        ).scalar() or 0
+
+        return render_template('mapa.html', 
+                           time_filter=time_filter,
+                           articles_count=articles_count)
+    except Exception as e:
+        logging.error(f"Error in mapa route: {str(e)}", exc_info=True)
+        flash('Error loading visualization. Please try again later.', 'error')
+        return render_template('mapa.html',
+                           time_filter='72h',
+                           articles_count=0)
+
+@app.route('/api/mapa-data')
+def get_mapa_data():
+    """Get article data for t-SNE visualization."""
+    try:
+        time_filter = request.args.get('time_filter', '72h')
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+
+        # Get articles with embeddings
+        articles = db.session.query(
+            Articulo.articulo_id,
+            Articulo.titular,
+            Articulo.embeddings,
+            Articulo.gpt_palabras_clave,
+            Articulo.gpt_resumen,
+            Periodico.nombre.label('periodico_nombre'),
+            Categoria.nombre.label('categoria_nombre'),
+            Subcategoria.nombre.label('subcategoria_nombre')
+        ).join(
+            Periodico, Articulo.periodico_id == Periodico.periodico_id
+        ).outerjoin(
+            articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id
+        ).outerjoin(
+            Evento, articulo_evento.c.evento_id == Evento.evento_id
+        ).outerjoin(
+            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).outerjoin(
+            Categoria, Subcategoria.categoria_id == Categoria.categoria_id
+        ).filter(
+            Articulo.fecha_publicacion.between(start_date, end_date),
+            Articulo.embeddings.isnot(None)
+        ).all()
+
+        if not articles:
+            return jsonify([])
+
+        # Convert embeddings to numpy array and prepare data
+        embeddings_list = []
+        articles_data = []
+        keywords_list = []
+        
+        for article in articles:
+            try:
+                if article.embeddings:
+                    embedding = np.array(json.loads(article.embeddings))
+                    embeddings_list.append(embedding)
+                    articles_data.append({
+                        'id': article.articulo_id,
+                        'titular': article.titular,
+                        'periodico': article.periodico_nombre,
+                        'categoria': article.categoria_nombre,
+                        'subcategoria': article.subcategoria_nombre,
+                        'keywords': article.gpt_palabras_clave,
+                        'resumen': article.gpt_resumen
+                    })
+                    if article.gpt_palabras_clave:
+                        keywords = [k.strip() for k in article.gpt_palabras_clave.split(',')]
+                        keywords_list.extend(keywords)
+            except (json.JSONDecodeError, ValueError) as e:
+                logging.error(f"Error processing embedding for article {article.articulo_id}: {str(e)}")
+                continue
+
+        if not embeddings_list:
+            return jsonify([])
+
+        # Perform t-SNE
+        embeddings_array = np.vstack(embeddings_list)
+        tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(embeddings_array)-1))
+        embeddings_2d = tsne.fit_transform(embeddings_array)
+
+        # Perform clustering
+        n_clusters = min(16, len(embeddings_2d))
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+        clusters = kmeans.fit_predict(embeddings_2d)
+
+        # Get cluster centers and top keywords
+        cluster_centers = kmeans.cluster_centers_
+        cluster_keywords = {}
+        for i in range(n_clusters):
+            cluster_mask = clusters == i
+            cluster_articles_keywords = [
+                k for idx, article in enumerate(articles_data) 
+                if cluster_mask[idx] and article.get('keywords')
+            ]
+            if cluster_articles_keywords:
+                # Flatten keywords and get most common
+                all_keywords = [k.strip() for kw in cluster_articles_keywords for k in kw.split(',')]
+                top_keyword = Counter(all_keywords).most_common(1)[0][0]
+                cluster_keywords[i] = {
+                    'keyword': top_keyword,
+                    'center': cluster_centers[i].tolist()
+                }
+
+        # Prepare final response
+        response_data = {
+            'points': [
+                {
+                    'id': article['id'],
+                    'coordinates': embeddings_2d[i].tolist(),
+                    'periodico': article['periodico'],
+                    'titular': article['titular'],
+                    'categoria': article['categoria'],
+                    'subcategoria': article['subcategoria'],
+                    'keywords': article['keywords'],
+                    'resumen': article['resumen'],
+                    'cluster': int(clusters[i])
+                }
+                for i, article in enumerate(articles_data)
+            ],
+            'clusters': [
+                {
+                    'id': cluster_id,
+                    'keyword': cluster_info['keyword'],
+                    'center': cluster_info['center']
+                }
+                for cluster_id, cluster_info in cluster_keywords.items()
+            ]
+        }
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        logging.error(f"Error generating map data: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+
+
+
 @app.route('/api/articles')
 def get_articles():
     try:
+        time_filter = request.args.get('time_filter', '72h')
         category_id = request.args.get('category_id', type=int)
         subcategory_id = request.args.get('subcategory_id', type=int)
-        time_filter = request.args.get('time_filter', '72h')
         
-        if category_id is None and subcategory_id is None:  # Change condition
-            logger.error("Missing required parameters: category_id or subcategory_id")
-            return jsonify({'error': 'category_id or subcategory_id is required'}), 400
-
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        # Get category and subcategory info
+
+        # Get category and subcategory info if provided
         category_info = None
         subcategory_info = None
-        
         if category_id:
             category_info = db.session.query(
                 Categoria.categoria_id,
