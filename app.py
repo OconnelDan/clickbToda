@@ -590,7 +590,7 @@ def get_article(article_id):
             'gpt_resumen': article.gpt_resumen,
             'gpt_opinion': article.gpt_opinion,
             'periodico_nombre': article.periodico_nombre,
-            'periodico_logo': article.periodico_logo
+            'periodico_logo': article.periodico_logo or '/static/img/default-newspaper.svg'
         })
 
     except Exception as e:

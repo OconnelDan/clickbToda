@@ -132,8 +132,9 @@ function showError(message, error = null, retryCallback = null) {
 
 
 function updateArticleLogos(articleId, logoUrl) {
+    if (!logoUrl) return;
     document.querySelectorAll(`img[data-article-id="${articleId}"]`).forEach(img => {
-        img.src = logoUrl || '/static/img/default-newspaper.svg';
+        img.src = logoUrl;
     });
 }
 function fetchArticleDetails(articleId, retryCount = 0) {
