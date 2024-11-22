@@ -376,24 +376,3 @@
     border-radius: 8px;
     padding: 1rem;
 }
-.visualization-wrapper {
-    width: 100%;
-    height: 80vh;
-    margin: 20px 0;
-    background-color: rgba(var(--bs-dark-rgb), 0.02);
-    border-radius: 12px;
-    padding: 1rem;
-}
-
-#visualization-container {
-    width: 100%;
-    height: 100%;
-}
-
-.modebar {
-    background-color: transparent !important;
-}
-
-.modebar-btn {
-    color: var(--bs-body-color) !important;
-}
