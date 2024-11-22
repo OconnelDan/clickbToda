@@ -132,6 +132,7 @@ class Evento(db.Model):
     gpt_tiene_contexto = Column(Boolean, default=False)
     gpt_palabras_clave = Column(String)
     embeddings = Column(String)
+    gpt_desinformacion = Column(String)
 
     subcategoria = relationship('Subcategoria', back_populates='eventos')
     articulos = relationship('Articulo', secondary=articulo_evento, back_populates='eventos')
