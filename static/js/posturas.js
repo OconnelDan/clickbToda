@@ -14,6 +14,23 @@ function loadPosturas(categoryId = null, subcategoryId = null) {
     const posturasContent = document.getElementById('posturas-content');
     const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
     
+    showLoading();
+    
+    // First load subcategories if a category is selected
+    if (categoryId) {
+        fetch(`/api/subcategories?category_id=${categoryId}&time_filter=${timeFilter}`)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
+            })
+            .then(subcategories => {
+                updateSubcategoryTabs(subcategories);
+            })
+            .catch(error => {
+                console.error('Error loading subcategories:', error);
+            });
+    }
+    
     let url = '/api/posturas';
     const params = new URLSearchParams();
     
