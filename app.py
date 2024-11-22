@@ -193,19 +193,28 @@ def get_posturas():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        # Modificar la query para incluir información del evento
         query = db.session.query(
             Evento,
             Subcategoria,
-            Categoria
+            Categoria,
+            func.count(distinct(articulo_evento.c.articulo_id)).label('article_count')
         ).join(
             Subcategoria,
             Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
             Categoria,
             Subcategoria.categoria_id == Categoria.categoria_id
+        ).outerjoin(
+            articulo_evento,
+            Evento.evento_id == articulo_evento.c.evento_id
         ).filter(
             Evento.gpt_desinformacion.isnot(None)
+        ).group_by(
+            Evento.evento_id,
+            Subcategoria.subcategoria_id,
+            Categoria.categoria_id
+        ).order_by(
+            desc('article_count')
         )
         
         # Aplicar filtros de categoría

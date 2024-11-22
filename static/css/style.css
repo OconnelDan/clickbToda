@@ -376,3 +376,20 @@
     border-radius: 8px;
     padding: 1rem;
 }
+.newspaper-logo-button {
+    height: 24px;
+    width: auto;
+    object-fit: contain;
+    transition: transform 0.2s;
+}
+
+.article-link {
+    padding: 4px;
+    background: none;
+    border: none;
+    transition: all 0.2s;
+}
+
+.article-link:hover .newspaper-logo-button {
+    transform: scale(1.1);
+}
