@@ -124,8 +124,25 @@ def posturas():
 @app.route('/api/posturas')
 def get_posturas():
     try:
-        # This will be implemented with actual data later
-        return jsonify([])
+        time_filter = request.args.get('time_filter', '72h')
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        eventos = db.session.query(Evento).filter(
+            Evento.gpt_desinformacion.isnot(None)
+        ).order_by(desc(Evento.fecha_evento)).all()
+        
+        posturas_data = []
+        for evento in eventos:
+            try:
+                desinformacion = json.loads(evento.gpt_desinformacion)
+                for item in desinformacion:
+                    item['evento_id'] = evento.evento_id
+                posturas_data.extend(desinformacion)
+            except:
+                continue
+                
+        return jsonify(posturas_data)
     except Exception as e:
         logger.error(f"Error fetching posturas: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500

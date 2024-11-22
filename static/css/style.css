@@ -280,3 +280,37 @@
     border: 4px solid var(--bs-primary);
     border-radius: 8px;
 }
+
+.postura-card .card {
+    border: 2px solid var(--bs-primary);
+    border-radius: 8px;
+}
+
+.postura-card .card-header {
+    background-color: var(--bs-primary);
+    color: var(--bs-light);
+}
+
+.opinion-box {
+    background-color: rgba(var(--bs-primary-rgb), 0.05);
+    border-radius: 6px;
+    height: 100%;
+}
+
+.articles-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.article-link {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    background-color: rgba(var(--bs-primary-rgb), 0.1);
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.article-link:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.2);
+}
