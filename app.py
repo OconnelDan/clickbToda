@@ -452,17 +452,28 @@ def mapa():
         logger.error(f"Error in mapa route: {str(e)}")
         return render_template('mapa.html', articles_count=0)
 
-@app.route('/api/mapa-data')
+from flask import jsonify, request
+from datetime import datetime, timedelta
+import numpy as np
+import ast
+from collections import Counter
+from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
+from sqlalchemy.orm import joinedload
+from statistics import mode
+import logging
+
+@app.route('/api/mapa-data', methods=['GET'])
 def get_mapa_data():
     """Generate t-SNE visualization data from article embeddings."""
     try:
-        # Get time filter and calculate date range
+        # Parse time filter
         time_filter = request.args.get('time_filter', '72h')
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        logger.info(f"Fetching articles between {start_date} and {end_date}")
-        
+
+        logging.info(f"Fetching articles between {start_date} and {end_date}")
+
         # Query articles with required fields
         articles = db.session.query(
             Articulo.articulo_id,
@@ -474,50 +485,50 @@ def get_mapa_data():
             Categoria.nombre.label('categoria_nombre'),
             Subcategoria.nombre.label('subcategoria_nombre')
         ).join(
-            Periodico, Articulo.periodico_id == Periodico.periodico_id
+            Periodico,
+            Articulo.periodico_id == Periodico.periodico_id
         ).outerjoin(
-            articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id
+            articulo_evento,
+            Articulo.articulo_id == articulo_evento.c.articulo_id
         ).outerjoin(
-            Evento, articulo_evento.c.evento_id == Evento.evento_id
+            Evento,
+            articulo_evento.c.evento_id == Evento.evento_id
         ).outerjoin(
-            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
+            Subcategoria,
+            Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).outerjoin(
-            Categoria, Subcategoria.categoria_id == Categoria.categoria_id
+            Categoria,
+            Subcategoria.categoria_id == Categoria.categoria_id
         ).filter(
             Articulo.fecha_publicacion.between(start_date, end_date),
             Articulo.embeddings.isnot(None)
         ).all()
 
-        logger.info(f"Query executed, found {len(articles)} articles")
-        for idx, article in enumerate(articles[:5]):  # Log first 5 articles
-            logger.info(f"Article {idx+1} embeddings sample: {article.embeddings[:100] if article.embeddings else 'None'}")
+        logging.info(f"Found {len(articles)} articles with embeddings")
 
         if not articles:
-            logger.warning("No articles found with valid embeddings")
+            logging.warning("No articles found with valid embeddings")
             return jsonify({
                 'error': 'no_articles',
                 'message': 'No se encontraron artículos con embeddings válidos para el período seleccionado'
             })
 
-        def parse_embedding(x):
+        # Parse embeddings
+        def parse_embedding(embedding):
             try:
-                if isinstance(x, np.ndarray):
-                    return x
-                elif isinstance(x, str):
-                    embedding = ast.literal_eval(x)
-                    if isinstance(embedding, set):
-                        embedding = list(embedding)
-                    return np.array(embedding, dtype=float)
-                else:
-                    raise ValueError(f"Tipo de dato inesperado: {type(x)}")
+                if isinstance(embedding, np.ndarray):
+                    return embedding
+                if isinstance(embedding, str):
+                    embedding_array = ast.literal_eval(embedding)
+                    if isinstance(embedding_array, (list, tuple)):
+                        return np.array(embedding_array, dtype=float)
+                raise ValueError("Embedding no válido")
             except Exception as e:
-                logger.error(f"Error procesando embedding: {e}")
+                logging.error(f"Error procesando embedding: {e}")
                 return None
 
-        # Process embeddings
         embeddings_list = []
         articles_data = []
-        valid_articles = []
 
         for article in articles:
             embedding = parse_embedding(article.embeddings)
@@ -532,7 +543,6 @@ def get_mapa_data():
                     'keywords': article.gpt_palabras_clave,
                     'resumen': article.gpt_resumen
                 })
-                valid_articles.append(article)
 
         if not embeddings_list:
             return jsonify({
@@ -540,228 +550,23 @@ def get_mapa_data():
                 'message': 'No se encontraron artículos con embeddings válidos'
             })
 
-        # Get embedding lengths and find most common length
+        # Pad or trim embeddings to a consistent size
         embedding_lengths = [len(emb) for emb in embeddings_list]
         target_length = mode(embedding_lengths)
 
-        # Pad or trim embeddings
         def pad_embedding(embedding, target_length):
             if len(embedding) < target_length:
                 return np.pad(embedding, (0, target_length - len(embedding)), mode='constant')
-            elif len(embedding) > target_length:
-                return embedding[:target_length]
-            return embedding
+            return embedding[:target_length]
 
-        embeddings_list = [pad_embedding(emb, target_length) for emb in embeddings_list]
+        embeddings_array = np.vstack([pad_embedding(emb, target_length) for emb in embeddings_list])
 
         # Perform t-SNE
-        tsne = TSNE(n_components=2, random_state=42)
-        embeddings_2d = tsne.fit_transform(np.vstack(embeddings_list))
-
-        # Perform clustering
-        n_clusters = min(16, len(embeddings_list))  # Adjust number of clusters based on data size
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-        clusters = kmeans.fit_predict(embeddings_2d)
-
-        # Process keywords for clusters
-        cluster_keywords = {}
-        for cluster_id in range(n_clusters):
-            cluster_mask = clusters == cluster_id
-            cluster_articles = [a for i, a in enumerate(articles_data) if cluster_mask[i]]
-            
-            # Collect all keywords from articles in the cluster
-            all_keywords = []
-            for article in cluster_articles:
-                if article['keywords']:
-                    keywords = [k.strip() for k in article['keywords'].split(',')]
-                    all_keywords.extend(keywords)
-            
-            # Get most common keyword
-            if all_keywords:
-                most_common = Counter(all_keywords).most_common(1)[0][0]
-                cluster_keywords[cluster_id] = most_common
-
-        # Prepare points data
-        points = []
-        for i, article in enumerate(articles_data):
-            points.append({
-                'id': article['id'],
-                'coordinates': embeddings_2d[i].tolist(),
-                'cluster': int(clusters[i]),
-                'titular': article['titular'],
-                'periodico': article['periodico'],
-                'categoria': article['categoria'],
-                'subcategoria': article['subcategoria'],
-                'keywords': article['keywords'],
-                'resumen': article['resumen']
-            })
-
-        # Prepare cluster centers
-        cluster_data = []
-        for cluster_id in range(n_clusters):
-            cluster_mask = clusters == cluster_id
-            if np.any(cluster_mask):
-                center = np.mean(embeddings_2d[cluster_mask], axis=0)
-                keyword = cluster_keywords.get(cluster_id, 'Sin keyword')
-                cluster_data.append({
-                    'id': cluster_id,
-                    'center': center.tolist(),
-                    'keyword': keyword
-                })
-
-        return jsonify({
-            'points': points,
-            'clusters': cluster_data
-        })
-
-    except Exception as e:
-        logger.error(f"Error generating map data: {str(e)}")
-        return jsonify({
-            'error': 'processing_error',
-            'message': 'Error al procesar los datos para la visualización'
-        })
-    try:
-        time_filter = request.args.get('time_filter', '72h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
-        # Count articles with valid embeddings
-        articles_count = db.session.query(Articulo).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.embeddings.isnot(None)
-        ).count()
-
-        return render_template('mapa.html', articles_count=articles_count)
-    except Exception as e:
-        logger.error(f"Error in mapa route: {str(e)}")
-        return render_template('mapa.html', articles_count=0)
-    try:
-        time_filter = request.args.get('time_filter', '72h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
-        # Get the count of articles with embeddings
-        articles_count = db.session.query(func.count(Articulo.articulo_id)).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.embeddings.isnot(None)
-        ).scalar() or 0
-
-        return render_template('mapa.html', 
-                           time_filter=time_filter,
-                           articles_count=articles_count)
-    except Exception as e:
-        logging.error(f"Error in mapa route: {str(e)}", exc_info=True)
-        flash('Error loading visualization. Please try again later.', 'error')
-        return render_template('mapa.html',
-                           time_filter='72h',
-                           articles_count=0)
-
-
-    try:
-        time_filter = request.args.get('time_filter', '72h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        logger.info(f"Fetching articles between {start_date} and {end_date}")
-
-        # Get articles with valid embeddings
-        articles = db.session.query(
-            Articulo.articulo_id,
-            Articulo.titular,
-            Articulo.embeddings,
-            Articulo.gpt_palabras_clave,
-            Articulo.gpt_resumen,
-            Periodico.nombre.label('periodico_nombre'),
-            Categoria.nombre.label('categoria_nombre'),
-            Subcategoria.nombre.label('subcategoria_nombre')
-        ).join(
-            Periodico, Articulo.periodico_id == Periodico.periodico_id
-        ).outerjoin(
-            articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id
-        ).outerjoin(
-            Evento, articulo_evento.c.evento_id == Evento.evento_id
-        ).outerjoin(
-            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).outerjoin(
-            Categoria, Subcategoria.categoria_id == Categoria.categoria_id
-        ).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.embeddings.isnot(None)
-        ).all()
-
-        logger.info(f"Query executed, found {len(articles)} articles")
-        for idx, article in enumerate(articles[:5]):  # Log first 5 articles
-            logger.info(f"Article {idx+1} embeddings sample: {article.embeddings[:100] if article.embeddings else 'None'}")
-
-        if not articles:
-            logger.warning("No articles found with valid embeddings")
-            return jsonify({
-                'error': 'no_articles',
-                'message': 'No se encontraron artículos con embeddings válidos para el período seleccionado'
-            })
-
-        def parse_embedding(x):
-            try:
-                if isinstance(x, np.ndarray):
-                    return x
-                elif isinstance(x, str):
-                    embedding = ast.literal_eval(x)
-                    if isinstance(embedding, set):
-                        embedding = list(embedding)
-                    return np.array(embedding, dtype=float)
-                else:
-                    raise ValueError(f"Tipo de dato inesperado: {type(x)}")
-            except Exception as e:
-                logger.error(f"Error procesando embedding: {e}")
-                return None
-
-        # Process embeddings
-        embeddings_list = []
-        articles_data = []
-        valid_articles = []
-
-        for article in articles:
-            embedding = parse_embedding(article.embeddings)
-            if embedding is not None:
-                embeddings_list.append(embedding)
-                articles_data.append({
-                    'id': article.articulo_id,
-                    'titular': article.titular,
-                    'periodico': article.periodico_nombre,
-                    'categoria': article.categoria_nombre,
-                    'subcategoria': article.subcategoria_nombre,
-                    'keywords': article.gpt_palabras_clave,
-                    'resumen': article.gpt_resumen
-                })
-                valid_articles.append(article)
-
-        if not embeddings_list:
-            return jsonify({
-                'error': 'no_articles',
-                'message': 'No se encontraron artículos con embeddings válidos'
-            })
-
-        # Get embedding lengths and find most common length
-        embedding_lengths = [len(emb) for emb in embeddings_list]
-        target_length = mode(embedding_lengths)
-
-        # Pad or trim embeddings
-        def pad_embedding(embedding, target_length):
-            if len(embedding) < target_length:
-                return np.pad(embedding, (0, target_length - len(embedding)), mode='constant')
-            elif len(embedding) > target_length:
-                return embedding[:target_length]
-            return embedding
-
-        embeddings_list = [pad_embedding(emb, target_length) for emb in embeddings_list]
-
-        # Perform t-SNE
-        embeddings_array = np.vstack(embeddings_list)
-        tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(embeddings_array)-1))
+        tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(embeddings_array) - 1))
         embeddings_2d = tsne.fit_transform(embeddings_array)
 
         # Perform clustering
-        n_clusters = min(16, len(embeddings_2d))
+        n_clusters = min(16, len(embeddings_array))
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
         clusters = kmeans.fit_predict(embeddings_2d)
 
@@ -770,51 +575,47 @@ def get_mapa_data():
         cluster_keywords = {}
         for i in range(n_clusters):
             cluster_mask = clusters == i
-            cluster_articles_keywords = [
-                k for idx, article in enumerate(articles_data) 
-                if cluster_mask[idx] and article.get('keywords')
+            cluster_articles = [
+                article['keywords'] for idx, article in enumerate(articles_data) if cluster_mask[idx]
             ]
-            if cluster_articles_keywords:
-                # Flatten keywords and get most common
-                all_keywords = [k.strip() for kw in cluster_articles_keywords for k in kw.split(',')]
-                top_keyword = Counter(all_keywords).most_common(1)[0][0]
+            if cluster_articles:
+                all_keywords = [kw.strip() for kws in cluster_articles if kws for kw in kws.split(',')]
+                top_keyword = Counter(all_keywords).most_common(1)[0][0] if all_keywords else 'Sin keyword'
                 cluster_keywords[i] = {
                     'keyword': top_keyword,
                     'center': cluster_centers[i].tolist()
                 }
 
-        # Prepare final response
-        response_data = {
-            'points': [
-                {
-                    'id': article['id'],
-                    'coordinates': embeddings_2d[i].tolist(),
-                    'periodico': article['periodico'],
-                    'titular': article['titular'],
-                    'categoria': article['categoria'],
-                    'subcategoria': article['subcategoria'],
-                    'keywords': article['keywords'],
-                    'resumen': article['resumen'],
-                    'cluster': int(clusters[i])
-                }
-                for i, article in enumerate(articles_data)
-            ],
-            'clusters': [
-                {
-                    'id': cluster_id,
-                    'keyword': cluster_info['keyword'],
-                    'center': cluster_info['center']
-                }
-                for cluster_id, cluster_info in cluster_keywords.items()
-            ]
-        }
+        # Prepare response
+        points = [
+            {
+                'id': article['id'],
+                'coordinates': embeddings_2d[i].tolist(),
+                'titular': article['titular'],
+                'periodico': article['periodico'],
+                'categoria': article['categoria'],
+                'subcategoria': article['subcategoria'],
+                'keywords': article['keywords'],
+                'resumen': article['resumen'],
+                'cluster': int(clusters[i])
+            }
+            for i, article in enumerate(articles_data)
+        ]
 
-        return jsonify(response_data)
+        clusters = [
+            {
+                'id': cluster_id,
+                'keyword': cluster_info['keyword'],
+                'center': cluster_info['center']
+            }
+            for cluster_id, cluster_info in cluster_keywords.items()
+        ]
+
+        return jsonify({'points': points, 'clusters': clusters})
 
     except Exception as e:
         logging.error(f"Error generating map data: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
-
+        return jsonify({'error': 'processing_error', 'message': 'Error interno en el servidor'}), 500
 
 
 

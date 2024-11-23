@@ -168,7 +168,7 @@ class Articulo(db.Model):
     fecha_publicacion = Column(Date)
     updated_on = Column(TIMESTAMP)
     agencia = Column(Text)  # Changed from ENUM to Text as per database schema
-    contenido = Column(Text)
+    cuerpo = Column(Text)
     paywall = Column(Boolean, default=False)
     gpt_resumen = Column(Text)
     gpt_opinion = Column(Text)
