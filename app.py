@@ -1,3 +1,4 @@
+from sqlalchemy import cast, String
 from sklearn.metrics.pairwise import cosine_distances
 from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
