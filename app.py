@@ -435,36 +435,37 @@ from statistics import mode
 from sqlalchemy import func
 import logging
 
-def parse_embedding(embedding_str):
+def parse_embedding(x):
     try:
-        if not embedding_str or embedding_str.strip() in ['[]', '{}', '""']:
-            logger.warning("Embedding vacío o inválido")
+        if isinstance(x, np.ndarray):  # If already a numpy array
+            return x
+        elif isinstance(x, str):
+            # Try to convert string to set/list
+            try:
+                embedding = ast.literal_eval(x)
+            except:
+                # If that fails, try splitting by commas
+                embedding = [float(val.strip()) for val in x.strip('{}[]').split(',') if val.strip()]
+        elif isinstance(x, set):  # Handle sets directly
+            embedding = list(x)
+        else:
+            logger.warning(f"Unexpected data type: {type(x)}")
             return None
             
-        # Limpiar el string
-        cleaned = embedding_str.strip()
-        if cleaned.startswith('"') and cleaned.endswith('"'):
-            cleaned = cleaned[1:-1]
-            
-        # Intentar diferentes formatos de parsing
-        try:
-            # Intentar como JSON
-            embedding = json.loads(cleaned)
-        except json.JSONDecodeError:
-            try:
-                # Intentar como lista literal de Python
-                embedding = ast.literal_eval(cleaned)
-            except:
-                # Intentar como string de números separados por coma
-                embedding = [float(x.strip()) for x in cleaned.strip('{}[]').split(',') if x.strip()]
-        
-        # Convertir a numpy array
+        # Convert to numpy array
         if isinstance(embedding, (list, tuple)):
             return np.array(embedding, dtype=float)
         elif isinstance(embedding, dict):
             return np.array(list(embedding.values()), dtype=float)
-            
-        raise ValueError(f"Formato de embedding no reconocido: {type(embedding)}")
+        elif isinstance(embedding, set):  # Handle sets after conversion
+            return np.array(list(embedding), dtype=float)
+        else:
+            logger.warning(f"Unsupported data type after conversion: {type(embedding)}")
+            return None
+        
+    except Exception as e:
+        logger.error(f"Error processing embedding: {str(e)}")
+        return None
         
     except Exception as e:
         logger.error(f"Error procesando embedding: {str(e)}")
