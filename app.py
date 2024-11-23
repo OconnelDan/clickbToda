@@ -499,18 +499,17 @@ def mapa_data():
         if not embeddings.empty:
             logger.info(f"Muestra de embedding: {embeddings.iloc[0][:5]}")
             
-        # Convert to array and calculate distances
+        # Convert embeddings to numpy array and filter invalid ones
         embeddings_array = np.vstack(embeddings.to_numpy())
+        
+        # Calculate cosine distances
         distance_matrix = cosine_distances(embeddings_array)
         
-        # Apply t-SNE with proper initialization for precomputed distances
+        # Use t-SNE with proper parameters
         tsne = TSNE(
-            n_components=2,
+            n_components=2, 
             random_state=42,
-            metric='precomputed',
-            init='random',
-            learning_rate='auto',
-            n_iter=1000
+            perplexity=min(30, len(distance_matrix) - 1)
         )
         embeddings_2d = tsne.fit_transform(distance_matrix)
         
@@ -599,10 +598,6 @@ def safe_parse_embeddings(x):
         return np.fromstring(x.strip('{}'), sep=',')
     except Exception:
         return np.array([])
-        
-    except Exception as e:
-        logger.error(f"Error procesando embedding: {str(e)}")
-        return None
 
 @app.route('/api/mapa-data', methods=['GET'])
 def get_mapa_data():

@@ -1,4 +1,9 @@
+let articleModal;
 document.addEventListener('DOMContentLoaded', function() {
+    const modalElement = document.getElementById('articleModal');
+    if (modalElement) {
+        articleModal = new bootstrap.Modal(modalElement);
+    }
     loadMapData();
 
     // Add time filter change handler
