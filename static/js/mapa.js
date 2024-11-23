@@ -13,13 +13,19 @@ function loadMapData() {
     const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
     const plotContainer = document.getElementById('tsne-plot');
     
-    // Show loading state
+    // Show loading state with improved visibility
     plotContainer.innerHTML = `
-        <div class="text-center my-5">
+        <div class="map-loading-container">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Generando visualización...</span>
             </div>
-            <p class="mt-2">Procesando datos y generando el mapa...</p>
+            <div class="loading-steps">
+                <p class="mb-2">Procesando datos y generando el mapa...</p>
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 100%"></div>
+                </div>
+            </div>
         </div>
     `;
     
@@ -153,9 +159,12 @@ function createVisualization(data) {
 function showError(message) {
     const plotContainer = document.getElementById('tsne-plot');
     plotContainer.innerHTML = `
-        <div class="alert alert-danger">
+        <div class="alert alert-danger" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 80%;">
             <h4 class="alert-heading">Error</h4>
             <p>${message}</p>
+            <button class="btn btn-outline-danger btn-sm mt-2" onclick="loadMapData()">
+                Reintentar
+            </button>
         </div>
     `;
 }

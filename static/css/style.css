@@ -376,3 +376,42 @@
     border-radius: 8px;
     padding: 1rem;
 }
+/* Map visualization loading styles */
+.map-loading-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background: rgba(33, 37, 41, 0.8);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.map-loading-container .spinner-border {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 1rem;
+}
+
+.loading-steps {
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.loading-steps .progress {
+    height: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.loading-steps .progress-bar {
+    background-color: var(--bs-primary);
+}
+
+#tsne-plot {
+    position: relative;
+    min-height: 600px;
+}
