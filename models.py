@@ -174,6 +174,7 @@ class Articulo(db.Model):
     gpt_opinion = Column(Text)
     gpt_palabras_clave = Column(String(1000))
     embeddings = Column(String)
+    palabras_clave_embeddings = Column(String)
 
     periodico = relationship('Periodico', back_populates='articulos')
     periodista = relationship('Periodista', back_populates='articulos')

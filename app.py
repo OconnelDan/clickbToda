@@ -517,7 +517,7 @@ def get_mapa_data():
         articles_query = db.session.query(
             Articulo.articulo_id,
             Articulo.titular,
-            Articulo.embeddings,
+            Articulo.palabras_clave_embeddings,  # Cambiar embeddings por palabras_clave_embeddings
             Articulo.gpt_palabras_clave,
             Articulo.gpt_resumen,
             Periodico.nombre.label('periodico_nombre'),
@@ -539,7 +539,7 @@ def get_mapa_data():
             Categoria,
             Subcategoria.categoria_id == Categoria.categoria_id
         ).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date)
+            Articulo.updated_on.between(start_date, end_date)
         )
         
         # Log total de artículos antes de filtrar por embeddings
@@ -548,16 +548,16 @@ def get_mapa_data():
         
         # Agregar filtro de embeddings
         articles = articles_query.filter(
-            Articulo.embeddings.isnot(None),
-            Articulo.embeddings != '',
-            func.length(Articulo.embeddings) > 2  # Asegurar que no sea '[]' o '{}'
+            Articulo.palabras_clave_embeddings.isnot(None),
+            Articulo.palabras_clave_embeddings != '',
+            func.length(Articulo.palabras_clave_embeddings) > 2  # Asegurar que no sea '[]' o '{}'
         ).all()
         
         logger.info(f"Artículos con embeddings: {len(articles)}")
         
         # Log de muestra de embeddings
         if articles:
-            sample_embedding = articles[0].embeddings
+            sample_embedding = articles[0].palabras_clave_embeddings
             logger.info(f"Muestra de embedding: {sample_embedding[:100]}")
 
         if not articles:
@@ -574,7 +574,7 @@ def get_mapa_data():
 
         for article in articles:
             try:
-                embedding = parse_embedding(article.embeddings)
+                embedding = parse_embedding(article.palabras_clave_embeddings)
                 if embedding is not None and embedding.size > 0:
                     embeddings_list.append(embedding)
                     articles_data.append({
