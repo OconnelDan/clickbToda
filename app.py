@@ -448,81 +448,75 @@ def mapa_data():
         articles = db.session.query(
             Articulo.articulo_id,
             Articulo.titular,
+            Articulo.palabras_clave_embeddings,
             Articulo.gpt_palabras_clave,
-            Articulo.embeddings,
             Articulo.gpt_resumen,
             Categoria.nombre.label('categoria'),
             Subcategoria.nombre.label('subcategoria'),
             Periodico.nombre.label('periodico')
         ).join(
-            articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id, isouter=True
-        ).join(
-            Evento, articulo_evento.c.evento_id == Evento.evento_id, isouter=True
-        ).join(
-            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id, isouter=True
-        ).join(
-            Categoria, Subcategoria.categoria_id == Categoria.categoria_id, isouter=True
-        ).join(
-            Periodico, Articulo.periodico_id == Periodico.periodico_id
+            Periodico
+        ).outerjoin(
+            articulo_evento
+        ).outerjoin(
+            Evento
+        ).outerjoin(
+            Subcategoria
+        ).outerjoin(
+            Categoria
         ).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.embeddings.isnot(None)
+            Articulo.updated_on.between(start_date, end_date),
+            Articulo.palabras_clave_embeddings.isnot(None),
+            Articulo.palabras_clave_embeddings != ''
         ).all()
 
         logger.info(f"Total de artículos encontrados: {len(articles)}")
         
-        # Process articles and prepare data for visualization
-        articles_data = []
-        valid_embeddings = []
+        # Convert to DataFrame for processing
+        df = pd.DataFrame([{
+            'id': article.articulo_id,
+            'titular': article.titular,
+            'palabras_clave_embeddings': article.palabras_clave_embeddings,
+            'keywords': article.gpt_palabras_clave,
+            'resumen': article.gpt_resumen,
+            'categoria': article.categoria or 'Sin categoría',
+            'subcategoria': article.subcategoria,
+            'periodico': article.periodico
+        } for article in articles])
         
-        for article in articles:
-            try:
-                # Parse embeddings string to numpy array
-                if article.embeddings:
-                    embedding = np.fromstring(
-                        article.embeddings.strip('{}'), 
-                        sep=','
-                    )
-                    if len(embedding) > 0:
-                        valid_embeddings.append(embedding)
-                        articles_data.append({
-                            'id': article.articulo_id,
-                            'titular': article.titular,
-                            'keywords': article.gpt_palabras_clave,
-                            'resumen': article.gpt_resumen,
-                            'categoria': article.categoria or 'Sin categoría',
-                            'subcategoria': article.subcategoria,
-                            'periodico': article.periodico
-                        })
-            except Exception as e:
-                logger.error(f"Error processing article {article.articulo_id}: {str(e)}")
-                continue
+        # Process embeddings
+        embeddings = df['palabras_clave_embeddings'].apply(safe_parse_embeddings)
+        embeddings = embeddings[embeddings.apply(lambda x: len(x) > 0)]
         
-        logger.info(f"Artículos con embeddings: {len(valid_embeddings)}")
-        if len(valid_embeddings) > 0:
-            logger.info(f"Muestra de embedding: {valid_embeddings[0][:5]}")
-        
-        if len(valid_embeddings) < 2:
+        if embeddings.empty:
             return jsonify({
                 'error': 'no_articles',
                 'message': 'No hay suficientes artículos con embeddings válidos.'
             })
-
-        # Convert embeddings to numpy array
-        embeddings_array = np.vstack(valid_embeddings)
+            
+        # Log processing info
+        logger.info(f"Artículos con embeddings: {len(embeddings)}")
+        if not embeddings.empty:
+            logger.info(f"Muestra de embedding: {embeddings.iloc[0][:5]}")
+            
+        # Convert to array and calculate distances
+        embeddings_array = np.vstack(embeddings.to_numpy())
+        distance_matrix = cosine_distances(embeddings_array)
         
-        # Calculate cosine distances
-        distances = cosine_distances(embeddings_array)
-        
-        # Perform t-SNE with cosine distances
+        # Apply t-SNE with proper initialization for precomputed distances
         tsne = TSNE(
             n_components=2,
-            metric='precomputed',
             random_state=42,
+            metric='precomputed',
+            init='random',
             learning_rate='auto',
-            init='random'
+            n_iter=1000
         )
-        embeddings_2d = tsne.fit_transform(distances)
+        embeddings_2d = tsne.fit_transform(distance_matrix)
+        
+        # Keep only the articles with valid embeddings
+        valid_indices = embeddings.index
+        articles_data = df.loc[valid_indices].to_dict('records')
         
         # Perform clustering for keywords
         n_clusters = min(8, len(embeddings_array))
@@ -598,37 +592,13 @@ from sqlalchemy import func
 # Removed duplicate endpoint implementation
 import logging
 
-def parse_embedding(x):
+def safe_parse_embeddings(x):
+    if x is None or not isinstance(x, str):
+        return np.array([])
     try:
-        if isinstance(x, np.ndarray):  # If already a numpy array
-            return x
-        elif isinstance(x, str):
-            # Try to convert string to set/list
-            try:
-                embedding = ast.literal_eval(x)
-            except:
-                # If that fails, try splitting by commas
-                embedding = [float(val.strip()) for val in x.strip('{}[]').split(',') if val.strip()]
-        elif isinstance(x, set):  # Handle sets directly
-            embedding = list(x)
-        else:
-            logger.warning(f"Unexpected data type: {type(x)}")
-            return None
-            
-        # Convert to numpy array
-        if isinstance(embedding, (list, tuple)):
-            return np.array(embedding, dtype=float)
-        elif isinstance(embedding, dict):
-            return np.array(list(embedding.values()), dtype=float)
-        elif isinstance(embedding, set):  # Handle sets after conversion
-            return np.array(list(embedding), dtype=float)
-        else:
-            logger.warning(f"Unsupported data type after conversion: {type(embedding)}")
-            return None
-        
-    except Exception as e:
-        logger.error(f"Error processing embedding: {str(e)}")
-        return None
+        return np.fromstring(x.strip('{}'), sep=',')
+    except Exception:
+        return np.array([])
         
     except Exception as e:
         logger.error(f"Error procesando embedding: {str(e)}")
