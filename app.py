@@ -1,4 +1,5 @@
 from sklearn.metrics.pairwise import cosine_distances
+from flask_caching import Cache
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 import numpy as np
@@ -32,6 +33,12 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 
+# Initialize cache
+cache = Cache(config={
+    'CACHE_TYPE': 'simple',
+    'CACHE_DEFAULT_TIMEOUT': 300  # Cache timeout in seconds (5 minutes)
+})
+cache.init_app(app)
 app = Flask(__name__)
 app.config.from_object(Config)
 
@@ -433,8 +440,9 @@ from flask import jsonify, request
 from datetime import datetime, timedelta
 import numpy as np
 @app.route('/api/mapa-data')
+@cache.cached(timeout=300, query_string=True)  # Cache for 5 minutes, considering query parameters
 def mapa_data():
-    """API endpoint for map visualization data."""
+    """API endpoint for map visualization data with caching."""
     try:
         # Get time filter from request
         time_filter = request.args.get('time_filter', '72h')
