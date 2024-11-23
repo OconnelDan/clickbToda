@@ -518,7 +518,7 @@ def mapa_data():
         articles_data = df.loc[valid_indices].to_dict('records')
         
         # Perform clustering for keywords
-        n_clusters = min(8, len(embeddings_array))
+        n_clusters = min(16, len(embeddings_array))
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
         clusters = kmeans.fit_predict(embeddings_array)
         
@@ -722,7 +722,7 @@ def get_mapa_data():
         plot_df['categoria'] = [art['categoria'] for art in articles_data]
 
         # Calculate cluster centers and keywords
-        n_clusters = min(8, len(embeddings_array))
+        n_clusters = min(16, len(embeddings_array))
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
         cluster_labels = kmeans.fit_predict(embeddings_2d)
         
