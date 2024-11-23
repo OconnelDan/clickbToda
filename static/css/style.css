@@ -414,4 +414,25 @@
 #tsne-plot {
     position: relative;
     min-height: 600px;
+    background: linear-gradient(to bottom right, #1a1a1a, #2d2d2d);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+}
+
+/* Map visualization enhancements */
+.js-plotly-plot .plotly .modebar {
+    background: rgba(0, 0, 0, 0.7) !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn path {
+    fill: rgba(255, 255, 255, 0.7) !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn:hover path {
+    fill: white !important;
+}
+
+.js-plotly-plot .plotly .modebar-btn.active path {
+    fill: #4CAF50 !important;
 }
