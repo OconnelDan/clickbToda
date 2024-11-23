@@ -62,19 +62,6 @@ function loadMapData() {
 function createVisualization(data) {
     const { points, clusters } = data;
     
-    // Define category colors
-    const categoryColors = {
-        'Política': '#FF6B6B',
-        'Economía': '#4ECDC4',
-        'Sociedad': '#45B7D1',
-        'Internacional': '#96CEB4',
-        'Deportes': '#FFEEAD',
-        'Tecnología': '#D4A5A5',
-        'Cultura': '#9B59B6',
-        'Ciencia': '#3498DB',
-        'default': '#95A5A6'
-    };
-
     // Create scatter plot for articles
     const trace = {
         x: points.map(p => p.coordinates[0]),
@@ -83,12 +70,8 @@ function createVisualization(data) {
         type: 'scatter',
         marker: {
             size: 8,
-            color: points.map(p => categoryColors[p.categoria] || categoryColors.default),
-            opacity: 0.8,
-            line: {
-                color: 'rgba(255, 255, 255, 0.3)',
-                width: 1
-            }
+            color: points.map(p => p.periodico),
+            opacity: 0.7
         },
         text: points.map(p => 
             `<b>${p.titular}</b><br>` +
@@ -102,43 +85,30 @@ function createVisualization(data) {
         hovertemplate: '%{text}<extra></extra>'
     };
 
-    // Create annotations for cluster keywords with improved visibility
+    // Create annotations for cluster keywords
     const annotations = clusters.map(cluster => ({
         x: cluster.center[0],
         y: cluster.center[1],
-        text: cluster.keyword.toUpperCase(),
+        text: cluster.keyword,
         showarrow: false,
         font: {
-            family: 'Arial Black',
-            size: 16,
-            color: 'rgba(255, 255, 255, 0.9)'
+            size: 14,
+            color: 'rgba(255, 255, 255, 0.8)'
         },
-        bgcolor: 'rgba(0, 0, 0, 0.7)',
-        borderpad: 6,
-        borderwidth: 2,
-        bordercolor: 'rgba(255, 255, 255, 0.4)',
-        borderradius: 4,
-        textangle: 0,
-        clicktoshow: false
+        bgcolor: 'rgba(0, 0, 0, 0.5)',
+        borderpad: 4,
+        borderwidth: 1,
+        bordercolor: 'rgba(255, 255, 255, 0.3)',
+        borderradius: 3
     }));
 
     const layout = {
-        title: 'Mapa de Artículos por Categoría',
+        title: 'Mapa de Artículos por Periódico',
         showlegend: true,
         legend: {
             title: {
-                text: 'Categorías',
-                font: {
-                    size: 14,
-                    color: 'white'
-                }
-            },
-            font: {
-                color: 'white'
-            },
-            bgcolor: 'rgba(0,0,0,0.5)',
-            bordercolor: 'rgba(255,255,255,0.2)',
-            borderwidth: 1
+                text: 'Periódicos'
+            }
         },
         hovermode: 'closest',
         margin: {
