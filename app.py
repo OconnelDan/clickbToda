@@ -583,56 +583,51 @@ def get_mapa_data():
                 return np.pad(embedding, (0, target_length - len(embedding)), mode='constant')
             return embedding[:target_length]
 
+        # Convert embeddings to numpy array
         embeddings_array = np.vstack([pad_embedding(emb, target_length) for emb in embeddings_list])
 
-        # Perform t-SNE
-        tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(embeddings_array) - 1))
-        embeddings_2d = tsne.fit_transform(embeddings_array)
+        # Calculate cosine distances
+        distance_matrix = cosine_distances(embeddings_array)
 
-        # Perform clustering
-        n_clusters = min(16, len(embeddings_array))
+        # Apply t-SNE on the distance matrix
+        tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(distance_matrix) - 1))
+        embeddings_2d = tsne.fit_transform(distance_matrix)
+
+        # Create DataFrame for visualization
+        plot_df = pd.DataFrame(embeddings_2d, columns=['x', 'y'])
+        plot_df['categoria'] = [art['categoria'] for art in articles_data]
+
+        # Calculate cluster centers and keywords
+        n_clusters = min(8, len(embeddings_array))
         kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-        clusters = kmeans.fit_predict(embeddings_2d)
-
-        # Get cluster centers and top keywords
-        cluster_centers = kmeans.cluster_centers_
-        cluster_keywords = {}
+        cluster_labels = kmeans.fit_predict(embeddings_2d)
+        
+        # Get keywords for each cluster
+        clusters = []
         for i in range(n_clusters):
-            cluster_mask = clusters == i
-            cluster_articles = [
-                article['keywords'] for idx, article in enumerate(articles_data) if cluster_mask[idx]
-            ]
-            if cluster_articles:
-                all_keywords = [kw.strip() for kws in cluster_articles if kws for kw in kws.split(',')]
-                top_keyword = Counter(all_keywords).most_common(1)[0][0] if all_keywords else 'Sin keyword'
-                cluster_keywords[i] = {
-                    'keyword': top_keyword,
-                    'center': cluster_centers[i].tolist()
-                }
+            cluster_points = [articles_data[j]['keywords'] for j in range(len(articles_data)) if cluster_labels[j] == i]
+            if cluster_points:
+                # Join all keywords and get most common
+                all_keywords = ' '.join(filter(None, cluster_points)).split(',')
+                if all_keywords:
+                    most_common = Counter(all_keywords).most_common(1)[0][0].strip()
+                    clusters.append({
+                        'center': kmeans.cluster_centers_[i].tolist(),
+                        'keyword': most_common
+                    })
 
-        # Prepare response
+        # Prepare response with simplified structure
         points = [
             {
                 'id': article['id'],
                 'coordinates': embeddings_2d[i].tolist(),
                 'titular': article['titular'],
-                'periodico': article['periodico'],
                 'categoria': article['categoria'],
                 'subcategoria': article['subcategoria'],
                 'keywords': article['keywords'],
-                'resumen': article['resumen'],
-                'cluster': int(clusters[i])
+                'resumen': article['resumen']
             }
             for i, article in enumerate(articles_data)
-        ]
-
-        clusters = [
-            {
-                'id': cluster_id,
-                'keyword': cluster_info['keyword'],
-                'center': cluster_info['center']
-            }
-            for cluster_id, cluster_info in cluster_keywords.items()
         ]
 
         return jsonify({'points': points, 'clusters': clusters})

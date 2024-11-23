@@ -1,0 +1,96 @@
+import plotly.express as px
+import pandas as pd
+import numpy as np
+from sklearn.metrics.pairwise import cosine_distances
+from sklearn.manifold import TSNE
+
+# Import necessary libraries
+import os
+from sqlalchemy import create_engine
+import pandas as pd
+
+# Connect to the database engine
+engine = create_engine(os.environ["BBDD_NEWS"])
+
+# SQL query with corrected column name and date filter
+query = '''
+SELECT c.nombre AS categoria, 
+       s.nombre AS subcategoria, 
+       e.titulo AS evento, 
+       a.titular, 
+       a.gpt_palabras_clave,
+       a.palabras_clave_embeddings,
+       e.embeddings,
+       p.nombre AS periodico
+FROM articulo a
+LEFT JOIN articulo_evento ae ON a.articulo_id = ae.articulo_id
+FULL OUTER JOIN evento e ON ae.evento_id = e.evento_id
+LEFT JOIN subcategoria s ON e.subcategoria_id = s.subcategoria_id
+LEFT JOIN categoria c ON c.categoria_id = s.categoria_id
+LEFT JOIN evento_region er ON e.evento_id = er.evento_id
+LEFT JOIN region r ON er.region_id = r.region_id
+LEFT JOIN periodico p ON a.periodico_id = p.periodico_id
+WHERE a.updated_on >= NOW() - INTERVAL '3 days'
+'''
+
+# Execute the query and fetch the results
+df = pd.read_sql(query, engine)
+
+# Display the results
+df
+
+# Handle potential None values and errors when parsing embeddings
+def safe_parse_embeddings(x):
+    if x is None or not isinstance(x, str):
+        return np.array([])  # Return an empty array if the value is None or not a string
+    try:
+        return np.fromstring(x.strip('{}'), sep=',')
+    except Exception:
+        return np.array([])
+
+# Apply the function to safely parse embeddings
+#embeddings = df['embeddings'].apply(safe_parse_embeddings)
+embeddings = df['palabras_clave_embeddings'].apply(safe_parse_embeddings)
+
+
+# Ensure all embeddings have the same length and filter out invalid ones
+embeddings = embeddings[embeddings.apply(lambda x: len(x) > 0)]
+
+# Convert the list of embeddings to a numpy array before calculating distances
+if not embeddings.empty:
+    embeddings_array = np.vstack(embeddings.to_numpy())
+
+    # Calculate cosine distances
+    distance_matrix = cosine_distances(embeddings_array)
+
+    # Use t-SNE to reduce dimensionality to 2D for visualization
+    tsne = TSNE(n_components=2, random_state=42)
+    embeddings_2d = tsne.fit_transform(embeddings_array)
+
+    # Prepare a DataFrame for Plotly
+    valid_indices = embeddings.index  # Use indices of valid embeddings
+    plot_df = pd.DataFrame(embeddings_2d, columns=['Component 1', 'Component 2'])
+    plot_df['Categoria'] = df.loc[valid_indices, 'categoria'].values
+    plot_df['Subcategoria'] = df.loc[valid_indices, 'subcategoria'].values
+    plot_df['Titular'] = df.loc[valid_indices, 'titular'].values
+    plot_df['Periodico'] = df.loc[valid_indices, 'periodico'].values
+
+    # Create a scatter plot with Plotly
+    fig = px.scatter(
+        plot_df, x='Component 1', y='Component 2',
+        color='Categoria',
+        hover_data=['Titular', 'Subcategoria', 'Periodico'],
+        title='t-SNE Visualization of Articles and Events'
+    )
+
+    # Update layout for better display
+    fig.update_layout(
+        legend_title_text='Category',
+        xaxis_title='',
+        yaxis_title=''
+    )
+
+    # Show the interactive plot
+    fig.show()
+else:
+    print("No valid embeddings to visualize.")
