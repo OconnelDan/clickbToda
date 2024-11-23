@@ -433,6 +433,8 @@ from sklearn.cluster import KMeans
 from sqlalchemy.orm import joinedload
 from statistics import mode
 from sqlalchemy import func
+
+# Removed duplicate endpoint implementation
 import logging
 
 def parse_embedding(x):
