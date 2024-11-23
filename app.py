@@ -599,16 +599,14 @@ def safe_parse_embeddings(x):
     except Exception:
         return np.array([])
 
-@app.route('/api/mapa-data', methods=['GET'])
+@app.route('/api/mapa-data')
 def get_mapa_data():
-    """Generate t-SNE visualization data from article embeddings."""
+    """Generate t-SNE visualization data from article embeddings using cosine distances."""
     try:
         # Parse time filter
         time_filter = request.args.get('time_filter', '72h')
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
-        logging.info(f"Fetching articles between {start_date} and {end_date}")
 
         logger.info(f"Buscando artículos entre {start_date} y {end_date}")
         
