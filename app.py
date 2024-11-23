@@ -456,12 +456,49 @@ from flask import jsonify, request
 from datetime import datetime, timedelta
 import numpy as np
 import ast
+import json
 from collections import Counter
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 from sqlalchemy.orm import joinedload
 from statistics import mode
+from sqlalchemy import func
 import logging
+
+def parse_embedding(embedding_str):
+    try:
+        if not embedding_str or embedding_str.strip() in ['[]', '{}', '""']:
+            logger.warning("Embedding vacío o inválido")
+            return None
+            
+        # Limpiar el string
+        cleaned = embedding_str.strip()
+        if cleaned.startswith('"') and cleaned.endswith('"'):
+            cleaned = cleaned[1:-1]
+            
+        # Intentar diferentes formatos de parsing
+        try:
+            # Intentar como JSON
+            embedding = json.loads(cleaned)
+        except json.JSONDecodeError:
+            try:
+                # Intentar como lista literal de Python
+                embedding = ast.literal_eval(cleaned)
+            except:
+                # Intentar como string de números separados por coma
+                embedding = [float(x.strip()) for x in cleaned.strip('{}[]').split(',') if x.strip()]
+        
+        # Convertir a numpy array
+        if isinstance(embedding, (list, tuple)):
+            return np.array(embedding, dtype=float)
+        elif isinstance(embedding, dict):
+            return np.array(list(embedding.values()), dtype=float)
+            
+        raise ValueError(f"Formato de embedding no reconocido: {type(embedding)}")
+        
+    except Exception as e:
+        logger.error(f"Error procesando embedding: {str(e)}")
+        return None
 
 @app.route('/api/mapa-data', methods=['GET'])
 def get_mapa_data():
@@ -474,8 +511,10 @@ def get_mapa_data():
 
         logging.info(f"Fetching articles between {start_date} and {end_date}")
 
-        # Query articles with required fields
-        articles = db.session.query(
+        logger.info(f"Buscando artículos entre {start_date} y {end_date}")
+        
+        # Query base para artículos con embeddings
+        articles_query = db.session.query(
             Articulo.articulo_id,
             Articulo.titular,
             Articulo.embeddings,
@@ -500,11 +539,26 @@ def get_mapa_data():
             Categoria,
             Subcategoria.categoria_id == Categoria.categoria_id
         ).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.embeddings.isnot(None)
+            Articulo.fecha_publicacion.between(start_date, end_date)
+        )
+        
+        # Log total de artículos antes de filtrar por embeddings
+        total_articles = articles_query.count()
+        logger.info(f"Total de artículos encontrados: {total_articles}")
+        
+        # Agregar filtro de embeddings
+        articles = articles_query.filter(
+            Articulo.embeddings.isnot(None),
+            Articulo.embeddings != '',
+            func.length(Articulo.embeddings) > 2  # Asegurar que no sea '[]' o '{}'
         ).all()
-
-        logging.info(f"Found {len(articles)} articles with embeddings")
+        
+        logger.info(f"Artículos con embeddings: {len(articles)}")
+        
+        # Log de muestra de embeddings
+        if articles:
+            sample_embedding = articles[0].embeddings
+            logger.info(f"Muestra de embedding: {sample_embedding[:100]}")
 
         if not articles:
             logging.warning("No articles found with valid embeddings")
@@ -513,36 +567,33 @@ def get_mapa_data():
                 'message': 'No se encontraron artículos con embeddings válidos para el período seleccionado'
             })
 
-        # Parse embeddings
-        def parse_embedding(embedding):
-            try:
-                if isinstance(embedding, np.ndarray):
-                    return embedding
-                if isinstance(embedding, str):
-                    embedding_array = ast.literal_eval(embedding)
-                    if isinstance(embedding_array, (list, tuple)):
-                        return np.array(embedding_array, dtype=float)
-                raise ValueError("Embedding no válido")
-            except Exception as e:
-                logging.error(f"Error procesando embedding: {e}")
-                return None
-
         embeddings_list = []
         articles_data = []
+        valid_count = 0
+        error_count = 0
 
         for article in articles:
-            embedding = parse_embedding(article.embeddings)
-            if embedding is not None:
-                embeddings_list.append(embedding)
-                articles_data.append({
-                    'id': article.articulo_id,
-                    'titular': article.titular,
-                    'periodico': article.periodico_nombre,
-                    'categoria': article.categoria_nombre,
-                    'subcategoria': article.subcategoria_nombre,
-                    'keywords': article.gpt_palabras_clave,
-                    'resumen': article.gpt_resumen
-                })
+            try:
+                embedding = parse_embedding(article.embeddings)
+                if embedding is not None and embedding.size > 0:
+                    embeddings_list.append(embedding)
+                    articles_data.append({
+                        'id': article.articulo_id,
+                        'titular': article.titular,
+                        'periodico': article.periodico_nombre,
+                        'categoria': article.categoria_nombre,
+                        'subcategoria': article.subcategoria_nombre,
+                        'keywords': article.gpt_palabras_clave,
+                        'resumen': article.gpt_resumen
+                    })
+                    valid_count += 1
+                else:
+                    error_count += 1
+            except Exception as e:
+                error_count += 1
+                logger.error(f"Error procesando artículo {article.articulo_id}: {str(e)}")
+
+        logger.info(f"Procesamiento completado: {valid_count} válidos, {error_count} errores")
 
         if not embeddings_list:
             return jsonify({
