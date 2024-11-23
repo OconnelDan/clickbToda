@@ -432,6 +432,160 @@ def mapa():
 from flask import jsonify, request
 from datetime import datetime, timedelta
 import numpy as np
+@app.route('/api/mapa-data')
+def mapa_data():
+    """API endpoint for map visualization data."""
+    try:
+        # Get time filter from request
+        time_filter = request.args.get('time_filter', '72h')
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        logger.info(f"Fetching articles between {start_date} and {end_date}")
+        logger.info(f"Buscando artículos entre {start_date} y {end_date}")
+
+        # Query articles with embeddings
+        articles = db.session.query(
+            Articulo.articulo_id,
+            Articulo.titular,
+            Articulo.gpt_palabras_clave,
+            Articulo.embeddings,
+            Articulo.gpt_resumen,
+            Categoria.nombre.label('categoria'),
+            Subcategoria.nombre.label('subcategoria'),
+            Periodico.nombre.label('periodico')
+        ).join(
+            articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id, isouter=True
+        ).join(
+            Evento, articulo_evento.c.evento_id == Evento.evento_id, isouter=True
+        ).join(
+            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id, isouter=True
+        ).join(
+            Categoria, Subcategoria.categoria_id == Categoria.categoria_id, isouter=True
+        ).join(
+            Periodico, Articulo.periodico_id == Periodico.periodico_id
+        ).filter(
+            Articulo.fecha_publicacion.between(start_date, end_date),
+            Articulo.embeddings.isnot(None)
+        ).all()
+
+        logger.info(f"Total de artículos encontrados: {len(articles)}")
+        
+        # Process articles and prepare data for visualization
+        articles_data = []
+        valid_embeddings = []
+        
+        for article in articles:
+            try:
+                # Parse embeddings string to numpy array
+                if article.embeddings:
+                    embedding = np.fromstring(
+                        article.embeddings.strip('{}'), 
+                        sep=','
+                    )
+                    if len(embedding) > 0:
+                        valid_embeddings.append(embedding)
+                        articles_data.append({
+                            'id': article.articulo_id,
+                            'titular': article.titular,
+                            'keywords': article.gpt_palabras_clave,
+                            'resumen': article.gpt_resumen,
+                            'categoria': article.categoria or 'Sin categoría',
+                            'subcategoria': article.subcategoria,
+                            'periodico': article.periodico
+                        })
+            except Exception as e:
+                logger.error(f"Error processing article {article.articulo_id}: {str(e)}")
+                continue
+        
+        logger.info(f"Artículos con embeddings: {len(valid_embeddings)}")
+        if len(valid_embeddings) > 0:
+            logger.info(f"Muestra de embedding: {valid_embeddings[0][:5]}")
+        
+        if len(valid_embeddings) < 2:
+            return jsonify({
+                'error': 'no_articles',
+                'message': 'No hay suficientes artículos con embeddings válidos.'
+            })
+
+        # Convert embeddings to numpy array
+        embeddings_array = np.vstack(valid_embeddings)
+        
+        # Calculate cosine distances
+        distances = cosine_distances(embeddings_array)
+        
+        # Perform t-SNE with cosine distances
+        tsne = TSNE(
+            n_components=2,
+            metric='precomputed',
+            random_state=42,
+            learning_rate='auto',
+            init='random'
+        )
+        embeddings_2d = tsne.fit_transform(distances)
+        
+        # Perform clustering for keywords
+        n_clusters = min(8, len(embeddings_array))
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+        clusters = kmeans.fit_predict(embeddings_array)
+        
+        # Get cluster centers and most common keywords
+        cluster_info = []
+        for i in range(n_clusters):
+            cluster_mask = clusters == i
+            if np.any(cluster_mask):
+                center = embeddings_2d[cluster_mask].mean(axis=0)
+                cluster_articles = [art for j, art in enumerate(articles_data) if clusters[j] == i]
+                
+                # Get keywords for cluster
+                all_keywords = []
+                for art in cluster_articles:
+                    if art['keywords']:
+                        try:
+                            keywords = art['keywords'].split(',')
+                            all_keywords.extend([k.strip() for k in keywords if k.strip()])
+                        except:
+                            continue
+                
+                if all_keywords:
+                    most_common = Counter(all_keywords).most_common(1)[0][0]
+                else:
+                    most_common = f"Cluster {i+1}"
+                
+                cluster_info.append({
+                    'center': center.tolist(),
+                    'keyword': most_common
+                })
+        
+        # Prepare points data
+        points = [
+            {
+                'id': article['id'],
+                'coordinates': embeddings_2d[i].tolist(),
+                'titular': article['titular'],
+                'periodico': article['periodico'],
+                'categoria': article['categoria'],
+                'subcategoria': article['subcategoria'],
+                'keywords': article['keywords'],
+                'resumen': article['resumen'],
+                'cluster': int(clusters[i])
+            }
+            for i, article in enumerate(articles_data)
+        ]
+        
+        logger.info(f"Procesamiento completado: {len(points)} válidos, {len(articles) - len(points)} errores")
+        
+        return jsonify({
+            'points': points,
+            'clusters': cluster_info
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in mapa_data: {str(e)}", exc_info=True)
+        return jsonify({
+            'error': 'processing_error',
+            'message': 'Error procesando los datos para la visualización.'
+        }), 500
 import ast
 import json
 from collections import Counter
