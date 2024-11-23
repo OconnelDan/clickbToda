@@ -1,0 +1,138 @@
+como puedo hacer que la leyenda sean las "categorias" en vez del nombre del periodico?
+ChatGPT Plus
+ChatGPT
+Para cambiar la leyenda del gráfico y que en vez del nombre del periódico se utilicen las categorías como etiquetas en el mapa generado por t-SNE, debes ajustar la lógica en el endpoint que genera los datos para el mapa. Actualmente, estás asignando los nombres de los periódicos como parte de los puntos del gráfico. Debes cambiarlo para que las categorías sean la leyenda.
+
+Aquí tienes los pasos:
+
+Modificar el endpoint /api/mapa-data
+En el JSON que se envía como respuesta, asegúrate de incluir la categoría en lugar del periódico como atributo clave para las etiquetas.
+Cambia este fragmento:
+
+python
+Copiar código
+points = [
+    {
+        'id': article['id'],
+        'coordinates': embeddings_2d[i].tolist(),
+        'titular': article['titular'],
+        'periodico': article['periodico'],  # Esto está usando el periódico
+        'categoria': article['categoria'],  # Incluye la categoría aquí
+        'subcategoria': article['subcategoria'],
+        'keywords': article['keywords'],
+        'resumen': article['resumen'],
+        'cluster': int(clusters[i])
+    }
+    for i, article in enumerate(articles_data)
+]
+Y actualiza la clave para que sea categoria:
+
+python
+Copiar código
+points = [
+    {
+        'id': article['id'],
+        'coordinates': embeddings_2d[i].tolist(),
+        'titular': article['titular'],
+        'categoria': article['categoria'],  # Cambiar a categoría
+        'subcategoria': article['subcategoria'],
+        'keywords': article['keywords'],
+        'resumen': article['resumen'],
+        'cluster': int(clusters[i])
+    }
+    for i, article in enumerate(articles_data)
+]
+Ajustar la visualización en el frontend
+Si estás usando una biblioteca como Plotly, debes asegurarte de que la columna categoria se utilice para la leyenda. Por ejemplo:
+
+python
+Copiar código
+fig = px.scatter(
+    points_df,
+    x="x_coord",
+    y="y_coord",
+    color="categoria",  # Usa la categoría como grupo
+    hover_data=["titular", "resumen"]
+)
+Actualizar la agrupación de clusters (opcional)
+Si los clusters también usan la categoría como base, asegúrate de que los datos se alineen correctamente. Esto no siempre es necesario, pero puede ayudar si decides ajustar el proceso de clustering.
+
+Con estas modificaciones, el gráfico debería mostrar las categorías como etiquetas en lugar de los nombres de los periódicos.
+
+
+
+
+
+
+Tú dijiste:
+las palabras que se muestran el la visualiacion, se superponen a algunos puntos y los tapan, com opuedo ponerlo en el fondo, y sin caja que las recuadre?
+ChatGPT Plus
+ChatGPT
+Para evitar que las palabras de la visualización se superpongan a los puntos y queden en el fondo sin caja de recuadre, puedes ajustar los parámetros de diseño en la librería de visualización que estés utilizando (por ejemplo, Plotly). A continuación, te detallo cómo hacerlo:
+
+Plotly
+Si estás utilizando Plotly para la visualización:
+
+Asegura que las palabras (textos) no bloqueen los puntos Modifica el parámetro textposition de los textos para que estén detrás de los puntos o en una posición relativa que no los tape.
+python
+Copiar código
+fig = px.scatter(
+    points_df,
+    x="x_coord",
+    y="y_coord",
+    color="categoria",  # Categoría como grupo
+    text="palabras_clave",  # Texto que deseas mostrar
+    hover_data=["titular", "resumen"]
+)
+
+# Ajusta la posición y estilo del texto
+fig.update_traces(
+    textposition="top center",  # Cambia la posición del texto
+    textfont=dict(size=10, color="rgba(0, 0, 0, 0.5)"),  # Transparencia o color claro para no resaltar
+    marker=dict(size=8, opacity=0.8)  # Haz los puntos más visibles
+)
+Quita las cajas que recuadran el texto Esto se puede lograr asegurándote de que no haya fondo en las etiquetas:
+python
+Copiar código
+fig.update_traces(
+    textfont=dict(
+        size=10,
+        color="rgba(0, 0, 0, 0.7)"  # Color del texto con algo de transparencia
+    ),
+    mode="markers+text"  # Asegúrate de que los puntos y texto se muestren
+)
+Envíalos al fondo Puedes agregar una capa extra para que los textos estén siempre detrás de los puntos. Esto requiere un poco más de trabajo manual si no es soportado directamente por Plotly. Por ejemplo:
+
+Renderiza primero los textos en un scatter separado con opacity=0.5.
+Luego renderiza los puntos encima.
+Matplotlib
+Si estás utilizando Matplotlib, puedes controlar el orden de las capas con zorder:
+
+python
+Copiar código
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots()
+
+# Scatter plot de los puntos
+ax.scatter(
+    points_df["x_coord"],
+    points_df["y_coord"],
+    c=points_df["categoria"].map(color_map),
+    s=50,
+    alpha=0.8,
+    zorder=2  # Poner puntos delante
+)
+
+# Añadir las palabras como texto
+for _, row in points_df.iterrows():
+    ax.text(
+        row["x_coord"],
+        row["y_coord"],
+        row["palabras_clave"],
+        fontsize=9,
+        alpha=0.5,  # Transparencia para que no molesten mucho
+        zorder=1  # Poner texto detrás
+    )
+
+plt.show()

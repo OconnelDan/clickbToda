@@ -63,27 +63,32 @@ function createVisualization(data) {
     const { points, clusters } = data;
     
     // Create scatter plot for articles
-    const trace = {
-        x: points.map(p => p.coordinates[0]),
-        y: points.map(p => p.coordinates[1]),
-        mode: 'markers',
-        type: 'scatter',
-        marker: {
-            size: 8,
-            color: points.map(p => p.periodico),
-            opacity: 0.7
-        },
-        text: points.map(p => 
-            `<b>${p.titular}</b><br>` +
-            `<b>Periódico:</b> ${p.periodico}<br>` +
-            `<b>Categoría:</b> ${p.categoria || 'N/A'}<br>` +
-            `<b>Subcategoría:</b> ${p.subcategoria || 'N/A'}<br>` +
-            `<b>Keywords:</b> ${p.keywords || 'N/A'}<br>` +
-            `<b>Resumen:</b> ${p.resumen || 'N/A'}`
-        ),
-        hoverinfo: 'text',
-        hovertemplate: '%{text}<extra></extra>'
-    };
+    // Group points by category
+    const categories = [...new Set(points.map(p => p.categoria || 'Sin categoría'))];
+    const traces = categories.map(cat => {
+        const catPoints = points.filter(p => (p.categoria || 'Sin categoría') === cat);
+        return {
+            name: cat,
+            x: catPoints.map(p => p.coordinates[0]),
+            y: catPoints.map(p => p.coordinates[1]),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: 8,
+                opacity: 0.7
+            },
+            text: catPoints.map(p => 
+                `<b>${p.titular}</b><br>` +
+                `<b>Periódico:</b> ${p.periodico}<br>` +
+                `<b>Categoría:</b> ${p.categoria || 'N/A'}<br>` +
+                `<b>Subcategoría:</b> ${p.subcategoria || 'N/A'}<br>` +
+                `<b>Keywords:</b> ${p.keywords || 'N/A'}<br>` +
+                `<b>Resumen:</b> ${p.resumen || 'N/A'}`
+            ),
+            hoverinfo: 'text',
+            hovertemplate: '%{text}<extra></extra>'
+        };
+    });
 
     // Create annotations for cluster keywords
     const annotations = clusters.map(cluster => ({
@@ -92,23 +97,24 @@ function createVisualization(data) {
         text: cluster.keyword,
         showarrow: false,
         font: {
-            size: 14,
-            color: 'rgba(255, 255, 255, 0.8)'
+            size: 12,
+            color: 'rgba(255, 255, 255, 0.5)'
         },
-        bgcolor: 'rgba(0, 0, 0, 0.5)',
-        borderpad: 4,
-        borderwidth: 1,
-        bordercolor: 'rgba(255, 255, 255, 0.3)',
-        borderradius: 3
+        bgcolor: 'rgba(0, 0, 0, 0)',  // Removed background
+        borderpad: 0,
+        borderwidth: 0,
+        layer: 'below'  // Place text below points
     }));
 
     const layout = {
-        title: 'Mapa de Artículos por Periódico',
+        title: 'Mapa de Artículos por Categoría',
         showlegend: true,
         legend: {
             title: {
-                text: 'Periódicos'
-            }
+                text: 'Categorías'
+            },
+            x: 1.05,
+            y: 0.5
         },
         hovermode: 'closest',
         margin: {
@@ -143,7 +149,7 @@ function createVisualization(data) {
         displaylogo: false
     };
 
-    Plotly.newPlot('tsne-plot', [trace], layout, config)
+    Plotly.newPlot('tsne-plot', traces, layout, config)
         .then(() => {
             // Remove loading container after plot is created
             const loadingContainer = document.querySelector('.map-loading-container');
