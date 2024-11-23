@@ -1,4 +1,40 @@
 from sklearn.metrics.pairwise import cosine_distances
+from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from database import db
+from models import User, Categoria, Subcategoria, Evento, Articulo, articulo_evento
+from sqlalchemy import desc, and_, distinct, func
+from flask_wtf.csrf import CSRFProtect
+from flask_caching import Cache
+from flask_apscheduler import APScheduler
+import logging
+import json
+from datetime import datetime, timedelta
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Initialize Flask app
+app = Flask(__name__)
+app.config.from_object('config.Config')
+
+# Initialize extensions
+csrf = CSRFProtect(app)
+db.init_app(app)
+
+# Initialize cache with configuration
+cache = Cache()
+cache.init_app(app, config={
+    'CACHE_TYPE': 'simple',
+    'CACHE_DEFAULT_TIMEOUT': 300,  # 5 minutes default timeout
+    'CACHE_THRESHOLD': 500  # Maximum number of items to store in the cache
+})
+
+# Initialize APScheduler
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
 from flask_caching import Cache
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
@@ -33,14 +69,20 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 
-# Initialize cache
-cache = Cache(config={
-    'CACHE_TYPE': 'simple',
-    'CACHE_DEFAULT_TIMEOUT': 300  # Cache timeout in seconds (5 minutes)
-})
-cache.init_app(app)
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Initialize cache with 1 hour timeout
+cache = Cache(config={
+    'CACHE_TYPE': 'simple',
+    'CACHE_DEFAULT_TIMEOUT': 3600  # 1 hour in seconds
+})
+cache.init_app(app)
+
+# Initialize scheduler
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
 
 # Initialize extensions
 csrf = CSRFProtect(app)
@@ -53,6 +95,38 @@ cache = Cache(app, config={'CACHE_TYPE': 'simple', 'CACHE_DEFAULT_TIMEOUT': 60})
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+# Initialize cache on server start
+def initialize_map_cache():
+    """Initialize map data cache for all time filters."""
+    try:
+        logger.info("Initializing map data cache...")
+        time_filters = ['24h', '48h', '72h']
+        for filter in time_filters:
+            calculate_and_cache_map_data(filter)
+        logger.info("Map data cache initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing cache: {str(e)}")
+
+# Initialize cache when app starts
+with app.app_context():
+    initialize_map_cache()
+
+@scheduler.task('interval', id='refresh_map_cache', hours=1)
+def refresh_map_cache():
+    """Refresh map data cache every hour."""
+    with app.app_context():
+        initialize_map_cache()
+
+@scheduler.task('interval', id='refresh_cache', hours=1)
+def refresh_cache():
+    try:
+        logger.info("Refreshing map data cache...")
+        time_filters = ['24h', '48h', '72h']
+        for filter in time_filters:
+            mapa_data(time_filter=filter)
+        logger.info("Map data cache refreshed successfully")
+    except Exception as e:
+        logger.error(f"Error refreshing cache: {str(e)}")
 login_manager.login_message = 'Please log in to access this page.'
 
 @login_manager.user_loader
@@ -439,18 +513,259 @@ def mapa():
 from flask import jsonify, request
 from datetime import datetime, timedelta
 import numpy as np
-@app.route('/api/mapa-data')
-@cache.cached(timeout=300, query_string=True)  # Cache for 5 minutes, considering query parameters
-def mapa_data():
-    """API endpoint for map visualization data with caching."""
+@cache.memoize(timeout=300)  # Cache for 5 minutes
+def calculate_map_data(time_filter):
+    """Calculate map visualization data for the given time filter."""
     try:
-        # Get time filter from request
-        time_filter = request.args.get('time_filter', '72h')
+        logger.info(f"Calculating map data for time filter: {time_filter}")
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
         
-        logger.info(f"Fetching articles between {start_date} and {end_date}")
-        logger.info(f"Buscando artículos entre {start_date} y {end_date}")
+        # Query articles with embeddings
+        articles = db.session.query(
+            Articulo.articulo_id,
+            Articulo.titular,
+            Articulo.gpt_resumen,
+            Articulo.palabras_clave_embeddings,
+            Articulo.gpt_palabras_clave,
+            Categoria.nombre.label('categoria'),
+            Subcategoria.nombre.label('subcategoria'),
+            Periodico.nombre.label('periodico')
+        ).join(
+            articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id
+        ).join(
+            Evento, Evento.evento_id == articulo_evento.c.evento_id
+        ).join(
+            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).join(
+            Categoria, Subcategoria.categoria_id == Categoria.categoria_id
+        ).join(
+            Periodico, Articulo.periodico_id == Periodico.periodico_id
+        ).filter(
+            Articulo.fecha_publicacion.between(start_date, end_date),
+            Articulo.palabras_clave_embeddings.isnot(None)
+        ).all()
+
+        if not articles:
+            logger.warning("No articles found with valid embeddings")
+            return {"error": "no_articles", "message": "No hay suficientes artículos para generar la visualización"}
+
+        # Process embeddings and create visualization data
+        embeddings_list = []
+        articles_data = []
+        
+        for article in articles:
+            try:
+                embedding = np.fromstring(article.palabras_clave_embeddings.strip('{}'), sep=',')
+                if len(embedding) > 0:
+                    embeddings_list.append(embedding)
+                    articles_data.append({
+                        'id': article.articulo_id,
+                        'titular': article.titular,
+                        'categoria': article.categoria,
+                        'subcategoria': article.subcategoria,
+                        'periodico': article.periodico,
+                        'keywords': article.gpt_palabras_clave,
+                        'resumen': article.gpt_resumen
+                    })
+            except Exception as e:
+                logger.error(f"Error processing embedding for article {article.articulo_id}: {str(e)}")
+                continue
+
+        if not embeddings_list:
+            logger.warning("No valid embeddings found")
+            return {"error": "no_embeddings", "message": "No hay suficientes embeddings válidos para generar la visualización"}
+
+        # Convert to numpy array and perform t-SNE
+        embeddings_array = np.vstack(embeddings_list)
+        tsne = TSNE(n_components=2, random_state=42)
+        embeddings_2d = tsne.fit_transform(embeddings_array)
+
+        # Perform clustering
+        n_clusters = min(16, len(embeddings_list))
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+        clusters = kmeans.fit_predict(embeddings_array)
+
+        # Calculate cluster centers and keywords
+        cluster_data = []
+        for i in range(n_clusters):
+            cluster_indices = np.where(clusters == i)[0]
+            cluster_center = np.mean(embeddings_2d[cluster_indices], axis=0)
+            
+            # Get most common keywords for cluster
+            cluster_keywords = []
+            for idx in cluster_indices:
+                if articles_data[idx]['keywords']:
+                    try:
+                        keywords = articles_data[idx]['keywords'].split(',')
+                        cluster_keywords.extend(keywords)
+                    except:
+                        continue
+            
+            if cluster_keywords:
+                most_common = Counter(cluster_keywords).most_common(1)[0][0]
+                cluster_data.append({
+                    'center': cluster_center.tolist(),
+                    'keyword': most_common
+                })
+
+        # Prepare points data
+        points = [
+            {
+                'id': article['id'],
+                'coordinates': embeddings_2d[i].tolist(),
+                'titular': article['titular'],
+                'categoria': article['categoria'],
+                'subcategoria': article['subcategoria'],
+                'periodico': article['periodico'],
+                'keywords': article['keywords'],
+                'resumen': article['resumen']
+            }
+            for i, article in enumerate(articles_data)
+        ]
+
+        return {
+            'points': points,
+            'clusters': cluster_data
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating map data: {str(e)}")
+        return {"error": "calculation_error", "message": str(e)}
+    
+    logger.info(f"Calculating map data for time filter: {time_filter}")
+    logger.info(f"Date range: {start_date} to {end_date}")
+
+    # Query articles with embeddings
+    articles = db.session.query(
+        Articulo.articulo_id,
+        Articulo.titular,
+        Articulo.gpt_resumen,
+        Articulo.palabras_clave_embeddings,
+        Articulo.gpt_palabras_clave,
+        Periodico.nombre.label('periodico'),
+        Categoria.nombre.label('categoria'),
+        Subcategoria.nombre.label('subcategoria')
+    ).join(
+        Periodico, Articulo.periodico_id == Periodico.periodico_id
+    ).join(
+        articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id
+    ).join(
+        Evento, articulo_evento.c.evento_id == Evento.evento_id
+    ).join(
+        Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
+    ).join(
+        Categoria, Subcategoria.categoria_id == Categoria.categoria_id
+    ).filter(
+        Articulo.fecha_publicacion.between(start_date, end_date),
+        Articulo.palabras_clave_embeddings.isnot(None)
+    ).all()
+
+    if not articles:
+        return {'error': 'no_articles', 'message': 'No articles found for the specified time period'}
+
+    # Process embeddings
+    embeddings_list = []
+    articles_data = []
+    
+    for article in articles:
+        try:
+            if article.palabras_clave_embeddings:
+                embedding = np.fromstring(article.palabras_clave_embeddings.strip('{}'), sep=',')
+                if len(embedding) > 0:
+                    embeddings_list.append(embedding)
+                    articles_data.append({
+                        'id': article.articulo_id,
+                        'titular': article.titular,
+                        'periodico': article.periodico,
+                        'categoria': article.categoria,
+                        'subcategoria': article.subcategoria,
+                        'keywords': article.gpt_palabras_clave,
+                        'resumen': article.gpt_resumen
+                    })
+        except Exception as e:
+            logger.error(f"Error processing article {article.articulo_id}: {str(e)}")
+            continue
+
+    if not embeddings_list:
+        return {'error': 'no_embeddings', 'message': 'No valid embeddings found'}
+
+    # Convert to numpy array and calculate t-SNE
+    embeddings_array = np.vstack(embeddings_list)
+    tsne = TSNE(n_components=2, random_state=42)
+    embeddings_2d = tsne.fit_transform(embeddings_array)
+
+    # Perform clustering
+    kmeans = KMeans(n_clusters=16, random_state=42)
+    clusters = kmeans.fit_predict(embeddings_array)
+
+    # Calculate cluster centers and keywords
+    cluster_info = []
+    for i in range(16):
+        cluster_mask = clusters == i
+        if np.any(cluster_mask):
+            center = embeddings_2d[cluster_mask].mean(axis=0)
+            # Get most common keywords in cluster
+            cluster_keywords = [art['keywords'] for j, art in enumerate(articles_data) if clusters[j] == i]
+            keywords = ' '.join(filter(None, cluster_keywords))
+            if keywords:
+                cluster_info.append({
+                    'center': center.tolist(),
+                    'keyword': keywords[:50] + '...' if len(keywords) > 50 else keywords
+                })
+
+    # Prepare points data
+    points = [
+        {
+            'id': article['id'],
+            'coordinates': embeddings_2d[i].tolist(),
+            'titular': article['titular'],
+            'categoria': article['categoria'],
+            'subcategoria': article['subcategoria'],
+            'periodico': article['periodico'],
+            'keywords': article['keywords'],
+            'resumen': article['resumen'],
+            'cluster': int(clusters[i])
+        }
+        for i, article in enumerate(articles_data)
+    ]
+
+    return {
+        'points': points,
+        'clusters': cluster_info
+    }
+
+def calculate_and_cache_map_data(time_filter):
+    """Calculate and cache map data for a specific time filter."""
+    try:
+        data = calculate_map_data(time_filter)
+        if 'error' not in data:
+            cache.set(f'mapa_data_{time_filter}', data)
+            logger.info(f"Successfully cached map data for time filter: {time_filter}")
+        return data
+    except Exception as e:
+        logger.error(f"Error calculating map data for {time_filter}: {str(e)}")
+        return {'error': 'calculation_error', 'message': str(e)}
+
+@app.route('/api/mapa-data')
+@cache.cached(timeout=3600, query_string=True)  # Cache for 1 hour
+def mapa_data():
+    """API endpoint for map visualization data with caching."""
+    try:
+        time_filter = request.args.get('time_filter', '72h')
+        cached_data = cache.get(f'mapa_data_{time_filter}')
+        
+        if cached_data is not None:
+            logger.info(f"Cache hit for time filter: {time_filter}")
+            return jsonify(cached_data)
+            
+        # If cache miss, calculate data and cache it
+        logger.info(f"Cache miss for time filter: {time_filter}")
+        data = calculate_and_cache_map_data(time_filter)
+        return jsonify(data)
+    except Exception as e:
+        logger.error(f"Error in mapa_data endpoint: {str(e)}")
+        return jsonify({'error': 'server_error', 'message': 'Internal server error'}), 500
 
         # Query articles with embeddings
         articles = db.session.query(
