@@ -1,3 +1,10 @@
+from sklearn.metrics.pairwise import cosine_distances
+from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
+import numpy as np
+import pandas as pd
+from statistics import mode
+from collections import Counter
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
 from flask_caching import Cache
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
