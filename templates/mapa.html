@@ -32,9 +32,11 @@
         </div>
     </div>
 </div>
+{% include "components/article_modal.html" %}
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+<script src="{{ url_for('static', filename='js/article_modal.js') }}"></script>
 <script src="{{ url_for('static', filename='js/mapa.js') }}"></script>
 {% endblock %}

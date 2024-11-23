@@ -1,9 +1,16 @@
 let articleModal;
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize modal
     const modalElement = document.getElementById('articleModal');
     if (modalElement) {
         articleModal = new bootstrap.Modal(modalElement);
     }
+
+    // Add article modal script
+    const script = document.createElement('script');
+    script.src = '/static/js/article_modal.js';
+    document.head.appendChild(script);
+
     loadMapData();
 
     // Add time filter change handler
@@ -165,10 +172,20 @@ function createVisualization(data) {
             // Add click handler for points
             document.getElementById('tsne-plot').on('plotly_click', function(data) {
                 const point = data.points[0];
-                const articleData = points[point.pointIndex];
+                const pointIndex = point.pointNumber;
+                const curveNumber = point.curveNumber;
+                
+                // Calculate the actual index in the points array
+                let actualIndex = 0;
+                for (let i = 0; i < curveNumber; i++) {
+                    actualIndex += traces[i].x.length;
+                }
+                actualIndex += pointIndex;
+                
+                const articleData = points[actualIndex];
                 if (articleModal && articleData) {
-                    articleModal.show();
                     fetchArticleDetails(articleData.id);
+                    articleModal.show();
                 }
             });
         })
