@@ -1,12 +1,18 @@
-from flask import Flask, render_template, request, jsonify, flash
+from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
+from flask_caching import Cache
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from werkzeug.security import check_password_hash
-from datetime import datetime, timedelta
-from sqlalchemy import desc, cast, String, and_
-import numpy as np
+from flask_wtf.csrf import CSRFProtect
+from sqlalchemy import func, and_, desc, distinct
 from sklearn.manifold import TSNE
-import logging
+from sklearn.cluster import KMeans
+from collections import Counter
+import numpy as np
 import json
+import logging
+from datetime import datetime, timedelta
+from config import Config
+from database import db
+from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, Periodista, articulo_evento
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -18,50 +24,14 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-from database import db
-from models import User, Articulo, Categoria, Subcategoria, Evento, Periodico, articulo_evento, Periodista
-from flask import Flask, render_template, jsonify, request, flash, redirect, url_for
-import numpy as np
-from sklearn.manifold import TSNE
-import json
-import logging
-from datetime import datetime, timedelta
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from flask_wtf.csrf import CSRFProtect
-from datetime import datetime, timedelta
-from sqlalchemy import func, and_, desc
-from sklearn.manifold import TSNE
-import numpy as np
-import json
-import logging
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-from sqlalchemy import func, text, desc, and_, or_, distinct, Integer, cast, String, exists
-import json
-from sqlalchemy.orm import joinedload
-from datetime import datetime, timedelta
-import logging
-import sys
-from config import Config
-from flask_caching import Cache
-from database import db
-from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, Periodista, articulo_evento
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    stream=sys.stdout
-)
-logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
 # Initialize extensions
 csrf = CSRFProtect(app)
+# Initialize cache
+cache = Cache(app, config={'CACHE_TYPE': 'simple', 'CACHE_DEFAULT_TIMEOUT': 60})
 db.init_app(app)
 cache = Cache(app, config={'CACHE_TYPE': 'simple', 'CACHE_DEFAULT_TIMEOUT': 60})
 
