@@ -143,17 +143,28 @@ function createVisualization(data) {
         displaylogo: false
     };
 
-    Plotly.newPlot('tsne-plot', [trace], layout, config);
-
-    // Add click handler for points
-    document.getElementById('tsne-plot').on('plotly_click', function(data) {
-        const point = data.points[0];
-        const articleData = points[point.pointIndex];
-        if (articleModal && articleData) {
-            articleModal.show();
-            fetchArticleDetails(articleData.id);
-        }
-    });
+    Plotly.newPlot('tsne-plot', [trace], layout, config)
+        .then(() => {
+            // Remove loading container after plot is created
+            const loadingContainer = document.querySelector('.map-loading-container');
+            if (loadingContainer) {
+                loadingContainer.remove();
+            }
+            
+            // Add click handler for points
+            document.getElementById('tsne-plot').on('plotly_click', function(data) {
+                const point = data.points[0];
+                const articleData = points[point.pointIndex];
+                if (articleModal && articleData) {
+                    articleModal.show();
+                    fetchArticleDetails(articleData.id);
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error creating visualization:', error);
+            showError('Error al crear la visualización. Por favor, intente nuevamente.');
+        });
 }
 
 function showError(message) {
