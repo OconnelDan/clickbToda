@@ -419,22 +419,7 @@ def index():
                            time_filter=time_filter)
 
 
-@app.route('/feedback', methods=['GET', 'POST'])
-def feedback():
-    if request.method == 'POST':
-        feedback_type = request.form.get('feedback_type')
-        message = request.form.get('message')
-        
-        if not feedback_type or not message:
-            flash('Please fill in all fields', 'error')
-            return redirect(url_for('feedback'))
-            
-        # Here you would typically save the feedback to the database
-        # For now, we'll just show a success message
-        flash('Thank you for your feedback!', 'success')
-        return redirect(url_for('feedback'))
-        
-    return render_template('feedback.html')
+
 
 @app.route('/api/subcategories')
 def get_subcategories():
