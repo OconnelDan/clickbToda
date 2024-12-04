@@ -9,9 +9,12 @@
             {% if article.gpt_opinion %}
             <div class="article-opinion">{{ article.gpt_opinion }}</div>
             {% endif %}
+            <p class="text-muted small">Publicado el: {{ article.fecha_publicacion }}</p>
             {% if article.paywall %}
             <span class="badge bg-secondary">Paywall</span>
             {% endif %}
         </div>
     </div>
 </div>
+
+

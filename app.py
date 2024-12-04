@@ -12,6 +12,8 @@ import logging
 import json
 from datetime import datetime, timedelta
 
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1095,11 +1097,11 @@ def get_articles():
         time_filter = request.args.get('time_filter', '72h')
         category_id = request.args.get('category_id', type=int)
         subcategory_id = request.args.get('subcategory_id', type=int)
-        
+
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
-        # Get category and subcategory info if provided
+        # Obtener información de categoría y subcategoría si están presentes
         category_info = None
         subcategory_info = None
         if category_id:
@@ -1109,10 +1111,10 @@ def get_articles():
             ).filter(
                 Categoria.categoria_id == category_id
             ).first()
-            
+
             if not category_info:
                 return jsonify({'error': 'Category not found'}), 404
-            
+
         if subcategory_id:
             subcategory_info = db.session.query(
                 Subcategoria.subcategoria_id,
@@ -1120,11 +1122,11 @@ def get_articles():
             ).filter(
                 Subcategoria.subcategoria_id == subcategory_id
             ).first()
-            
+
             if not subcategory_info:
                 return jsonify({'error': 'Subcategory not found'}), 404
 
-        # Query events with related articles
+        # Consulta eventos y artículos relacionados
         events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,
@@ -1139,6 +1141,7 @@ def get_articles():
             Articulo.titular,
             Articulo.url,
             Articulo.fecha_publicacion,
+            Articulo.updated_on,
             Articulo.paywall,
             Articulo.gpt_opinion,
             Periodico.nombre,
@@ -1156,18 +1159,17 @@ def get_articles():
             Periodico, Periodico.periodico_id == Articulo.periodico_id
         )
 
-        # Apply filters
+        # Aplicar filtros
         if category_id == 0:  # "All" category
-            # Remove category filter
-            events_query = events_query
+            events_query = events_query  # Sin filtro de categoría
         elif category_id:
             events_query = events_query.filter(Subcategoria.categoria_id == category_id)
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
-        # Execute query
+        # Ordenar eventos por `updated_on` y `fecha_publicacion`
         events_results = events_query.order_by(
-            desc(Evento.fecha_evento),
+            desc(Articulo.updated_on),
             desc(Articulo.fecha_publicacion)
         ).all()
 
@@ -1185,7 +1187,7 @@ def get_articles():
                 }]
             })
 
-        # Process results
+        # Procesar resultados
         events_dict = {}
         for result in events_results:
             evento_id = result[0]
@@ -1211,14 +1213,15 @@ def get_articles():
                     'titular': result[10],
                     'url': result[11],
                     'fecha_publicacion': result[12].isoformat() if result[12] else None,
-                    'paywall': result[13],
-                    'gpt_opinion': result[14],
-                    'periodico_nombre': result[15],
-                    'periodico_logo': result[16]
+                    'updated_on': result[13].isoformat() if result[13] else None,
+                    'paywall': result[14],
+                    'gpt_opinion': result[15],
+                    'periodico_nombre': result[16],
+                    'periodico_logo': result[17]
                 })
                 events_dict[evento_id]['article_count'] += 1
 
-        # Sort events by article count and date
+        # Ordenar eventos por cantidad de artículos y fecha
         sorted_events = sorted(
             events_dict.values(),
             key=lambda x: (-x['article_count'], x['fecha_evento'] or '1900-01-01')
@@ -1241,6 +1244,7 @@ def get_articles():
     except Exception as e:
         logger.error(f"Error in get_articles: {str(e)}", exc_info=True)
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
 
 @app.route('/api/article/<int:article_id>')
 def get_article(article_id):
