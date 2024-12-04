@@ -1167,9 +1167,8 @@ def get_articles():
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
-        # Ordenar eventos por `updated_on` y `fecha_publicacion`
+        # Ordenar eventos por fecha de publicación en orden descendente
         events_results = events_query.order_by(
-            desc(Articulo.updated_on),
             desc(Articulo.fecha_publicacion)
         ).all()
 
@@ -1221,10 +1220,14 @@ def get_articles():
                 })
                 events_dict[evento_id]['article_count'] += 1
 
-        # Ordenar eventos por cantidad de artículos y fecha
+        # Ordenar eventos por fecha de publicación más reciente de sus artículos
         sorted_events = sorted(
             events_dict.values(),
-            key=lambda x: (-x['article_count'], x['fecha_evento'] or '1900-01-01')
+            key=lambda x: (
+                max((a['fecha_publicacion'] or '1900-01-01') for a in x['articles']),
+                -x['article_count']
+            ),
+            reverse=True
         )
 
         response_data = {
