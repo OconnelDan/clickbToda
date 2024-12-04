@@ -50,15 +50,36 @@
 #sortDirection {
     display: inline-flex;
     align-items: center;
+    gap: 0.5rem;
     transition: all 0.2s ease-in-out;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
 }
 
 #sortDirection:hover {
     transform: translateY(-1px);
+    background-color: var(--bs-primary);
+    color: var(--bs-light);
 }
 
 #sortDirection i {
     transition: transform 0.2s ease-in-out;
+    font-size: 1.1rem;
+}
+
+#sortDirection .sort-text {
+    display: inline;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 576px) {
+    #sortDirection .sort-text {
+        display: none;
+    }
+    
+    #sortDirection {
+        padding: 0.5rem;
+    }
 }
 
 /* Category Navigation Styles */

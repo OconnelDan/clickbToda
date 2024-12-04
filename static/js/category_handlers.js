@@ -13,7 +13,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update button icon and text
             const icon = this.querySelector('i');
+            const sortText = this.querySelector('.sort-text');
             icon.className = newDirection === 'desc' ? 'fas fa-sort-amount-down' : 'fas fa-sort-amount-up';
+            sortText.textContent = newDirection === 'desc' ? 'Más recientes primero' : 'Más antiguos primero';
             
             // Reload current category content
             const activeCategoryTab = document.querySelector('#categoryTabs .nav-link.active');
