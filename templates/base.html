@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News App</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
 <body>
@@ -31,6 +32,10 @@
                         <input type="radio" class="btn-check" name="timeFilter" id="72h" value="72h" autocomplete="off" checked>
                         <label class="btn btn-outline-primary" for="72h">72h</label>
                     </div>
+                    <button id="sortDirection" class="btn btn-outline-primary ms-2" data-direction="desc">
+                        <i class="fas fa-sort-amount-down"></i>
+                        <span class="ms-1 d-none d-sm-inline">Ordenar</span>
+                    </button>
                 </div>
                 <ul class="navbar-nav">
                     {% if current_user.is_authenticated %}

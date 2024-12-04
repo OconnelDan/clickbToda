@@ -2,6 +2,28 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeTabNavigation();
     loadDefaultCategory();
 });
+// Initialize sort direction handler
+document.addEventListener('DOMContentLoaded', function() {
+    const sortButton = document.getElementById('sortDirection');
+    if (sortButton) {
+        sortButton.addEventListener('click', function() {
+            const currentDirection = this.dataset.direction;
+            const newDirection = currentDirection === 'desc' ? 'asc' : 'desc';
+            this.dataset.direction = newDirection;
+            
+            // Update button icon and text
+            const icon = this.querySelector('i');
+            icon.className = newDirection === 'desc' ? 'fas fa-sort-amount-down' : 'fas fa-sort-amount-up';
+            
+            // Reload current category content
+            const activeCategoryTab = document.querySelector('#categoryTabs .nav-link.active');
+            if (activeCategoryTab) {
+                const categoryId = activeCategoryTab.dataset.categoryId;
+                loadCategoryContent(categoryId);
+            }
+        });
+    }
+});
 
 function initializeTabNavigation() {
     const categoryTabs = document.getElementById('categoryTabs');
@@ -116,12 +138,13 @@ function loadCategoryContent(categoryId) {
     showLoadingState();
     
     // Fetch subcategories and articles simultaneously
+    const sortDirection = document.getElementById('sortDirection').dataset.direction;
     Promise.all([
         fetch(`/api/subcategories?category_id=${categoryId}&time_filter=${timeFilter}`).then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         }),
-        fetch(`/api/articles?category_id=${categoryId}&time_filter=${timeFilter}`).then(response => {
+        fetch(`/api/articles?category_id=${categoryId}&time_filter=${timeFilter}&sort_direction=${sortDirection}`).then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })

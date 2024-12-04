@@ -35,15 +35,30 @@
     }
 }
 
-/* Time Filter Styles */
+/* Time Filter and Sort Button Styles */
 .time-filter-group {
     margin-right: 1rem;
 }
 
-.time-filter-group .btn {
+.time-filter-group .btn,
+#sortDirection {
     --bs-btn-padding-y: 0.25rem;
     --bs-btn-padding-x: 0.75rem;
     --bs-btn-font-size: 0.875rem;
+}
+
+#sortDirection {
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s ease-in-out;
+}
+
+#sortDirection:hover {
+    transform: translateY(-1px);
+}
+
+#sortDirection i {
+    transition: transform 0.2s ease-in-out;
 }
 
 /* Category Navigation Styles */

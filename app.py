@@ -1097,6 +1097,7 @@ def get_articles():
         time_filter = request.args.get('time_filter', '72h')
         category_id = request.args.get('category_id', type=int)
         subcategory_id = request.args.get('subcategory_id', type=int)
+        sort_direction = request.args.get('sort_direction', 'desc')
 
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
@@ -1167,10 +1168,15 @@ def get_articles():
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
-        # Ordenar eventos por fecha de publicación en orden descendente
-        events_results = events_query.order_by(
-            desc(Articulo.fecha_publicacion)
-        ).all()
+        # Ordenar eventos por fecha de publicación según el parámetro sort_direction
+        if sort_direction == 'asc':
+            events_results = events_query.order_by(
+                Articulo.fecha_publicacion
+            ).all()
+        else:
+            events_results = events_query.order_by(
+                desc(Articulo.fecha_publicacion)
+            ).all()
 
         if not events_results:
             logger.warning(f"No events found for category_id={category_id}, subcategory_id={subcategory_id}")
