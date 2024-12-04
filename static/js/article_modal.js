@@ -184,7 +184,8 @@ function updateModalContent(article) {
             'modalNewspaperLogo': { type: 'img', value: article.periodico_logo || '/static/img/default-newspaper.svg' },
             'articleModalLabel': { type: 'text', value: article.titular || 'No Title' },
             'articleSubtitle': { type: 'text', value: article.subtitular || '' },
-            'articleDate': { type: 'text', value: formatDate(article.fecha_publicacion) },
+            'articleDate': { type: 'text', value: `Publicado el: ${formatDate(article.fecha_publicacion)}` },
+            'articleUpdateDate': { type: 'text', value: article.updated_on ? `Actualizado el: ${formatDate(article.updated_on)}` : '' },
             'articleAgency': { type: 'text', value: article.agencia || '' },
             'articleSummary': { type: 'text', value: article.gpt_resumen || 'No summary available' },
             'articleAuthor': { type: 'text', value: article.periodista || 'Unknown Author' }
