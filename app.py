@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, current_user
 from sqlalchemy import distinct, func, and_, cast, String, desc
 import logging
 
@@ -9,6 +10,14 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 db = SQLAlchemy(app)
 
 # Configure logging
@@ -227,6 +236,10 @@ def get_articles():
         logger.error(f"Error in get_articles: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@app.route('/mapa')
+def mapa():
+    return render_template('mapa.html')
+
 @app.route('/posturas')
 def posturas():
     return render_template('posturas.html')
@@ -313,7 +326,7 @@ def index():
                 Articulo.articulo_id == articulo_evento.c.articulo_id,
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
-        ).group_by(Categoria.categoria_id).all()
+        ).group_by(Categoria.categoria_id, Categoria.nombre, Categoria.descripcion).all()
 
         # Prepare initial data in the same format as /api/articles
         initial_data = {
@@ -324,6 +337,44 @@ def index():
                     'nombre': 'All Subcategories',
                     'subcategoria_id': 0,
                     'events': list(events_dict.values())
+@app.route('/api/updates')
+def get_updates():
+    try:
+        # Get current time
+        current_time = datetime.now()
+        
+        # Get articles updated in the last hour
+        recent_updates = db.session.query(
+            Articulo.titular,
+            Articulo.updated_on,
+            Categoria.nombre.label('categoria_nombre')
+        ).join(
+            articulo_evento,
+            Articulo.articulo_id == articulo_evento.c.articulo_id
+        ).join(
+            Evento,
+            articulo_evento.c.evento_id == Evento.evento_id
+        ).join(
+            Subcategoria,
+            Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).join(
+            Categoria,
+            Subcategoria.categoria_id == Categoria.categoria_id
+        ).filter(
+            Articulo.updated_on >= (current_time - timedelta(hours=1))
+        ).all()
+        
+        updates = [{
+            'title': 'Actualización de Artículo',
+            'message': f'"{update.titular}" en {update.categoria_nombre} ha sido actualizado',
+            'type': 'update',
+            'timestamp': update.updated_on.isoformat()
+        } for update in recent_updates]
+        
+        return jsonify(updates)
+    except Exception as e:
+        logger.error(f"Error fetching updates: {str(e)}")
+        return jsonify([])
                 }]
             }]
         }

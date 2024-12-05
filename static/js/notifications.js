@@ -1,100 +1,95 @@
-class NotificationManager {
+class NotificationSystem {
     constructor() {
         this.container = document.getElementById('notificationContainer');
         this.template = document.getElementById('notificationTemplate');
         this.notifications = new Set();
-        this.checkUpdatesInterval = 60000; // Check every minute
-        this.lastCheckTime = new Date().toISOString();
-        
-        if (this.container && this.template) {
-            this.init();
-        }
+        this.init();
     }
 
     init() {
-        // Start checking for updates
-        this.startUpdateCheck();
-        
-        // Setup event delegation for notification close buttons
+        // Handle notification close clicks
         this.container.addEventListener('click', (e) => {
-            if (e.target.classList.contains('notification-close')) {
+            if (e.target.matches('.notification-close')) {
                 const notification = e.target.closest('.notification');
                 if (notification) {
                     this.removeNotification(notification);
                 }
             }
         });
-    }
 
-    startUpdateCheck() {
+        // Start checking for updates
         this.checkForUpdates();
-        setInterval(() => this.checkForUpdates(), this.checkUpdatesInterval);
     }
 
     async checkForUpdates() {
         try {
-            const response = await fetch(`/api/article-updates?since=${this.lastCheckTime}`);
-            if (!response.ok) throw new Error('Failed to fetch updates');
-            
-            const updates = await response.json();
-            this.lastCheckTime = new Date().toISOString();
-            
-            updates.forEach(update => {
-                this.showNotification({
-                    title: 'Artículo Actualizado',
-                    message: `"${update.titular}" ha sido actualizado.`,
-                    type: 'update',
-                    time: update.updated_on
+            const response = await fetch('/api/updates');
+            if (response.ok) {
+                const updates = await response.json();
+                updates.forEach(update => {
+                    this.showNotification({
+                        title: update.title,
+                        message: update.message,
+                        type: update.type,
+                        timestamp: update.timestamp
+                    });
                 });
-            });
+            }
         } catch (error) {
             console.error('Error checking for updates:', error);
         }
+        
+        // Check again in 5 minutes
+        setTimeout(() => this.checkForUpdates(), 5 * 60 * 1000);
     }
 
-    showNotification({ title, message, type = 'update', time = new Date() }) {
-        if (!this.container || !this.template) return;
+    showNotification({ title, message, type = 'info', timestamp }) {
+        if (!this.template) return;
 
         const notification = this.template.content.cloneNode(true).querySelector('.notification');
         
         // Set notification content
         notification.querySelector('.notification-title').textContent = title;
         notification.querySelector('.notification-body').textContent = message;
-        notification.querySelector('.notification-time').textContent = this.formatTime(time);
+        notification.querySelector('.notification-time').textContent = this.formatTimestamp(timestamp);
         
         // Add type class
         notification.classList.add(type);
         
         // Add to container
         this.container.appendChild(notification);
-        
-        // Trigger animation
-        setTimeout(() => notification.classList.add('show'), 10);
-        
-        // Auto remove after 5 seconds
-        setTimeout(() => this.removeNotification(notification), 5000);
-        
         this.notifications.add(notification);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            notification.classList.add('show');
+        });
+
+        // Auto remove after 10 seconds
+        setTimeout(() => {
+            if (this.notifications.has(notification)) {
+                this.removeNotification(notification);
+            }
+        }, 10000);
     }
 
     removeNotification(notification) {
         notification.classList.remove('show');
         setTimeout(() => {
-            notification.remove();
+            if (notification.parentNode === this.container) {
+                this.container.removeChild(notification);
+            }
             this.notifications.delete(notification);
         }, 300);
     }
 
-    formatTime(time) {
-        const date = new Date(time);
-        return date.toLocaleTimeString('es-ES', { 
-            hour: '2-digit', 
-            minute: '2-digit'
-        });
+    formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString();
     }
 }
 
-// Initialize notification manager when DOM is loaded
+// Initialize notification system when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.notificationManager = new NotificationManager();
+    window.notificationSystem = new NotificationSystem();
 });
