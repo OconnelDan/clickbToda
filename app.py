@@ -2,12 +2,10 @@ import os
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import desc, cast, String, and_, func
-import numpy as np
-from sklearn.metrics.pairwise import cosine_distances
-import pandas as pd
+from sqlalchemy import distinct, func, and_, cast, String, desc
 import logging
 
+logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -20,39 +18,7 @@ logger = logging.getLogger(__name__)
 # Import models after db initialization
 from models import Articulo, Periodico, Categoria, Subcategoria, Evento, articulo_evento, Periodista
 
-@app.route('/api/article-updates')
-def get_article_updates():
-    try:
-        since = request.args.get('since')
-        if not since:
-            return jsonify({'error': 'Missing since parameter'}), 400
 
-        since_date = datetime.fromisoformat(since.replace('Z', '+00:00'))
-        
-        # Query articles that have been updated since the last check
-        updated_articles = db.session.query(
-            Articulo.articulo_id,
-            Articulo.titular,
-            Articulo.updated_on
-        ).filter(
-            Articulo.updated_on > since_date
-        ).order_by(
-            desc(Articulo.updated_on)
-        ).limit(10).all()  # Limit to prevent overwhelming notifications
-        
-        updates = [{
-            'articulo_id': article.articulo_id,
-            'titular': article.titular,
-            'updated_on': article.updated_on.isoformat()
-        } for article in updated_articles]
-        
-        return jsonify(updates)
-        
-    except ValueError as e:
-        return jsonify({'error': 'Invalid date format'}), 400
-    except Exception as e:
-        logger.error(f"Error fetching article updates: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
 
 def safe_parse_embeddings(x):
     if x is None or not isinstance(x, str):
@@ -172,35 +138,15 @@ def get_mapa_data():
 @app.route('/api/articles')
 def get_articles():
     try:
+        category_id = request.args.get('category_id')
+        subcategory_id = request.args.get('subcategory_id')
         time_filter = request.args.get('time_filter', '72h')
-        category_id = request.args.get('category_id', type=int)
-        subcategory_id = request.args.get('subcategory_id', type=int)
         sort_direction = request.args.get('sort_direction', 'desc')
-
+        
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
-        # Get category and subcategory info if present
-        category_info = None
-        subcategory_info = None
         
-        if category_id:
-            category_info = db.session.query(
-                Categoria.categoria_id,
-                Categoria.nombre
-            ).filter(
-                Categoria.categoria_id == category_id
-            ).first()
-
-        if subcategory_id:
-            subcategory_info = db.session.query(
-                Subcategoria.subcategoria_id,
-                Subcategoria.nombre
-            ).filter(
-                Subcategoria.subcategoria_id == subcategory_id
-            ).first()
-
-        # Query events and related articles
+        # Base query for events and articles
         events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,
@@ -229,21 +175,21 @@ def get_articles():
             Periodico,
             Periodico.periodico_id == Articulo.periodico_id
         )
-
-        # Apply filters
-        if category_id and category_id != 0:
-            events_query = events_query.filter(Subcategoria.categoria_id == category_id)
+        
+        # Apply filters based on category or subcategory
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
-
-        # Sort by publication date
+        elif category_id:
+            events_query = events_query.filter(Subcategoria.categoria_id == category_id)
+        
+        # Apply sort direction
         if sort_direction == 'asc':
             events_query = events_query.order_by(Articulo.fecha_publicacion)
         else:
             events_query = events_query.order_by(desc(Articulo.fecha_publicacion))
-
+        
         events = events_query.all()
-
+        
         # Process results
         events_dict = {}
         for event in events:
@@ -254,7 +200,7 @@ def get_articles():
                     'fecha_evento': event.fecha_evento.isoformat() if event.fecha_evento else None,
                     'articles': []
                 }
-
+            
             events_dict[event.evento_id]['articles'].append({
                 'id': event.articulo_id,
                 'titular': event.titular,
@@ -264,14 +210,14 @@ def get_articles():
                 'periodico_nombre': event.nombre,
                 'periodico_logo': event.logo_url
             })
-
+        
         return jsonify({
             'categories': [{
-                'nombre': category_info.nombre if category_info else 'All Categories',
-                'categoria_id': category_id,
+                'nombre': 'All Categories',
+                'categoria_id': 0,
                 'subcategories': [{
-                    'nombre': subcategory_info.nombre if subcategory_info else 'All Subcategories',
-                    'subcategoria_id': subcategory_id,
+                    'nombre': 'All Subcategories',
+                    'subcategoria_id': 0,
                     'events': list(events_dict.values())
                 }]
             }]
@@ -280,6 +226,113 @@ def get_articles():
     except Exception as e:
         logger.error(f"Error in get_articles: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/posturas')
+def posturas():
+    return render_template('posturas.html')
+
+@app.route('/')
+def index():
+    try:
+        # Get default time filter and sort direction
+        time_filter = '72h'  # Default time filter
+        sort_direction = 'desc'  # Default sort direction
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
+        
+        # Query events and related articles using the same logic as get_articles
+        events_query = db.session.query(
+            Evento.evento_id,
+            Evento.titulo,
+            Evento.descripcion,
+            Evento.fecha_evento,
+            Articulo.articulo_id,
+            Articulo.titular,
+            Articulo.url,
+            Articulo.fecha_publicacion,
+            Articulo.paywall,
+            Periodico.nombre,
+            Periodico.logo_url
+        ).join(
+            Subcategoria,
+            Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).join(
+            articulo_evento,
+            articulo_evento.c.evento_id == Evento.evento_id
+        ).join(
+            Articulo,
+            and_(
+                Articulo.articulo_id == articulo_evento.c.articulo_id,
+                Articulo.fecha_publicacion.between(start_date, end_date)
+            )
+        ).join(
+            Periodico,
+            Periodico.periodico_id == Articulo.periodico_id
+        ).order_by(desc(Articulo.fecha_publicacion))
+
+        events = events_query.all()
+        
+        # Process results using the same logic as get_articles
+        events_dict = {}
+        for event in events:
+            if event.evento_id not in events_dict:
+                events_dict[event.evento_id] = {
+                    'titulo': event.titulo,
+                    'descripcion': event.descripcion,
+                    'fecha_evento': event.fecha_evento.isoformat() if event.fecha_evento else None,
+                    'articles': []
+                }
+            
+            events_dict[event.evento_id]['articles'].append({
+                'id': event.articulo_id,
+                'titular': event.titular,
+                'url': event.url,
+                'fecha_publicacion': event.fecha_publicacion.isoformat(),
+                'paywall': event.paywall,
+                'periodico_nombre': event.nombre,
+                'periodico_logo': event.logo_url
+            })
+        
+        # Query categories for the navigation
+        categories = db.session.query(
+            Categoria,
+            func.count(distinct(Articulo.articulo_id)).label('article_count')
+        ).join(
+            Subcategoria,
+            Categoria.categoria_id == Subcategoria.categoria_id
+        ).join(
+            Evento,
+            Evento.subcategoria_id == Subcategoria.subcategoria_id
+        ).join(
+            articulo_evento,
+            articulo_evento.c.evento_id == Evento.evento_id
+        ).join(
+            Articulo,
+            and_(
+                Articulo.articulo_id == articulo_evento.c.articulo_id,
+                Articulo.fecha_publicacion.between(start_date, end_date)
+            )
+        ).group_by(Categoria.categoria_id).all()
+
+        # Prepare initial data in the same format as /api/articles
+        initial_data = {
+            'categories': [{
+                'nombre': 'All Categories',
+                'categoria_id': 0,
+                'subcategories': [{
+                    'nombre': 'All Subcategories',
+                    'subcategoria_id': 0,
+                    'events': list(events_dict.values())
+                }]
+            }]
+        }
+
+        return render_template('index.html', initial_data=initial_data, categories=categories)
+
+    except Exception as e:
+        logger.error(f"Error in index route: {str(e)}")
+        return render_template('index.html', error="Failed to load initial content")
 
 @app.route('/api/article/<int:article_id>')
 def get_article(article_id):
