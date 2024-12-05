@@ -2,7 +2,6 @@ import os
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, current_user
 from sqlalchemy import distinct, func, and_, cast, String, desc
 import logging
 
@@ -10,14 +9,6 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Initialize Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
 db = SQLAlchemy(app)
 
 # Configure logging
@@ -26,8 +17,6 @@ logger = logging.getLogger(__name__)
 
 # Import models after db initialization
 from models import Articulo, Periodico, Categoria, Subcategoria, Evento, articulo_evento, Periodista
-
-
 
 def safe_parse_embeddings(x):
     if x is None or not isinstance(x, str):
@@ -337,44 +326,6 @@ def index():
                     'nombre': 'All Subcategories',
                     'subcategoria_id': 0,
                     'events': list(events_dict.values())
-@app.route('/api/updates')
-def get_updates():
-    try:
-        # Get current time
-        current_time = datetime.now()
-        
-        # Get articles updated in the last hour
-        recent_updates = db.session.query(
-            Articulo.titular,
-            Articulo.updated_on,
-            Categoria.nombre.label('categoria_nombre')
-        ).join(
-            articulo_evento,
-            Articulo.articulo_id == articulo_evento.c.articulo_id
-        ).join(
-            Evento,
-            articulo_evento.c.evento_id == Evento.evento_id
-        ).join(
-            Subcategoria,
-            Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).join(
-            Categoria,
-            Subcategoria.categoria_id == Categoria.categoria_id
-        ).filter(
-            Articulo.updated_on >= (current_time - timedelta(hours=1))
-        ).all()
-        
-        updates = [{
-            'title': 'Actualización de Artículo',
-            'message': f'"{update.titular}" en {update.categoria_nombre} ha sido actualizado',
-            'type': 'update',
-            'timestamp': update.updated_on.isoformat()
-        } for update in recent_updates]
-        
-        return jsonify(updates)
-    except Exception as e:
-        logger.error(f"Error fetching updates: {str(e)}")
-        return jsonify([])
                 }]
             }]
         }
