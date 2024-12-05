@@ -1,924 +1,58 @@
-from sqlalchemy import cast, String
+import os
+from datetime import datetime, timedelta
+from flask import Flask, render_template, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import desc, cast, String, and_, func
+import numpy as np
 from sklearn.metrics.pairwise import cosine_distances
-from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from database import db
-from models import User, Categoria, Subcategoria, Evento, Articulo, articulo_evento
-from sqlalchemy import desc, and_, distinct, func
-from flask_wtf.csrf import CSRFProtect
-from flask_caching import Cache
-from flask_apscheduler import APScheduler
-import logging
-import json
-from datetime import datetime, timedelta
-
-
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Initialize Flask app
-app = Flask(__name__)
-app.config.from_object('config.Config')
-
-# Initialize extensions
-csrf = CSRFProtect(app)
-db.init_app(app)
-
-# Initialize cache with configuration
-cache = Cache()
-cache.init_app(app, config={
-    'CACHE_TYPE': 'simple',
-    'CACHE_DEFAULT_TIMEOUT': 300,  # 5 minutes default timeout
-    'CACHE_THRESHOLD': 500  # Maximum number of items to store in the cache
-})
-
-# Initialize APScheduler
-scheduler = APScheduler()
-scheduler.init_app(app)
-scheduler.start()
-from flask_caching import Cache
-from sklearn.manifold import TSNE
-from sklearn.cluster import KMeans
-import numpy as np
 import pandas as pd
-from statistics import mode
-from collections import Counter
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
-from flask_caching import Cache
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from flask_wtf.csrf import CSRFProtect
-from sqlalchemy import func, and_, desc, distinct
-from sklearn.manifold import TSNE
-from sklearn.cluster import KMeans
-from collections import Counter
-import numpy as np
-import json
 import logging
-from datetime import datetime, timedelta
-from config import Config
-from database import db
-from models import User, Articulo, Evento, Categoria, Subcategoria, Periodico, Periodista, articulo_evento
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key_here'  # Change this in production
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
+# Import models after db initialization
+from models import Articulo, Periodico, Categoria, Subcategoria, Evento, articulo_evento, Periodista
 
-
-app = Flask(__name__)
-app.config.from_object(Config)
-
-# Initialize cache with 1 hour timeout
-cache = Cache(config={
-    'CACHE_TYPE': 'simple',
-    'CACHE_DEFAULT_TIMEOUT': 3600  # 1 hour in seconds
-})
-cache.init_app(app)
-
-# Initialize scheduler
-scheduler = APScheduler()
-scheduler.init_app(app)
-scheduler.start()
-
-# Initialize extensions
-csrf = CSRFProtect(app)
-# Initialize cache
-cache = Cache(app, config={'CACHE_TYPE': 'simple', 'CACHE_DEFAULT_TIMEOUT': 60})
-db.init_app(app)
-cache = Cache(app, config={'CACHE_TYPE': 'simple', 'CACHE_DEFAULT_TIMEOUT': 60})
-
-# Initialize Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-# Initialize cache on server start
-def initialize_map_cache():
-    """Initialize map data cache for all time filters."""
+@app.route('/api/article-updates')
+def get_article_updates():
     try:
-        logger.info("Initializing map data cache...")
-        time_filters = ['24h', '48h', '72h']
-        for filter in time_filters:
-            calculate_and_cache_map_data(filter)
-        logger.info("Map data cache initialized successfully")
-    except Exception as e:
-        logger.error(f"Error initializing cache: {str(e)}")
+        since = request.args.get('since')
+        if not since:
+            return jsonify({'error': 'Missing since parameter'}), 400
 
-# Initialize cache when app starts
-with app.app_context():
-    initialize_map_cache()
-
-@scheduler.task('interval', id='refresh_map_cache', hours=1)
-def refresh_map_cache():
-    """Refresh map data cache every hour."""
-    with app.app_context():
-        initialize_map_cache()
-
-@scheduler.task('interval', id='refresh_cache', hours=1)
-def refresh_cache():
-    try:
-        logger.info("Refreshing map data cache...")
-        time_filters = ['24h', '48h', '72h']
-        for filter in time_filters:
-            mapa_data(time_filter=filter)
-        logger.info("Map data cache refreshed successfully")
-    except Exception as e:
-        logger.error(f"Error refreshing cache: {str(e)}")
-login_manager.login_message = 'Please log in to access this page.'
-
-@login_manager.user_loader
-def load_user(user_id):
-    try:
-        return User.query.get(int(user_id))
-    except Exception as e:
-        logger.error(f"Error loading user: {str(e)}")
-        return None
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    
-    if request.method == 'POST':
-        nombre = request.form.get('nombre')
-        email = request.form.get('email')
-        password = request.form.get('password')
+        since_date = datetime.fromisoformat(since.replace('Z', '+00:00'))
         
-        if not nombre or not email or not password:
-            flash('Please fill in all fields', 'error')
-            return redirect(url_for('register'))
-        
-        # Validate email format
-        if not User.validate_email(email):
-            flash('Invalid email format', 'error')
-            return redirect(url_for('register'))
-        
-        # Check if email already exists
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered', 'error')
-            return redirect(url_for('register'))
-        
-        # Validate password
-        is_valid, message = User.validate_password(password)
-        if not is_valid:
-            flash(message, 'error')
-            return redirect(url_for('register'))
-        
-        # Create new user
-        try:
-            user = User(nombre=nombre, email=email)
-            user.set_password(password)
-            db.session.add(user)
-            db.session.commit()
-            
-            flash('Registration successful! Please log in.', 'success')
-            return redirect(url_for('login'))
-        except Exception as e:
-            db.session.rollback()
-            flash('Error creating user account', 'error')
-            return redirect(url_for('register'))
-    
-    return render_template('auth/register.html')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        
-        if not email or not password:
-            flash('Please fill in all fields', 'error')
-            return redirect(url_for('login'))
-        
-        user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password):
-            login_user(user)
-            flash('Logged in successfully!', 'success')
-            return redirect(url_for('index'))
-        else:
-            flash('Invalid email or password', 'error')
-    
-    return render_template('auth/login.html')
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    flash('You have been logged out.', 'info')
-    return redirect(url_for('index'))
-
-@app.route('/posturas')
-def posturas():
-    try:
-        time_filter = request.args.get('time_filter', '72h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
-        # Query categories with event counts
-        categories_query = db.session.query(
-            Categoria,
-            func.count(distinct(Evento.evento_id)).label('event_count')
-        ).outerjoin(
-            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
-        ).outerjoin(
-            Evento, and_(
-                Evento.subcategoria_id == Subcategoria.subcategoria_id,
-                Evento.gpt_desinformacion.isnot(None)
-            )
-        ).group_by(
-            Categoria.categoria_id,
-            Categoria.nombre,
-            Categoria.descripcion
-        ).order_by(
-            desc('event_count'),
-            Categoria.nombre
-        )
-
-        categories_result = categories_query.all()
-
-        if not categories_result:
-            logger.warning("No categories found in the database")
-            categories = []
-        else:
-            # Add "All" category with total event count
-            categories = [{
-                'Categoria': {
-                    'categoria_id': 0,
-                    'nombre': 'All',
-                    'descripcion': 'All categories'
-                },
-                'article_count': sum(cat.event_count or 0 for cat in categories_result)
-            }]
-            # Then add the rest of the categories
-            for category in categories_result:
-                categories.append({
-                    'Categoria': {
-                        'categoria_id': category.Categoria.categoria_id,
-                        'nombre': category.Categoria.nombre,
-                        'descripcion': category.Categoria.descripcion
-                    },
-                    'article_count': category.event_count or 0
-                })
-            logger.info(f"Found {len(categories)} categories for posturas page")
-
-        return render_template('posturas.html',
-                           categories=categories,
-                           time_filter=time_filter)
-
-    except Exception as e:
-        logger.error(f"Error in posturas route: {str(e)}", exc_info=True)
-        flash('Error loading categories. Please try again later.', 'error')
-        return render_template('posturas.html',
-                           categories=[],
-                           time_filter='72h')
-
-@app.route('/api/posturas')
-def get_posturas():
-    try:
-        time_filter = request.args.get('time_filter', '72h')
-        category_id = request.args.get('category_id', type=int)
-        subcategory_id = request.args.get('subcategory_id', type=int)
-        
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        # Modificar la query para incluir información del evento
-        query = db.session.query(
-            Evento,
-            Subcategoria,
-            Categoria
-        ).join(
-            Subcategoria,
-            Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).join(
-            Categoria,
-            Subcategoria.categoria_id == Categoria.categoria_id
-        ).filter(
-            Evento.gpt_desinformacion.isnot(None)
-        )
-        
-        # Aplicar filtros de categoría
-        if category_id:
-            if category_id != 0:  # Skip for "All" category
-                query = query.filter(Categoria.categoria_id == category_id)
-        
-        if subcategory_id:
-            query = query.filter(Evento.subcategoria_id == subcategory_id)
-        
-        eventos = query.order_by(desc(Evento.fecha_evento)).all()
-        
-        eventos_data = []
-        for evento, subcategoria, categoria in eventos:
-            try:
-                if evento.gpt_desinformacion:
-                    json_str = evento.gpt_desinformacion.replace('\"', '"').replace('\\', '')
-                    if json_str.startswith('"') and json_str.endswith('"'):
-                        json_str = json_str[1:-1]
-                    
-                    posturas = json.loads(json_str)
-                    
-                    eventos_data.append({
-                        'evento_id': evento.evento_id,
-                        'titulo': evento.titulo,
-                        'descripcion': evento.descripcion,
-                        'fecha': evento.fecha_evento.strftime('%Y-%m-%d') if evento.fecha_evento else None,
-                        'categoria_nombre': categoria.nombre,
-                        'subcategoria_nombre': subcategoria.nombre,
-                        'posturas': posturas if isinstance(posturas, list) else [posturas]
-                    })
-            except Exception as e:
-                logger.error(f"Error processing evento {evento.evento_id}: {str(e)}")
-                continue
-        
-        return jsonify(eventos_data)
-        
-    except Exception as e:
-        logger.error(f"Error fetching posturas: {str(e)}")
-        return jsonify([])  # Return empty list instead of 500 error
-
-@app.route('/')
-def index():
-    try:
-        time_filter = request.args.get('time_filter', '72h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
-        logger.info(f"Loading index page with time_filter: {time_filter}")
-
-        # Query categories with article counts using correct schema references
-        categories_query = db.session.query(
-            Categoria,
-            func.count(distinct(Articulo.articulo_id)).label('article_count')
-        ).outerjoin(
-            Subcategoria, Categoria.categoria_id == Subcategoria.categoria_id
-        ).outerjoin(
-            Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).outerjoin(
-            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
-        ).outerjoin(
-            Articulo, and_(
-                Articulo.articulo_id == articulo_evento.c.articulo_id,
-                Articulo.fecha_publicacion.between(start_date, end_date)
-            )
-        ).group_by(
-            Categoria.categoria_id,
-            Categoria.nombre,
-            Categoria.descripcion
-        ).order_by(
-            desc('article_count'),
-            Categoria.nombre
-        )
-
-        categories_result = categories_query.all()
-
-        if not categories_result:
-            logger.warning("No categories found in the database")
-            flash('No categories available at the moment', 'warning')
-            categories = []
-        else:
-            # Add "All" category with total article count
-            categories = [{
-                'Categoria': {
-                    'categoria_id': 0,  # Use 0 for the "All" category
-                    'nombre': 'All',
-                    'descripcion': 'All categories'
-                },
-                'article_count': sum(cat.article_count or 0 for cat in categories_result)
-            }]
-            # Then add the rest of the categories
-            for category in categories_result:
-                categories.append({
-                    'Categoria': {
-                        'categoria_id': category.Categoria.categoria_id,
-                        'nombre': category.Categoria.nombre,
-                        'descripcion': category.Categoria.descripcion
-                    },
-                    'article_count': category.article_count or 0
-                })
-            logger.info(f"Found {len(categories)} categories")
-
-        return render_template('index.html',
-                           categories=categories,
-                           initial_data={'categories': categories},
-                           selected_date=datetime.now().date(),
-                           time_filter=time_filter)
-
-    except Exception as e:
-        logger.error(f"Error in index route: {str(e)}", exc_info=True)
-        flash('Error loading categories. Please try again later.', 'error')
-        return render_template('index.html',
-                           categories=[],
-                           initial_data={'categories': []},
-                           selected_date=datetime.now().date(),
-                           time_filter=time_filter)
-
-
-
-
-@app.route('/api/subcategories')
-def get_subcategories():
-    try:
-        category_id = request.args.get('category_id', type=int)
-        time_filter = request.args.get('time_filter', '72h')
-        
-        if category_id is None:  # Change condition to check for None instead
-            return jsonify({'error': 'Category ID is required'}), 400
-
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
-        # For "All" category, return all subcategories
-        if category_id == 0:
-            subcategories = db.session.query(
-                Subcategoria.subcategoria_id.label('id'),
-                Subcategoria.nombre,
-                func.count(distinct(Articulo.articulo_id)).label('article_count')
-            ).outerjoin(
-                Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
-            ).outerjoin(
-                articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
-            ).outerjoin(
-                Articulo, and_(
-                    Articulo.articulo_id == articulo_evento.c.articulo_id,
-                    Articulo.fecha_publicacion.between(start_date, end_date)
-                )
-            ).group_by(
-                Subcategoria.subcategoria_id,
-                Subcategoria.nombre
-            ).order_by(desc('article_count')).all()
-        else:
-            # Existing query for specific category
-            subcategories = db.session.query(
-                Subcategoria.subcategoria_id.label('id'),
-                Subcategoria.nombre,
-                func.count(distinct(Articulo.articulo_id)).label('article_count')
-            ).outerjoin(
-                Evento, Evento.subcategoria_id == Subcategoria.subcategoria_id
-            ).outerjoin(
-                articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
-            ).outerjoin(
-                Articulo, and_(
-                    Articulo.articulo_id == articulo_evento.c.articulo_id,
-                    Articulo.fecha_publicacion.between(start_date, end_date)
-                )
-            ).filter(
-                Subcategoria.categoria_id == category_id
-            ).group_by(
-                Subcategoria.subcategoria_id,
-                Subcategoria.nombre
-            ).order_by(desc('article_count')).all()
-
-        return jsonify([{
-            'id': s.id,
-            'nombre': s.nombre,
-            'article_count': s.article_count or 0
-        } for s in subcategories])
-
-    except Exception as e:
-        logger.error(f"Error fetching subcategories: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
-
-# Required imports for t-SNE visualization
-import numpy as np
-from sklearn.manifold import TSNE
-from sklearn.cluster import KMeans
-from collections import Counter
-import plotly.express as px
-import json
-import ast
-from statistics import mode
-
-@app.route('/mapa')
-def mapa():
-    """Render the map visualization page."""
-    try:
-        time_filter = request.args.get('time_filter', '72h')
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-
-        # Count articles with valid embeddings
-        articles_count = db.session.query(Articulo).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.embeddings.isnot(None)
-        ).count()
-
-        return render_template('mapa.html', articles_count=articles_count)
-    except Exception as e:
-        logger.error(f"Error in mapa route: {str(e)}")
-        return render_template('mapa.html', articles_count=0)
-
-from flask import jsonify, request
-from datetime import datetime, timedelta
-import numpy as np
-@cache.memoize(timeout=300)  # Cache for 5 minutes
-def calculate_map_data(time_filter):
-    """Calculate map visualization data for the given time filter."""
-    try:
-        logger.info(f"Calculating map data for time filter: {time_filter}")
-        end_date = datetime.now()
-        start_date = end_date - timedelta(hours=int(time_filter[:-1]))
-        
-        # Query articles with embeddings
-        articles = db.session.query(
+        # Query articles that have been updated since the last check
+        updated_articles = db.session.query(
             Articulo.articulo_id,
             Articulo.titular,
-            Articulo.gpt_resumen,
-            Articulo.palabras_clave_embeddings,
-            Articulo.gpt_palabras_clave,
-            Categoria.nombre.label('categoria'),
-            Subcategoria.nombre.label('subcategoria'),
-            Periodico.nombre.label('periodico')
-        ).join(
-            articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id
-        ).join(
-            Evento, Evento.evento_id == articulo_evento.c.evento_id
-        ).join(
-            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
-        ).join(
-            Categoria, Subcategoria.categoria_id == Categoria.categoria_id
-        ).join(
-            Periodico, Articulo.periodico_id == Periodico.periodico_id
+            Articulo.updated_on
         ).filter(
-            Articulo.fecha_publicacion.between(start_date, end_date),
-            Articulo.palabras_clave_embeddings.isnot(None)
-        ).all()
-
-        if not articles:
-            logger.warning("No articles found with valid embeddings")
-            return {"error": "no_articles", "message": "No hay suficientes artículos para generar la visualización"}
-
-        # Process embeddings and create visualization data
-        embeddings_list = []
-        articles_data = []
+            Articulo.updated_on > since_date
+        ).order_by(
+            desc(Articulo.updated_on)
+        ).limit(10).all()  # Limit to prevent overwhelming notifications
         
-        for article in articles:
-            try:
-                embedding = np.fromstring(article.palabras_clave_embeddings.strip('{}'), sep=',')
-                if len(embedding) > 0:
-                    embeddings_list.append(embedding)
-                    articles_data.append({
-                        'id': article.articulo_id,
-                        'titular': article.titular,
-                        'categoria': article.categoria,
-                        'subcategoria': article.subcategoria,
-                        'periodico': article.periodico,
-                        'keywords': article.gpt_palabras_clave,
-                        'resumen': article.gpt_resumen
-                    })
-            except Exception as e:
-                logger.error(f"Error processing embedding for article {article.articulo_id}: {str(e)}")
-                continue
-
-        if not embeddings_list:
-            logger.warning("No valid embeddings found")
-            return {"error": "no_embeddings", "message": "No hay suficientes embeddings válidos para generar la visualización"}
-
-        # Convert to numpy array and perform t-SNE
-        embeddings_array = np.vstack(embeddings_list)
-        tsne = TSNE(n_components=2, random_state=42)
-        embeddings_2d = tsne.fit_transform(embeddings_array)
-
-        # Perform clustering
-        n_clusters = min(16, len(embeddings_list))
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-        clusters = kmeans.fit_predict(embeddings_array)
-
-        # Calculate cluster centers and keywords
-        cluster_data = []
-        for i in range(n_clusters):
-            cluster_indices = np.where(clusters == i)[0]
-            cluster_center = np.mean(embeddings_2d[cluster_indices], axis=0)
-            
-            # Get most common keywords for cluster
-            cluster_keywords = []
-            for idx in cluster_indices:
-                if articles_data[idx]['keywords']:
-                    try:
-                        keywords = articles_data[idx]['keywords'].split(',')
-                        cluster_keywords.extend(keywords)
-                    except:
-                        continue
-            
-            if cluster_keywords:
-                most_common = Counter(cluster_keywords).most_common(1)[0][0]
-                cluster_data.append({
-                    'center': cluster_center.tolist(),
-                    'keyword': most_common
-                })
-
-        # Prepare points data
-        points = [
-            {
-                'id': article['id'],
-                'coordinates': embeddings_2d[i].tolist(),
-                'titular': article['titular'],
-                'categoria': article['categoria'],
-                'subcategoria': article['subcategoria'],
-                'periodico': article['periodico'],
-                'keywords': article['keywords'],
-                'resumen': article['resumen']
-            }
-            for i, article in enumerate(articles_data)
-        ]
-
-        return {
-            'points': points,
-            'clusters': cluster_data
-        }
-        
-    except Exception as e:
-        logger.error(f"Error calculating map data: {str(e)}")
-        return {"error": "calculation_error", "message": str(e)}
-    
-    logger.info(f"Calculating map data for time filter: {time_filter}")
-    logger.info(f"Date range: {start_date} to {end_date}")
-
-    # Query articles with embeddings
-    articles = db.session.query(
-        Articulo.articulo_id,
-        Articulo.titular,
-        Articulo.gpt_resumen,
-        Articulo.palabras_clave_embeddings,
-        Articulo.gpt_palabras_clave,
-        Periodico.nombre.label('periodico'),
-        Categoria.nombre.label('categoria'),
-        Subcategoria.nombre.label('subcategoria')
-    ).join(
-        Periodico, Articulo.periodico_id == Periodico.periodico_id
-    ).join(
-        articulo_evento, Articulo.articulo_id == articulo_evento.c.articulo_id
-    ).join(
-        Evento, articulo_evento.c.evento_id == Evento.evento_id
-    ).join(
-        Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
-    ).join(
-        Categoria, Subcategoria.categoria_id == Categoria.categoria_id
-    ).filter(
-        Articulo.fecha_publicacion.between(start_date, end_date),
-        Articulo.palabras_clave_embeddings.isnot(None)
-    ).all()
-
-    if not articles:
-        return {'error': 'no_articles', 'message': 'No articles found for the specified time period'}
-
-    # Process embeddings
-    embeddings_list = []
-    articles_data = []
-    
-    for article in articles:
-        try:
-            if article.palabras_clave_embeddings:
-                embedding = np.fromstring(article.palabras_clave_embeddings.strip('{}'), sep=',')
-                if len(embedding) > 0:
-                    embeddings_list.append(embedding)
-                    articles_data.append({
-                        'id': article.articulo_id,
-                        'titular': article.titular,
-                        'periodico': article.periodico,
-                        'categoria': article.categoria,
-                        'subcategoria': article.subcategoria,
-                        'keywords': article.gpt_palabras_clave,
-                        'resumen': article.gpt_resumen
-                    })
-        except Exception as e:
-            logger.error(f"Error processing article {article.articulo_id}: {str(e)}")
-            continue
-
-    if not embeddings_list:
-        return {'error': 'no_embeddings', 'message': 'No valid embeddings found'}
-
-    # Convert to numpy array and calculate t-SNE
-    embeddings_array = np.vstack(embeddings_list)
-    tsne = TSNE(n_components=2, random_state=42)
-    embeddings_2d = tsne.fit_transform(embeddings_array)
-
-    # Perform clustering
-    kmeans = KMeans(n_clusters=16, random_state=42)
-    clusters = kmeans.fit_predict(embeddings_array)
-
-    # Calculate cluster centers and keywords
-    cluster_info = []
-    for i in range(16):
-        cluster_mask = clusters == i
-        if np.any(cluster_mask):
-            center = embeddings_2d[cluster_mask].mean(axis=0)
-            # Get most common keywords in cluster
-            cluster_keywords = [art['keywords'] for j, art in enumerate(articles_data) if clusters[j] == i]
-            keywords = ' '.join(filter(None, cluster_keywords))
-            if keywords:
-                cluster_info.append({
-                    'center': center.tolist(),
-                    'keyword': keywords[:50] + '...' if len(keywords) > 50 else keywords
-                })
-
-    # Prepare points data
-    points = [
-        {
-            'id': article['id'],
-            'coordinates': embeddings_2d[i].tolist(),
-            'titular': article['titular'],
-            'categoria': article['categoria'],
-            'subcategoria': article['subcategoria'],
-            'periodico': article['periodico'],
-            'keywords': article['keywords'],
-            'resumen': article['resumen'],
-            'cluster': int(clusters[i])
-        }
-        for i, article in enumerate(articles_data)
-    ]
-
-    return {
-        'points': points,
-        'clusters': cluster_info
-    }
-
-def calculate_and_cache_map_data(time_filter):
-    """Calculate and cache map data for a specific time filter."""
-    try:
-        data = calculate_map_data(time_filter)
-        if 'error' not in data:
-            cache.set(f'mapa_data_{time_filter}', data)
-            logger.info(f"Successfully cached map data for time filter: {time_filter}")
-        return data
-    except Exception as e:
-        logger.error(f"Error calculating map data for {time_filter}: {str(e)}")
-        return {'error': 'calculation_error', 'message': str(e)}
-
-@app.route('/api/mapa-data')
-@cache.cached(timeout=3600, query_string=True)  # Cache for 1 hour
-def mapa_data():
-    """API endpoint for map visualization data with caching."""
-    try:
-        time_filter = request.args.get('time_filter', '72h')
-        cached_data = cache.get(f'mapa_data_{time_filter}')
-        
-        if cached_data is not None:
-            logger.info(f"Cache hit for time filter: {time_filter}")
-            return jsonify(cached_data)
-            
-        # If cache miss, calculate data and cache it
-        logger.info(f"Cache miss for time filter: {time_filter}")
-        data = calculate_and_cache_map_data(time_filter)
-        return jsonify(data)
-    except Exception as e:
-        logger.error(f"Error in mapa_data endpoint: {str(e)}")
-        return jsonify({'error': 'server_error', 'message': 'Internal server error'}), 500
-
-        # Query articles with embeddings
-        articles = db.session.query(
-            Articulo.articulo_id,
-            Articulo.titular,
-            Articulo.palabras_clave_embeddings,
-            Articulo.gpt_palabras_clave,
-            Articulo.gpt_resumen,
-            Categoria.nombre.label('categoria'),
-            Subcategoria.nombre.label('subcategoria'),
-            Periodico.nombre.label('periodico')
-        ).join(
-            Periodico
-        ).outerjoin(
-            articulo_evento
-        ).outerjoin(
-            Evento
-        ).outerjoin(
-            Subcategoria
-        ).outerjoin(
-            Categoria
-        ).filter(
-            Articulo.updated_on.between(start_date, end_date),
-            Articulo.palabras_clave_embeddings.isnot(None),
-            Articulo.palabras_clave_embeddings != ''
-        ).all()
-
-        logger.info(f"Total de artículos encontrados: {len(articles)}")
-        
-        # Convert to DataFrame for processing
-        df = pd.DataFrame([{
-            'id': article.articulo_id,
+        updates = [{
+            'articulo_id': article.articulo_id,
             'titular': article.titular,
-            'palabras_clave_embeddings': article.palabras_clave_embeddings,
-            'keywords': article.gpt_palabras_clave,
-            'resumen': article.gpt_resumen,
-            'categoria': article.categoria or 'Sin categoría',
-            'subcategoria': article.subcategoria,
-            'periodico': article.periodico
-        } for article in articles])
+            'updated_on': article.updated_on.isoformat()
+        } for article in updated_articles]
         
-        # Process embeddings
-        embeddings = df['palabras_clave_embeddings'].apply(safe_parse_embeddings)
-        embeddings = embeddings[embeddings.apply(lambda x: len(x) > 0)]
+        return jsonify(updates)
         
-        if embeddings.empty:
-            return jsonify({
-                'error': 'no_articles',
-                'message': 'No hay suficientes artículos con embeddings válidos.'
-            })
-            
-        # Log processing info
-        logger.info(f"Artículos con embeddings: {len(embeddings)}")
-        if not embeddings.empty:
-            logger.info(f"Muestra de embedding: {embeddings.iloc[0][:5]}")
-            
-        # Convert embeddings to numpy array and filter invalid ones
-        embeddings_array = np.vstack(embeddings.to_numpy())
-        
-        # Calculate cosine distances
-        distance_matrix = cosine_distances(embeddings_array)
-        
-        # Use t-SNE with proper parameters
-        tsne = TSNE(
-            n_components=2, 
-            random_state=42,
-            perplexity=min(30, len(distance_matrix) - 1)
-        )
-        embeddings_2d = tsne.fit_transform(distance_matrix)
-        
-        # Keep only the articles with valid embeddings
-        valid_indices = embeddings.index
-        articles_data = df.loc[valid_indices].to_dict('records')
-        
-        # Perform clustering for keywords
-        n_clusters = min(16, len(embeddings_array))
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-        clusters = kmeans.fit_predict(embeddings_array)
-        
-        # Get cluster centers and most common keywords
-        cluster_info = []
-        for i in range(n_clusters):
-            cluster_mask = clusters == i
-            if np.any(cluster_mask):
-                center = embeddings_2d[cluster_mask].mean(axis=0)
-                cluster_articles = [art for j, art in enumerate(articles_data) if clusters[j] == i]
-                
-                # Get keywords for cluster
-                all_keywords = []
-                for art in cluster_articles:
-                    if art['keywords']:
-                        try:
-                            keywords = art['keywords'].split(',')
-                            all_keywords.extend([k.strip() for k in keywords if k.strip()])
-                        except:
-                            continue
-                
-                if all_keywords:
-                    most_common = Counter(all_keywords).most_common(1)[0][0]
-                else:
-                    most_common = f"Cluster {i+1}"
-                
-                cluster_info.append({
-                    'center': center.tolist(),
-                    'keyword': most_common
-                })
-        
-        # Prepare points data
-        points = [
-            {
-                'id': article['id'],
-                'coordinates': embeddings_2d[i].tolist(),
-                'titular': article['titular'],
-                'periodico': article['periodico'],
-                'categoria': article['categoria'],
-                'subcategoria': article['subcategoria'],
-                'keywords': article['keywords'],
-                'resumen': article['resumen'],
-                'cluster': int(clusters[i])
-            }
-            for i, article in enumerate(articles_data)
-        ]
-        
-        logger.info(f"Procesamiento completado: {len(points)} válidos, {len(articles) - len(points)} errores")
-        
-        return jsonify({
-            'points': points,
-            'clusters': cluster_info
-        })
-        
+    except ValueError as e:
+        return jsonify({'error': 'Invalid date format'}), 400
     except Exception as e:
-        logger.error(f"Error in mapa_data: {str(e)}", exc_info=True)
-        return jsonify({
-            'error': 'processing_error',
-            'message': 'Error procesando los datos para la visualización.'
-        }), 500
-import ast
-import json
-from collections import Counter
-from sklearn.manifold import TSNE
-from sklearn.cluster import KMeans
-from sqlalchemy.orm import joinedload
-from statistics import mode
-from sqlalchemy import func
-
-# Removed duplicate endpoint implementation
-import logging
+        logger.error(f"Error fetching article updates: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 def safe_parse_embeddings(x):
     if x is None or not isinstance(x, str):
@@ -943,7 +77,7 @@ def get_mapa_data():
         articles_query = db.session.query(
             Articulo.articulo_id,
             Articulo.titular,
-            Articulo.palabras_clave_embeddings,  # Cambiar embeddings por palabras_clave_embeddings
+            Articulo.palabras_clave_embeddings,
             Articulo.gpt_palabras_clave,
             Articulo.gpt_resumen,
             Periodico.nombre.label('periodico_nombre'),
@@ -967,40 +101,27 @@ def get_mapa_data():
         ).filter(
             Articulo.updated_on.between(start_date, end_date)
         )
-        
-        # Log total de artículos antes de filtrar por embeddings
-        total_articles = articles_query.count()
-        logger.info(f"Total de artículos encontrados: {total_articles}")
-        
-        # Agregar filtro de embeddings
+
+        # Add embeddings filter
         articles = articles_query.filter(
             Articulo.palabras_clave_embeddings.isnot(None),
             Articulo.palabras_clave_embeddings != '',
-            func.length(Articulo.palabras_clave_embeddings) > 2  # Asegurar que no sea '[]' o '{}'
+            func.length(Articulo.palabras_clave_embeddings) > 2
         ).all()
-        
-        logger.info(f"Artículos con embeddings: {len(articles)}")
-        
-        # Log de muestra de embeddings
-        if articles:
-            sample_embedding = articles[0].palabras_clave_embeddings
-            logger.info(f"Muestra de embedding: {sample_embedding[:100]}")
 
         if not articles:
-            logging.warning("No articles found with valid embeddings")
             return jsonify({
                 'error': 'no_articles',
-                'message': 'No se encontraron artículos con embeddings válidos para el período seleccionado'
+                'message': 'No se encontraron artículos con embeddings válidos'
             })
 
+        # Process articles and create visualization data
         embeddings_list = []
         articles_data = []
-        valid_count = 0
-        error_count = 0
 
         for article in articles:
             try:
-                embedding = parse_embedding(article.palabras_clave_embeddings)
+                embedding = safe_parse_embeddings(article.palabras_clave_embeddings)
                 if embedding is not None and embedding.size > 0:
                     embeddings_list.append(embedding)
                     articles_data.append({
@@ -1012,14 +133,8 @@ def get_mapa_data():
                         'keywords': article.gpt_palabras_clave,
                         'resumen': article.gpt_resumen
                     })
-                    valid_count += 1
-                else:
-                    error_count += 1
             except Exception as e:
-                error_count += 1
-                logger.error(f"Error procesando artículo {article.articulo_id}: {str(e)}")
-
-        logger.info(f"Procesamiento completado: {valid_count} válidos, {error_count} errores")
+                logger.error(f"Error processing article {article.articulo_id}: {str(e)}")
 
         if not embeddings_list:
             return jsonify({
@@ -1027,49 +142,14 @@ def get_mapa_data():
                 'message': 'No se encontraron artículos con embeddings válidos'
             })
 
-        # Pad or trim embeddings to a consistent size
-        embedding_lengths = [len(emb) for emb in embeddings_list]
-        target_length = mode(embedding_lengths)
-
-        def pad_embedding(embedding, target_length):
-            if len(embedding) < target_length:
-                return np.pad(embedding, (0, target_length - len(embedding)), mode='constant')
-            return embedding[:target_length]
-
-        # Convert embeddings to numpy array
-        embeddings_array = np.vstack([pad_embedding(emb, target_length) for emb in embeddings_list])
-
-        # Calculate cosine distances
+        # Create visualization data
+        embeddings_array = np.vstack(embeddings_list)
         distance_matrix = cosine_distances(embeddings_array)
 
-        # Apply t-SNE on the distance matrix
-        tsne = TSNE(n_components=2, random_state=42, perplexity=min(30, len(distance_matrix) - 1))
+        tsne = TSNE(n_components=2, random_state=42)
         embeddings_2d = tsne.fit_transform(distance_matrix)
 
-        # Create DataFrame for visualization
-        plot_df = pd.DataFrame(embeddings_2d, columns=['x', 'y'])
-        plot_df['categoria'] = [art['categoria'] for art in articles_data]
-
-        # Calculate cluster centers and keywords
-        n_clusters = min(16, len(embeddings_array))
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-        cluster_labels = kmeans.fit_predict(embeddings_2d)
-        
-        # Get keywords for each cluster
-        clusters = []
-        for i in range(n_clusters):
-            cluster_points = [articles_data[j]['keywords'] for j in range(len(articles_data)) if cluster_labels[j] == i]
-            if cluster_points:
-                # Join all keywords and get most common
-                all_keywords = ' '.join(filter(None, cluster_points)).split(',')
-                if all_keywords:
-                    most_common = Counter(all_keywords).most_common(1)[0][0].strip()
-                    clusters.append({
-                        'center': kmeans.cluster_centers_[i].tolist(),
-                        'keyword': most_common
-                    })
-
-        # Prepare response with simplified structure
+        # Prepare response
         points = [
             {
                 'id': article['id'],
@@ -1083,13 +163,11 @@ def get_mapa_data():
             for i, article in enumerate(articles_data)
         ]
 
-        return jsonify({'points': points, 'clusters': clusters})
+        return jsonify({'points': points})
 
     except Exception as e:
-        logging.error(f"Error generating map data: {str(e)}")
-        return jsonify({'error': 'processing_error', 'message': 'Error interno en el servidor'}), 500
-
-
+        logger.error(f"Error generating map data: {str(e)}")
+        return jsonify({'error': 'processing_error', 'message': str(e)}), 500
 
 @app.route('/api/articles')
 def get_articles():
@@ -1102,9 +180,10 @@ def get_articles():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
-        # Obtener información de categoría y subcategoría si están presentes
+        # Get category and subcategory info if present
         category_info = None
         subcategory_info = None
+        
         if category_id:
             category_info = db.session.query(
                 Categoria.categoria_id,
@@ -1112,9 +191,6 @@ def get_articles():
             ).filter(
                 Categoria.categoria_id == category_id
             ).first()
-
-            if not category_info:
-                return jsonify({'error': 'Category not found'}), 404
 
         if subcategory_id:
             subcategory_info = db.session.query(
@@ -1124,136 +200,86 @@ def get_articles():
                 Subcategoria.subcategoria_id == subcategory_id
             ).first()
 
-            if not subcategory_info:
-                return jsonify({'error': 'Subcategory not found'}), 404
-
-        # Consulta eventos y artículos relacionados
+        # Query events and related articles
         events_query = db.session.query(
             Evento.evento_id,
             Evento.titulo,
             Evento.descripcion,
             Evento.fecha_evento,
-            Evento.gpt_sujeto_activo,
-            Evento.gpt_sujeto_pasivo,
-            Evento.gpt_importancia,
-            Evento.gpt_tiene_contexto,
-            Evento.gpt_palabras_clave,
             Articulo.articulo_id,
             Articulo.titular,
             Articulo.url,
             Articulo.fecha_publicacion,
-            Articulo.updated_on,
             Articulo.paywall,
-            Articulo.gpt_opinion,
             Periodico.nombre,
             Periodico.logo_url
         ).join(
-            Subcategoria, Evento.subcategoria_id == Subcategoria.subcategoria_id
+            Subcategoria,
+            Evento.subcategoria_id == Subcategoria.subcategoria_id
         ).join(
-            articulo_evento, articulo_evento.c.evento_id == Evento.evento_id
+            articulo_evento,
+            articulo_evento.c.evento_id == Evento.evento_id
         ).join(
-            Articulo, and_(
+            Articulo,
+            and_(
                 Articulo.articulo_id == articulo_evento.c.articulo_id,
                 Articulo.fecha_publicacion.between(start_date, end_date)
             )
         ).join(
-            Periodico, Periodico.periodico_id == Articulo.periodico_id
+            Periodico,
+            Periodico.periodico_id == Articulo.periodico_id
         )
 
-        # Aplicar filtros
-        if category_id == 0:  # "All" category
-            events_query = events_query  # Sin filtro de categoría
-        elif category_id:
+        # Apply filters
+        if category_id and category_id != 0:
             events_query = events_query.filter(Subcategoria.categoria_id == category_id)
         if subcategory_id:
             events_query = events_query.filter(Subcategoria.subcategoria_id == subcategory_id)
 
-        # Ordenar eventos por fecha de publicación según el parámetro sort_direction
+        # Sort by publication date
         if sort_direction == 'asc':
-            events_results = events_query.order_by(
-                Articulo.fecha_publicacion
-            ).all()
+            events_query = events_query.order_by(Articulo.fecha_publicacion)
         else:
-            events_results = events_query.order_by(
-                desc(Articulo.fecha_publicacion)
-            ).all()
+            events_query = events_query.order_by(desc(Articulo.fecha_publicacion))
 
-        if not events_results:
-            logger.warning(f"No events found for category_id={category_id}, subcategory_id={subcategory_id}")
-            return jsonify({
-                'categories': [{
-                    'nombre': category_info.nombre if category_info else 'All Categories',
-                    'categoria_id': category_id,
-                    'subcategories': [{
-                        'nombre': subcategory_info.nombre if subcategory_info else 'All Subcategories',
-                        'subcategoria_id': subcategory_id,
-                        'events': []
-                    }]
-                }]
-            })
+        events = events_query.all()
 
-        # Procesar resultados
+        # Process results
         events_dict = {}
-        for result in events_results:
-            evento_id = result[0]
-            if evento_id not in events_dict:
-                events_dict[evento_id] = {
-                    'titulo': result[1],
-                    'descripcion': result[2],
-                    'fecha_evento': result[3].isoformat() if result[3] else None,
-                    'gpt_sujeto_activo': result[4],
-                    'gpt_sujeto_pasivo': result[5],
-                    'gpt_importancia': result[6],
-                    'gpt_tiene_contexto': result[7],
-                    'gpt_palabras_clave': result[8],
-                    'article_count': 0,
+        for event in events:
+            if event.evento_id not in events_dict:
+                events_dict[event.evento_id] = {
+                    'titulo': event.titulo,
+                    'descripcion': event.descripcion,
+                    'fecha_evento': event.fecha_evento.isoformat() if event.fecha_evento else None,
                     'articles': []
                 }
 
-            article_id = result[9]
-            article_exists = any(a['id'] == article_id for a in events_dict[evento_id]['articles'])
-            if not article_exists:
-                events_dict[evento_id]['articles'].append({
-                    'id': article_id,
-                    'titular': result[10],
-                    'url': result[11],
-                    'fecha_publicacion': result[12].isoformat() if result[12] else None,
-                    'updated_on': result[13].isoformat() if result[13] else None,
-                    'paywall': result[14],
-                    'gpt_opinion': result[15],
-                    'periodico_nombre': result[16],
-                    'periodico_logo': result[17]
-                })
-                events_dict[evento_id]['article_count'] += 1
+            events_dict[event.evento_id]['articles'].append({
+                'id': event.articulo_id,
+                'titular': event.titular,
+                'url': event.url,
+                'fecha_publicacion': event.fecha_publicacion.isoformat(),
+                'paywall': event.paywall,
+                'periodico_nombre': event.nombre,
+                'periodico_logo': event.logo_url
+            })
 
-        # Ordenar eventos por fecha de publicación más reciente de sus artículos
-        sorted_events = sorted(
-            events_dict.values(),
-            key=lambda x: (
-                max((a['fecha_publicacion'] or '1900-01-01') for a in x['articles']),
-                -x['article_count']
-            ),
-            reverse=True
-        )
-
-        response_data = {
+        return jsonify({
             'categories': [{
                 'nombre': category_info.nombre if category_info else 'All Categories',
                 'categoria_id': category_id,
                 'subcategories': [{
                     'nombre': subcategory_info.nombre if subcategory_info else 'All Subcategories',
                     'subcategoria_id': subcategory_id,
-                    'events': sorted_events
+                    'events': list(events_dict.values())
                 }]
             }]
-        }
-
-        return jsonify(response_data)
+        })
 
     except Exception as e:
-        logger.error(f"Error in get_articles: {str(e)}", exc_info=True)
-        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
-
+        logger.error(f"Error in get_articles: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/article/<int:article_id>')
 def get_article(article_id):
@@ -1264,29 +290,26 @@ def get_article(article_id):
             Articulo.subtitular,
             Articulo.url,
             Articulo.fecha_publicacion,
+            Articulo.updated_on,
             Articulo.agencia,
             Articulo.paywall,
             Articulo.gpt_resumen,
-            Articulo.gpt_opinion,
             Periodista.nombre.label('periodista_nombre'),
             Periodista.apellido.label('periodista_apellido'),
             Periodico.nombre.label('periodico_nombre'),
             Periodico.logo_url.label('periodico_logo')
         ).outerjoin(
-            Periodista, cast(Articulo.periodista_id, String) == cast(Periodista.periodista_id, String)
+            Periodista,
+            cast(Articulo.periodista_id, String) == cast(Periodista.periodista_id, String)
         ).join(
-            Periodico, Periodico.periodico_id == Articulo.periodico_id
+            Periodico,
+            Periodico.periodico_id == Articulo.periodico_id
         ).filter(
             Articulo.articulo_id == article_id
         ).first()
 
         if not article:
-            logger.warning(f"Article not found: {article_id}")
             return jsonify({'error': 'Article not found'}), 404
-
-        periodista_nombre = None
-        if article.periodista_nombre and article.periodista_apellido:
-            periodista_nombre = f"{article.periodista_nombre} {article.periodista_apellido}"
 
         return jsonify({
             'id': article.articulo_id,
@@ -1294,18 +317,18 @@ def get_article(article_id):
             'subtitular': article.subtitular,
             'url': article.url,
             'fecha_publicacion': article.fecha_publicacion.isoformat() if article.fecha_publicacion else None,
-            'periodista': periodista_nombre,
+            'updated_on': article.updated_on.isoformat() if article.updated_on else None,
+            'periodista': f"{article.periodista_nombre} {article.periodista_apellido}" if article.periodista_nombre and article.periodista_apellido else None,
             'agencia': article.agencia,
             'paywall': article.paywall,
             'gpt_resumen': article.gpt_resumen,
-            'gpt_opinion': article.gpt_opinion,
             'periodico_nombre': article.periodico_nombre,
             'periodico_logo': article.periodico_logo
         })
 
     except Exception as e:
-        logger.error(f"Error fetching article details: {str(e)}", exc_info=True)
-        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+        logger.error(f"Error fetching article details: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
