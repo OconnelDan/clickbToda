@@ -54,9 +54,13 @@
 }
 
 /* Category Navigation Styles */
+
+
+
 .category-nav {
     position: sticky;
-    top: 56px; /* Ajusta este valor según la altura de tu navbar principal */
+    padding: 0.5rem 0;
+    ##top: 55px; /* Ajusta este valor según la altura de tu navbar principal */
     z-index: 1020;
     background: var(--bs-body-bg);
     padding: 0.5rem 0;
@@ -71,6 +75,7 @@
 }
 
 .nav-tabs, .nav-pills {
+    position: sticy;
     display: flex;
     flex-wrap: nowrap;
     width: 100%;
@@ -229,6 +234,29 @@
         min-height: 200px;
     }
 }
+@media (max-width: 767px) {
+  .primernavbar {
+    position: fixed;
+    top: 0px;
+    width: 100%;
+    z-index: 1030; /* Asegúrate de que tenga un z-index alto para que se superponga a otros elementos */
+    background-color: var(--bs-body-bg); /* Usa la variable de color de fondo de tu página */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Añade una sombra para darle un efecto de elevación */
+    padding: 0.5rem 0.5rem;
+  }
+
+  .category-nav {
+    position: sticky;
+    padding: 0.5rem 0;
+    top: 55px; /* Ajusta este valor según la altura de tu navbar principal */
+    z-index: 1020;
+    background: var(--bs-body-bg);
+    padding: 0.5rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 1rem;
+  }
+}
+
 
 /* Desktop styles */
 @media (min-width: 992px) {

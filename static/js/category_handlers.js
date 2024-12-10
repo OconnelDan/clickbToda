@@ -283,7 +283,6 @@ function updateDisplay(data) {
             });
             
             categorySection.innerHTML = `
-                <h2 class="mb-3">${category.nombre || 'Unnamed Category'}</h2>
                 <div class="category-content">
                     ${sortedSubcategories.map(subcategory => {
                         // Sort events by article count
@@ -293,9 +292,6 @@ function updateDisplay(data) {
                         
                         return `
                             <div class="subcategory-section mb-4">
-                                ${subcategory.nombre ? 
-                                    `<h3 class="h4 mb-3">${subcategory.nombre}</h3>` : 
-                                    ''}
                                 <div class="events-container">
                                     ${sortedEvents.map(event => {
                                         // Sort articles by fecha_publicacion
