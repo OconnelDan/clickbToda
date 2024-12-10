@@ -1,0 +1,294 @@
+<div class="event-articles mb-4">
+                                                <div class="row">
+                                                    <div class="col-md-3 col-12">
+                                                        <div class="event-info">
+                                                            <h4 class="event-title">Caída del régimen de El Asad</h4>
+                                                            <p class="event-description">Tras más de una década de conflicto, los rebeldes han logrado derrocar al régimen de Bashar al Asad, forzándolo a huir de Damasco en un avión. Este acontecimiento marca un punto culminante en la guerra civil siria, con grandes celebraciones entre los opositores y un futuro incierto para la región.</p>
+                                                            <div class="event-meta">
+                                                                <small class="text-muted">2024-12-08</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-9 col-12">
+
+<div class="articles-carousel"><button class="scroll-button left" data-direction="left" style="display: flex;">←</button>
+                                                            <div class="carousel-wrapper">
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="25586" data-article-url="https://www.elmundo.es/internacional/2024/12/09/67568d3ea75cca894151b87d-directo.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/El_Mundo_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Última hora del conflicto en Siria: cae el régimen de Asad | EEUU trabaja con sus aliados en Oriente Próximo para destruir las armas químicas de Asad
+                                                                                </h5>
+                                                                                <div class="article-opinion">La situación en Siria presenta un cambio significativo y riesgos potenciales.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24948" data-article-url="https://www.elmundo.es/deportes/formula-1/2024/12/08/675598c321efa083098b457f.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/El_Mundo_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Ferrari no culmina el milagro en Yas Marina y McLaren gana el título 26 años después
+                                                                                </h5>
+                                                                                <div class="article-opinion">Resumen de la carrera y resultados del GP de Abu Dhabi.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24932" data-article-url="https://www.abc.es/deportes/formula-1/carlos-sainz-segundo-despide-ferrari-podio-20241208153430-nt.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c3/Diario_ABC_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title text-muted">
+                                                                                    Carlos Sainz, segundo, se despide de Ferrari con otro podio
+                                                                                </h5>
+                                                                                <div class="article-opinion">Sainz termina su etapa en Ferrari con un buen resultado.</div>
+                                                                                <span class="badge bg-secondary">Paywall</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24461" data-article-url="https://elpais.com/internacional/2024-12-08/el-regimen-de-siria-era-un-tigre-de-papel-victorioso-por-fuera-fragil-por-dentro.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/El_Pa%C3%ADs_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    El régimen de Siria era un tigre de papel: victorioso, por fuera; frágil, por dentro
+                                                                                </h5>
+                                                                                <div class="article-opinion">El régimen sirio se muestra frágil tras la ofensiva rebelde.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24460" data-article-url="https://elpais.com/internacional/2024-12-08/los-rebeldes-derriban-el-regimen-de-el-asad-tras-13-anos-de-guerra-y-el-dirigente-huye-de-damasco-en-avion.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/El_Pa%C3%ADs_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Los rebeldes derriban el régimen de El Asad tras 13 años de guerra y el dirigente huye de Damasco en avión
+                                                                                </h5>
+                                                                                <div class="article-opinion">La caída del régimen es un momento histórico para Siria.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="25212" data-article-url="https://www.elmundo.es/internacional/2024/12/09/6755f0a721efa06c568b456f.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/El_Mundo_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Rusia e Irán dejan caer a Asad tras 13 años de guerra en Siria
+                                                                                </h5>
+                                                                                <div class="article-opinion">La caída de Asad representa un cambio significativo en Siria.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24484" data-article-url="https://www.abc.es/internacional/rebeldes-sirios-entran-damasco-bashar-assad-huye-20241208052751-nt.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c3/Diario_ABC_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Los rebeldes sirios entran en Damasco mientras Al Assad huye
+                                                                                </h5>
+                                                                                <div class="article-opinion">Los rebeldes celebran la liberación de Damasco.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24403" data-article-url="https://elpais.com/internacional/2024-12-07/conflicto-de-oriente-proximo-en-directo.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/El_Pa%C3%ADs_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Conflicto de Oriente Próximo, en directo | Los rebeldes sirios afirman que han entrado en Damasco
+                                                                                </h5>
+                                                                                <div class="article-opinion">Los rebeldes celebran avances significativos en Siria.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="25014" data-article-url="https://www.abc.es/internacional/siria-celebra-nueva-era-llena-incertidumbres-assad-20241208181213-nt.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c3/Diario_ABC_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title text-muted">
+                                                                                    Siria celebra una nueva era llena de incertidumbre con Assad desaparecido
+                                                                                </h5>
+                                                                                <div class="article-opinion">El derrocamiento de Assad trae esperanza a Siria.</div>
+                                                                                <span class="badge bg-secondary">Paywall</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="25001" data-article-url="https://elpais.com/internacional/2024-12-08/conflicto-de-oriente-proximo-en-directo.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/El_Pa%C3%ADs_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Conflicto en Siria, en directo | El líder de los rebeldes afirma en Damasco que el derrocamiento de El Asad abre una “nueva historia” en Siria
+                                                                                </h5>
+                                                                                <div class="article-opinion">La caída de El Asad marca un cambio significativo en Siria.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24863" data-article-url="https://www.elmundo.es/internacional/2024/12/08/675585e1e9cf4aa6118b4576-video.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/El_Mundo_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Así han anunciado los rebeldes en Siria la caída del régimen de Asad
+                                                                                </h5>
+                                                                                <div class="article-opinion">Los rebeldes celebran la caída del régimen de Asad en Siria.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24823" data-article-url="https://www.elmundo.es/internacional/2024/12/08/67558c99fdddff63488b456d.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/El_Mundo_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Bashar Asad: la mano de hierro que no quiso redimir a su pueblo
+                                                                                </h5>
+                                                                                <div class="article-opinion">El artículo critica la represión de Asad en Siria desde 2011.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24807" data-article-url="https://www.abc.es/internacional/guerra-siria-ultima-hora-rebeldes-damasco-assad-20241207175312-di.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c3/Diario_ABC_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Los rebeldes asaltan y saquean el palacio presidencial, símbolo de los Assad
+                                                                                </h5>
+                                                                                <div class="article-opinion">La caída de Assad es vista como un alivio para muchos sirios.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24794" data-article-url="https://elpais.com/internacional/2024-12-08/la-primavera-de-siria-llego-en-invierno.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/El_Pa%C3%ADs_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    La ‘primavera’ de Siria llegó en invierno
+                                                                                </h5>
+                                                                                <div class="article-opinion">El artículo analiza el cambio de poder en Siria y sus implicaciones regionales.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="25190" data-article-url="https://www.nytimes.com/2024/12/08/briefing/syria-south-korea-trump.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/NewYorkTimes.svg/1920px-NewYorkTimes.svg.png" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Monday Briefing: Al-Assad Flees Syria as Rebels Claim Power
+                                                                                </h5>
+                                                                                <div class="article-opinion">La situación en Siria se complica con la huida de Al-Assad.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24644" data-article-url="https://www.elmundo.es/internacional/2024/12/08/67554df0a75cca894147834f-directo.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/El_Mundo_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Última hora en Siria, cae el régimen de Asad | El presidente sirio habría huido en avión de Damasco y se desconoce su paradero
+                                                                                </h5>
+                                                                                <div class="article-opinion">La caída de Asad es un cambio significativo en Siria.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24678" data-article-url="https://www.nytimes.com/video/world/middleeast/100000009865736/syria-damascus-assad-rebels.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/NewYorkTimes.svg/1920px-NewYorkTimes.svg.png" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Syrians Celebrate as Rebel Forces Take Control of Damascus
+                                                                                </h5>
+                                                                                <div class="article-opinion">Los sirios celebran la victoria de las fuerzas rebeldes en Damasco.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24449" data-article-url="https://www.elmundo.es/internacional/2024/12/08/675509e9e85ece224a8b4573.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/El_Mundo_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    La ofensiva insurgente en Siria declara Damasco "libre" de Bashar al Asad, entre informaciones de que ha huido del país
+                                                                                </h5>
+                                                                                <div class="article-opinion">La situación en Siria se agrava con la ofensiva insurgente.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24927" data-article-url="https://elpais.com/deportes/formula-1/2024-12-08/norris-devuelve-a-mclaren-al-cielo-primer-titulo-de-constructores-desde-1998.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/El_Pa%C3%ADs_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Norris devuelve a McLaren al cielo: primer título de constructores desde 1998
+                                                                                </h5>
+                                                                                <div class="article-opinion">McLaren logra un hito histórico en la Fórmula 1.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24862" data-article-url="https://www.elmundo.es/internacional/2024/12/08/6755a333e85ece01768b4577-video.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/El_Mundo_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Rebeldes sirios asaltan el Palacio presidencial y la residencia privada de Asad
+                                                                                </h5>
+                                                                                <div class="article-opinion">Los rebeldes celebran la caída del régimen de Asad.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div class="article-card article-card-clickable" data-article-id="24861" data-article-url="https://www.elmundo.es/internacional/2024/12/08/67558157fdddffb2058b458f.html" role="button" style="cursor: pointer;">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/El_Mundo_logo.svg" class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ">
+                                                                                    Decenas de sirios asaltan la residencia de Asad e incendian parte del Palacio presidencial en "venganza por la opresión"
+                                                                                </h5>
+                                                                                <div class="article-opinion">La caída de Asad genera esperanza en Siria.</div>
+                                                                                
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                            </div>
+                                                        <button class="scroll-button right visible" data-direction="right" style="display: flex;">→</button></div>
+                                                    </div>
+                                                </div>
+                                            </div>

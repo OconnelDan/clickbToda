@@ -7,14 +7,18 @@
     {% if initial_data and initial_data.categories %}
         {% for category in initial_data.categories %}
         <div class="category-section mb-5" data-category-id="{{ category.categoria_id }}" data-loaded="true">
+            <h2 class="mb-3">{{ category.nombre }}</h2>
             <div class="category-content">
                 {% for subcategory in category.subcategories %}
                     <div class="subcategory-section mb-4">
+                        {% if subcategory.nombre %}
+                            <h3 class="h4 mb-3">{{ subcategory.nombre }}</h3>
+                        {% endif %}
                         <div class="events-container">
                             {% for event in subcategory.events %}
                                 <div class="event-articles mb-4">
                                     <div class="row">
-                                        <div class="col-md-3">
+                                        <div class="col-md-3 col-12">
                                             <div class="event-info">
                                                 <h4 class="event-title">{{ event.titulo }}</h4>
                                                 <p class="event-description">{{ event.descripcion }}</p>
@@ -23,7 +27,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-9">
+                                        <div class="col-md-9 col-12">
                                             <div class="articles-carousel">
                                                 <div class="carousel-wrapper">
                                                     {% for article in event.articles %}

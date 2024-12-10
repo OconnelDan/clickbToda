@@ -239,26 +239,56 @@
     position: fixed;
     top: 0px;
     width: 100%;
-    z-index: 1030; /* Asegúrate de que tenga un z-index alto para que se superponga a otros elementos */
-    background-color: var(--bs-body-bg); /* Usa la variable de color de fondo de tu página */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Añade una sombra para darle un efecto de elevación */
+    z-index: 1030;
+    background-color: var(--bs-body-bg);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     padding: 0.5rem 0.5rem;
   }
 
   .category-nav {
     position: sticky;
     padding: 0.5rem 0;
-    top: 55px; /* Ajusta este valor según la altura de tu navbar principal */
+    top: 55px;
     z-index: 1020;
     background: var(--bs-body-bg);
     padding: 0.5rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-bottom: 1rem;
   }
+
+  .event-articles .row {
+     display: flex;
+     flex-direction: row;
+  }
+
+  .event-articles .col-12 {
+       width: 50%;
+  }
+
+  .event-info {
+       order: 1;
+  }
+
+  .articles-carousel {
+       order: 2;
+  }
+  .event-articles .row {
+     display: flex;
+     flex-direction: row;
+  }
+  .event-articles .col-12 {
+       width: 50%;
+  }
+  .event-info {
+       order: 1;
+  }
+  .articles-carousel {
+       order: 2;
+  }
 }
 
-
 /* Desktop styles */
+    
 @media (min-width: 992px) {
     .article-card {
         width: calc(25% - 1rem);
@@ -363,3 +393,4 @@
 .article-link {
     padding: 0.375rem 0.75rem;
     font-size: 
+        }
