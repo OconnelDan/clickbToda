@@ -1,19 +1,9 @@
 <div class="articles-carousel">
-    <div class="event-container">
-        <div class="event-info">
-            <h3 class="event-title">{{ category.Categoria.nombre }}</h3>
-            <p class="event-description">{{ category.Categoria.descripcion }}</p>
-            {% if category.article_count %}
-            <div class="badge bg-primary">{{ category.article_count }} artículos</div>
+    <div class="carousel-container" data-category="{{ category.Categoria.categoria_id }}">
+        <div class="carousel-wrapper">
+            {% if not category.articles %}
+            <div class="loading-placeholder">Loading articles...</div>
             {% endif %}
-        </div>
-        
-        <div class="carousel-container" data-category="{{ category.Categoria.categoria_id }}">
-            <div class="carousel-wrapper">
-                {% if not category.articles %}
-                <div class="loading-placeholder">Loading articles...</div>
-                {% endif %}
-            </div>
         </div>
     </div>
 </div>
