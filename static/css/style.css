@@ -272,19 +272,6 @@
   .articles-carousel {
        order: 2;
   }
-  .event-articles .row {
-     display: flex;
-     flex-direction: row;
-  }
-  .event-articles .col-12 {
-       width: 50%;
-  }
-  .event-info {
-       order: 1;
-  }
-  .articles-carousel {
-       order: 2;
-  }
 }
 
 /* Desktop styles */
