@@ -7,12 +7,12 @@
     {% if initial_data and initial_data.categories %}
         {% for category in initial_data.categories %}
         <div class="category-section mb-5" data-category-id="{{ category.categoria_id }}" data-loaded="true">
-            <h2 class="mb-3">{{ category.nombre }}</h2>
+            
             <div class="category-content">
                 {% for subcategory in category.subcategories %}
                     <div class="subcategory-section mb-4">
                         {% if subcategory.nombre %}
-                            <h3 class="h4 mb-3">{{ subcategory.nombre }}</h3>
+                            
                         {% endif %}
                         <div class="events-container">
                             {% for event in subcategory.events %}
