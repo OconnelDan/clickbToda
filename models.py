@@ -38,7 +38,7 @@ class User(UserMixin, db.Model):
     fin_fecha_suscripcion = Column(TIMESTAMP)
     status = Column(String(255))
     puntos = Column(Integer, default=0)
-    
+
     user_logs = relationship('UserLog', back_populates='user')
 
     @staticmethod

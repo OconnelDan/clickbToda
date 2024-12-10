@@ -184,8 +184,7 @@ function updateModalContent(article) {
             'modalNewspaperLogo': { type: 'img', value: article.periodico_logo || '/static/img/default-newspaper.svg' },
             'articleModalLabel': { type: 'text', value: article.titular || 'No Title' },
             'articleSubtitle': { type: 'text', value: article.subtitular || '' },
-            'articleDate': { type: 'text', value: `Publicado el: ${formatDate(article.fecha_publicacion)}` },
-            'articleUpdateDate': { type: 'text', value: article.updated_on ? `Actualizado el: ${formatDate(article.updated_on, true)}` : '' },
+            'articleDate': { type: 'text', value: formatDate(article.fecha_publicacion) },
             'articleAgency': { type: 'text', value: article.agencia || '' },
             'articleSummary': { type: 'text', value: article.gpt_resumen || 'No summary available' },
             'articleAuthor': { type: 'text', value: article.periodista || 'Unknown Author' }
@@ -212,20 +211,15 @@ function updateModalContent(article) {
     }
 }
 
-function formatDate(dateString, includeTime = false) {
+function formatDate(dateString) {
     if (!dateString) return '';
     try {
         const date = new Date(dateString);
-        const options = {
+        return date.toLocaleDateString(undefined, {
             year: 'numeric',
             month: 'long',
-            day: 'numeric',
-            ...(includeTime && {
-                hour: '2-digit',
-                minute: '2-digit'
-            })
-        };
-        return date.toLocaleDateString('es-ES', options);
+            day: 'numeric'
+        });
     } catch (error) {
         console.warn('Error formatting date:', error);
         return dateString;

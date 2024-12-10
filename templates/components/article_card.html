@@ -9,17 +9,9 @@
             {% if article.gpt_opinion %}
             <div class="article-opinion">{{ article.gpt_opinion }}</div>
             {% endif %}
-            <p class="text-muted small">
-                Publicado el: {{ article.fecha_publicacion }}
-                {% if article.updated_on %}
-                <br>Actualizado el: {{ article.updated_on.strftime('%Y-%m-%d %H:%M') }}
-                {% endif %}
-            </p>
             {% if article.paywall %}
             <span class="badge bg-secondary">Paywall</span>
             {% endif %}
         </div>
     </div>
 </div>
-
-

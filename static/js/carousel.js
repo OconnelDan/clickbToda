@@ -10,7 +10,69 @@ document.addEventListener('DOMContentLoaded', function() {
             reloadArticles(this.value);
         });
     }
+    
+    // Filter button handler
+    const filterButton = document.querySelector('.filter');
+    if (filterButton) {
+        filterButton.dataset.order = 'desc'; // Default order
+        filterButton.addEventListener('click', function() {
+            console.log('Filter button clicked'); // Log para confirmar clic en el botón
+            toggleOrder(this);
+        });
+    }
 });
+
+function toggleOrder(button) {
+    if (!button) {
+        console.log('Button not found!'); // Log para verificar si el botón existe
+        return;
+    }
+
+    const currentOrder = button.dataset.order;
+    console.log('Current order:', currentOrder); // Log para mostrar el orden actual
+
+    const newOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+    button.dataset.order = newOrder;
+    button.innerHTML = newOrder === 'desc' ? 'Filtrar por fecha descendente' : 'Filtrar por fecha ascendente';
+
+    console.log('New order set to:', newOrder); // Log para mostrar el nuevo orden
+
+    // Llamar a reloadArticles con el nuevo orden
+    reloadArticles(null, newOrder);
+}
+
+function reloadArticles(date, order = 'desc') {
+    const activeTab = document.querySelector('#categoryTabs .nav-link.active');
+    const selectedCategoryId = activeTab ? activeTab.dataset.categoryId : null;
+    const selectedTimeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
+
+    let url = '/api/articles';
+    const params = new URLSearchParams();
+
+    if (selectedCategoryId) params.append('category_id', selectedCategoryId);
+    if (date) params.append('date', date);
+    params.append('time_filter', selectedTimeFilter);
+    params.append('order', order);
+
+    if (params.toString()) url += `?${params.toString()}`;
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch articles');
+            return response.json();
+        })
+        .then(data => {
+            if (!data.categories) throw new Error('Invalid response format');
+
+            updateDisplay(data);
+            initializeCarousels();
+            initializeScrollButtons();
+        })
+        .catch(error => {
+            console.error('Error loading articles:', error);
+            showError('Failed to load articles. Please try refreshing the page.');
+        });
+}
 
 function initializeScrollButtons() {
     document.querySelectorAll('.articles-carousel, .nav-tabs-wrapper, .nav-pills-wrapper').forEach(container => {
@@ -94,40 +156,40 @@ function initializeCarousels() {
         let touchEndX = 0;
         let isSwiping = false;
         let startScrollLeft = 0;
-        
+
         wrapper.addEventListener('touchstart', e => {
             touchStartX = e.touches[0].clientX;
             startScrollLeft = wrapper.scrollLeft;
             isSwiping = true;
             wrapper.style.scrollBehavior = 'auto';  // Disable smooth scrolling during swipe
         }, { passive: true });
-        
+
         wrapper.addEventListener('touchmove', e => {
             if (!isSwiping) return;
             const touchCurrentX = e.touches[0].clientX;
             const diff = touchStartX - touchCurrentX;
             wrapper.scrollLeft = startScrollLeft + diff;
         }, { passive: true });
-        
+
         wrapper.addEventListener('touchend', e => {
             if (!isSwiping) return;
-            
+
             touchEndX = e.changedTouches[0].clientX;
             const diff = touchStartX - touchEndX;
-            
+
             // Determine scroll direction based on swipe
-            if (Math.abs(diff) > 50) {  // Minimum swipe distance
-                const scrollAmount = wrapper.clientWidth * 0.8;
-                wrapper.style.scrollBehavior = 'smooth';  // Re-enable smooth scrolling
-                wrapper.scrollBy({
-                    left: diff > 0 ? scrollAmount : -scrollAmount,
-                    behavior: 'smooth'
-                });
-            }
-            
+            const articleWidth = wrapper.querySelector('.article-card').clientWidth + parseInt(getComputedStyle(wrapper).gap);
+            const scrollAmount = Math.round(diff / articleWidth) * articleWidth;
+
+            wrapper.style.scrollBehavior = 'smooth';  // Re-enable smooth scrolling
+            wrapper.scrollBy({
+                left: scrollAmount,
+                behavior: 'smooth'
+            });
+
             isSwiping = false;
         });
-        
+
         // Prevent click events during swipe
         wrapper.addEventListener('click', e => {
             if (Math.abs(touchStartX - touchEndX) > 10) {
@@ -140,7 +202,7 @@ function initializeCarousels() {
         const observer = new MutationObserver(() => {
             initializeScrollButtons();
         });
-        
+
         observer.observe(wrapper, { 
             childList: true, 
             subtree: true 
@@ -148,37 +210,7 @@ function initializeCarousels() {
     });
 }
 
-function reloadArticles(date) {
-    const activeTab = document.querySelector('#categoryTabs .nav-link.active');
-    const selectedCategoryId = activeTab ? activeTab.dataset.categoryId : null;
-    const selectedTimeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
-    
-    let url = '/api/articles';
-    const params = new URLSearchParams();
-    
-    if (selectedCategoryId) params.append('category_id', selectedCategoryId);
-    if (date) params.append('date', date);
-    params.append('time_filter', selectedTimeFilter);
-    
-    if (params.toString()) url += `?${params.toString()}`;
-    
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error('Failed to fetch articles');
-            return response.json();
-        })
-        .then(data => {
-            if (!data.categories) throw new Error('Invalid response format');
-            
-            updateDisplay(data);
-            initializeCarousels();
-            initializeScrollButtons();
-        })
-        .catch(error => {
-            console.error('Error loading articles:', error);
-            showError('Failed to load articles. Please try refreshing the page.');
-        });
-}
+
 
 function showError(message) {
     const errorDiv = document.createElement('div');
