@@ -263,14 +263,17 @@
         background: var(--bs-body-bg);
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        position: relative;
     }
 
     .event-articles .row {
         display: flex;
         position: relative;
         margin: 0;
-        transition: transform 0.3s ease-out;
-        width: 200%; /* Doble ancho para contener ambos paneles */
+        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        width: 200%;
+        transform: translateX(0);
+        touch-action: pan-x;
     }
 
     .event-articles .col-md-3 {
@@ -284,6 +287,7 @@
         width: 50%;
         padding: 0.75rem;
         flex-shrink: 0;
+        transform: translateX(0);
     }
 
     .article-card {

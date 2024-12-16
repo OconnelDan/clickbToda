@@ -11,10 +11,10 @@ function initializeSwipeReveal() {
         let isRevealed = false;
         let isSwiping = false;
         const row = container.querySelector('.row');
-
-        // Asegurarse de que inicialmente esté en la posición correcta
+        
+        // Reset initial position
         row.style.transform = 'translateX(0)';
-
+        
         container.addEventListener('touchstart', e => {
             if (e.touches.length !== 1) return;
             
@@ -22,10 +22,13 @@ function initializeSwipeReveal() {
             currentX = startX;
             isSwiping = true;
             row.style.transition = 'none';
-        }, { passive: true });
-
+            
+            // Prevent default only if necessary
+            e.preventDefault();
+        }, { passive: false });
+        
         container.addEventListener('touchmove', e => {
-            if (!isSwiping || !startX) return;
+            if (!isSwiping || startX === null) return;
             
             currentX = e.touches[0].clientX;
             const diff = startX - currentX;
@@ -33,27 +36,39 @@ function initializeSwipeReveal() {
             
             // Calcular el porcentaje de deslizamiento
             let percentage = (diff / maxSwipe) * 100;
-            percentage = Math.max(0, Math.min(percentage, 100));
+            
+            // Limitar el deslizamiento
+            percentage = Math.max(-100, Math.min(percentage, 100));
             
             if (!isRevealed) {
-                row.style.transform = `translateX(-${percentage}%)`;
+                // Deslizando para revelar
+                if (percentage > 0) {
+                    row.style.transform = `translateX(-${percentage}%)`;
+                }
             } else {
-                row.style.transform = `translateX(-${100 - percentage}%)`;
+                // Deslizando para ocultar
+                if (percentage < 0) {
+                    row.style.transform = `translateX(-${100 + percentage}%)`;
+                }
             }
-        }, { passive: true });
-
+            
+            // Prevent default to avoid scrolling
+            e.preventDefault();
+        }, { passive: false });
+        
         container.addEventListener('touchend', () => {
             if (!isSwiping) return;
             
             const diff = startX - currentX;
-            const threshold = container.offsetWidth / 3; // Hacer el umbral más sensible
+            const threshold = container.offsetWidth / 4; // 25% del ancho
+            
             row.style.transition = 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)';
-
+            
             if (!isRevealed && diff > threshold) {
                 // Revelar carrusel
                 row.style.transform = 'translateX(-100%)';
                 isRevealed = true;
-            } else if (isRevealed && diff < -threshold) {
+            } else if (isRevealed && -diff > threshold) {
                 // Ocultar carrusel
                 row.style.transform = 'translateX(0)';
                 isRevealed = false;
@@ -61,13 +76,13 @@ function initializeSwipeReveal() {
                 // Volver a la posición original
                 row.style.transform = isRevealed ? 'translateX(-100%)' : 'translateX(0)';
             }
-
-            // Reiniciar variables
+            
+            // Reset variables
             startX = null;
             currentX = null;
             isSwiping = false;
         });
-
+        
         // Cancelar el deslizamiento si el dedo sale del elemento
         container.addEventListener('touchcancel', () => {
             if (!isSwiping) return;
