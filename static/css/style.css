@@ -264,24 +264,6 @@
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         position: relative;
-        touch-action: pan-x pinch-zoom;
-    }
-
-    .event-articles .row {
-        display: flex;
-        position: relative;
-        margin: 0;
-        transition: transform 0.3s ease;
-        width: 200%;
-        transform: translateX(0);
-    }
-
-    .event-articles .col-md-3,
-    .event-articles .col-md-9 {
-        width: 50%;
-        min-width: 50%;
-        padding: 1rem;
-        flex: 0 0 50%;
     }
 
     .event-articles .row {
@@ -290,7 +272,19 @@
         margin: 0;
         width: 200%;
         transform: translateX(0);
-        transition: transform 0.3s ease-out;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .event-articles .col-md-3 {
+        width: 100%;
+        padding: 1rem;
+        flex: 0 0 100%;
+    }
+
+    .event-articles .col-md-9 {
+        width: 100%;
+        padding: 1rem;
+        flex: 0 0 100%;
     }
 
     .article-card {
@@ -300,15 +294,16 @@
 
     .event-info {
         position: relative;
-        padding-right: 2rem;
+        padding-right: 2.5rem;
         cursor: pointer;
+        background: var(--bs-body-bg);
     }
 
     /* Indicador de clic */
     .event-info::after {
         content: "›";
         position: absolute;
-        right: 0;
+        right: 1rem;
         top: 50%;
         transform: translateY(-50%);
         font-size: 2rem;
@@ -318,13 +313,13 @@
     }
 
     .event-info:hover::after {
-        transform: translateY(-50%) translateX(5px);
+        animation: pulse 1.5s infinite;
     }
 
-    @keyframes pulseAndSlide {
+    @keyframes pulse {
         0% { 
             opacity: 0.5;
-            transform: translateY(-50%) translateX(0);
+            transform: translateY(-50%);
         }
         50% { 
             opacity: 1;
@@ -332,7 +327,7 @@
         }
         100% { 
             opacity: 0.5;
-            transform: translateY(-50%) translateX(0);
+            transform: translateY(-50%);
         }
     }
 
