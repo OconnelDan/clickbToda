@@ -393,13 +393,16 @@ function updateDisplay(data) {
                         }
                     }
                     
-                    if (isHorizontalScroll) {
+                    if (isHorizontalScroll && diffX > 0) {
                         e.preventDefault();
-                        if (diffX > 0) { // Solo permitir deslizamiento hacia la izquierda
-                            const maxTranslate = eventArticle.offsetWidth / 2;
-                            const progress = Math.min(diffX / maxTranslate, 1);
-                            const transform = progress * maxTranslate;
-                            row.style.transform = `translateX(-${transform}px)`;
+                        const maxTranslate = eventArticle.offsetWidth / 2;
+                        const progress = Math.min(diffX / maxTranslate, 1);
+                        row.style.transform = `translateX(-${progress * 50}%)`;
+                        
+                        // Adjust opacity of event-info based on progress
+                        const eventInfo = eventArticle.querySelector('.event-info');
+                        if (eventInfo) {
+                            eventInfo.style.opacity = Math.max(0.5, 1 - progress);
                         }
                     }
                 }, { passive: false });
@@ -407,27 +410,28 @@ function updateDisplay(data) {
                 eventArticle.addEventListener('touchend', (e) => {
                     if (!isDragging || !isHorizontalScroll) return;
                     isDragging = false;
+                    isHorizontalScroll = false;
                     
                     const currentX = e.changedTouches[0].clientX;
                     const diffX = startX - currentX;
                     row.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
                     
-                    // Si el deslizamiento es más del 15% del ancho, completar la transición
+                    // Complete transition if swipe is more than 15% of width
                     if (diffX > eventArticle.offsetWidth * 0.15) {
-                        row.style.transform = `translateX(-${eventArticle.offsetWidth / 2}px)`;
+                        row.style.transform = 'translateX(-50%)';
                         eventArticle.classList.add('swiped');
-                        // Ocultar la flecha del event-info
                         const eventInfo = eventArticle.querySelector('.event-info');
                         if (eventInfo) {
                             eventInfo.style.opacity = '0.5';
+                            eventInfo.style.transition = 'opacity 0.3s ease';
                         }
                     } else {
                         row.style.transform = 'translateX(0)';
                         eventArticle.classList.remove('swiped');
-                        // Mostrar la flecha del event-info
                         const eventInfo = eventArticle.querySelector('.event-info');
                         if (eventInfo) {
                             eventInfo.style.opacity = '1';
+                            eventInfo.style.transition = 'opacity 0.3s ease';
                         }
                     }
                 }, { passive: true });
