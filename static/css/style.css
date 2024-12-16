@@ -301,9 +301,10 @@
     .event-info {
         position: relative;
         padding-right: 2rem;
+        cursor: pointer;
     }
 
-    /* Indicador de deslizamiento mejorado */
+    /* Indicador de clic */
     .event-info::after {
         content: "›";
         position: absolute;
@@ -313,9 +314,11 @@
         font-size: 2rem;
         font-weight: bold;
         color: var(--bs-primary);
-        animation: pulseAndSlide 2s infinite;
-        pointer-events: none;
-        text-shadow: 0 0 8px rgba(var(--bs-primary-rgb), 0.3);
+        transition: transform 0.3s ease;
+    }
+
+    .event-info:hover::after {
+        transform: translateY(-50%) translateX(5px);
     }
 
     @keyframes pulseAndSlide {
