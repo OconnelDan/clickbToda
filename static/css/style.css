@@ -258,33 +258,34 @@
     }
 
     .event-articles {
+        min-height: calc(100vh - 120px); /* Occupy full viewport height minus navbar */
         margin-bottom: 1rem;
-        overflow: hidden;
         background: var(--bs-body-bg);
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .event-info {
+        padding: 1.5rem;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
     .event-articles .row {
-        display: flex;
-        flex-wrap: nowrap;
-        margin: 0;
-        width: 200%;
-        transform: translateX(0);
-        transition: transform 0.3s ease-in-out;
+        display: flex; /* Removed unneeded styles */
+        flex-wrap: wrap; /* Added for proper wrapping of content */
     }
 
-    .event-articles .col-md-3 {
-        width: 100%;
-        padding: 1rem;
-        flex: 0 0 100%;
-    }
-
+    .event-articles .col-md-3,
     .event-articles .col-md-9 {
-        width: 100%;
-        padding: 1rem;
-        flex: 0 0 100%;
+        width: 100%; /* Removed unneeded styles */
+        padding: 0; /* Removed unneeded styles */
+        flex: 1; /* Allowed for content to fill the space*/
     }
 
     .article-card {
@@ -292,12 +293,6 @@
         margin-right: 0;
     }
 
-    .event-info {
-        position: relative;
-        padding-right: 2.5rem;
-        cursor: pointer;
-        background: var(--bs-body-bg);
-    }
 
     /* Indicador de clic */
     .event-info::after {
