@@ -358,62 +358,61 @@ function updateDisplay(data) {
         // Initialize mobile swipe events
         if (window.innerWidth <= 767) {
             document.querySelectorAll('.event-articles').forEach(eventArticle => {
-                let startX;
-                let startY;
-                let isDragging = false;
                 const row = eventArticle.querySelector('.row');
-                
-                eventArticle.addEventListener('touchstart', e => {
+                let startX = 0;
+                let currentX = 0;
+                let isDragging = false;
+                let initialTransform = 0;
+
+                eventArticle.addEventListener('touchstart', (e) => {
                     startX = e.touches[0].clientX;
-                    startY = e.touches[0].clientY;
                     isDragging = true;
                     row.style.transition = 'none';
-                }, { passive: true });
-                
-                eventArticle.addEventListener('touchmove', e => {
+                    initialTransform = getTransformX(row);
+                });
+
+                eventArticle.addEventListener('touchmove', (e) => {
                     if (!isDragging) return;
                     
-                    const currentX = e.touches[0].clientX;
-                    const currentY = e.touches[0].clientY;
-                    const diffX = startX - currentX;
-                    const diffY = startY - currentY;
+                    currentX = e.touches[0].clientX;
+                    const diffX = currentX - startX;
+                    const newTransform = initialTransform + diffX;
                     
-                    // Check if horizontal scroll
-                    if (Math.abs(diffX) > Math.abs(diffY)) {
-                        e.preventDefault();
-                        
-                        const translate = -diffX;
-                        const maxTranslate = eventArticle.offsetWidth / 2;
-                        
-                        // Limit translation to 50% of width
-                        const limitedTranslate = Math.max(Math.min(translate, 0), -maxTranslate);
-                        row.style.transform = `translateX(${limitedTranslate}px)`;
+                    // Limit the transform to either 0 or -50%
+                    if (newTransform <= 0 && newTransform >= -eventArticle.offsetWidth / 2) {
+                        row.style.transform = `translateX(${newTransform}px)`;
                     }
-                }, { passive: false });
-                
-                eventArticle.addEventListener('touchend', e => {
+                });
+
+                eventArticle.addEventListener('touchend', () => {
                     if (!isDragging) return;
-                    
                     isDragging = false;
+                    
                     row.style.transition = 'transform 0.3s ease-out';
+                    const finalTransform = getTransformX(row);
                     
-                    const currentX = e.changedTouches[0].clientX;
-                    const diff = startX - currentX;
-                    
-                    if (Math.abs(diff) > eventArticle.offsetWidth * 0.2) {
-                        if (diff > 0 && !eventArticle.classList.contains('swiped')) {
-                            row.style.transform = 'translateX(-50%)';
+                    // If dragged more than 20% of the width, snap to the new position
+                    if (Math.abs(finalTransform) > eventArticle.offsetWidth * 0.2) {
+                        if (finalTransform < -eventArticle.offsetWidth * 0.1) {
+                            row.style.transform = `translateX(${-eventArticle.offsetWidth / 2}px)`;
                             eventArticle.classList.add('swiped');
-                        } else if (diff < 0 && eventArticle.classList.contains('swiped')) {
+                        } else {
                             row.style.transform = 'translateX(0)';
                             eventArticle.classList.remove('swiped');
                         }
                     } else {
-                        // Snap back to original position
-                        row.style.transform = eventArticle.classList.contains('swiped') ? 
-                            'translateX(-50%)' : 'translateX(0)';
+                        // Snap back to the closest position
+                        row.style.transform = finalTransform < -eventArticle.offsetWidth * 0.25 ? 
+                            `translateX(${-eventArticle.offsetWidth / 2}px)` : 'translateX(0)';
                     }
-                }, { passive: true });
+                });
+
+                // Helper function to get current transform X value
+                function getTransformX(element) {
+                    const style = window.getComputedStyle(element);
+                    const matrix = new WebKitCSSMatrix(style.transform);
+                    return matrix.m41;
+                }
             });
         }
         
