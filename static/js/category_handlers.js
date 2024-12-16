@@ -359,20 +359,48 @@ function updateDisplay(data) {
         if (window.innerWidth <= 767) {
             document.querySelectorAll('.event-articles').forEach(eventArticle => {
                 let startX;
-                let currentTranslate = 0;
+                let startY;
+                let isDragging = false;
+                const row = eventArticle.querySelector('.row');
                 
                 eventArticle.addEventListener('touchstart', e => {
                     startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    isDragging = true;
+                    row.style.transition = 'none';
                 }, { passive: true });
                 
                 eventArticle.addEventListener('touchmove', e => {
-                    if (!startX) return;
+                    if (!isDragging) return;
                     
                     const currentX = e.touches[0].clientX;
-                    const diff = startX - currentX;
-                    const row = eventArticle.querySelector('.row');
+                    const currentY = e.touches[0].clientY;
+                    const diffX = startX - currentX;
+                    const diffY = startY - currentY;
                     
-                    if (Math.abs(diff) > 20) {
+                    // Check if horizontal scroll
+                    if (Math.abs(diffX) > Math.abs(diffY)) {
+                        e.preventDefault();
+                        
+                        const translate = -diffX;
+                        const maxTranslate = eventArticle.offsetWidth / 2;
+                        
+                        // Limit translation to 50% of width
+                        const limitedTranslate = Math.max(Math.min(translate, 0), -maxTranslate);
+                        row.style.transform = `translateX(${limitedTranslate}px)`;
+                    }
+                }, { passive: false });
+                
+                eventArticle.addEventListener('touchend', e => {
+                    if (!isDragging) return;
+                    
+                    isDragging = false;
+                    row.style.transition = 'transform 0.3s ease-out';
+                    
+                    const currentX = e.changedTouches[0].clientX;
+                    const diff = startX - currentX;
+                    
+                    if (Math.abs(diff) > eventArticle.offsetWidth * 0.2) {
                         if (diff > 0 && !eventArticle.classList.contains('swiped')) {
                             row.style.transform = 'translateX(-50%)';
                             eventArticle.classList.add('swiped');
@@ -380,6 +408,10 @@ function updateDisplay(data) {
                             row.style.transform = 'translateX(0)';
                             eventArticle.classList.remove('swiped');
                         }
+                    } else {
+                        // Snap back to original position
+                        row.style.transform = eventArticle.classList.contains('swiped') ? 
+                            'translateX(-50%)' : 'translateX(0)';
                     }
                 }, { passive: true });
             });
