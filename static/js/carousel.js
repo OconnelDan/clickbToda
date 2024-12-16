@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
             reloadArticles(this.value);
         });
     }
+
+    
+    
     
     // Filter button handler
     const filterButton = document.querySelector('.filter');

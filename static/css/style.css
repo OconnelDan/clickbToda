@@ -279,10 +279,12 @@
     .article-card {
         width: 100%;
         margin-right: 0;
+        scroll-snap-align: start;
     }
 
     .article-card .card {
-        min-height: 150px;
+        min-height: 120px;
+        margin: 0;
     }
 
     .article-title {
@@ -291,17 +293,28 @@
     }
 
     .event-info {
-        padding: 0.75rem;
+        padding: 0.5rem;
+        background: var(--bs-light);
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
     .event-info .event-title {
-        font-size: 1rem;
-        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+        font-weight: 500;
     }
 
     .event-info .event-description {
-        font-size: 0.85rem;
-        margin-bottom: 0.5rem;
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+        line-height: 1.4;
+    }
+
+    .carousel-wrapper {
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        position: relative;
     }
 
     .carousel-wrapper::after {
@@ -310,10 +323,12 @@
         right: 0;
         top: 0;
         bottom: 0;
-        width: 40px;
-        background: linear-gradient(to right, transparent, rgba(255,255,255,0.9));
+        width: 30px;
+        background: linear-gradient(to right, transparent, rgba(255,255,255,0.8));
         pointer-events: none;
+        z-index: 2;
     }
+
 
     .articles-carousel {
         padding: 0 1rem;
