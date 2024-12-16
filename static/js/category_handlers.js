@@ -367,24 +367,25 @@ function updateDisplay(data) {
                 let initialTransform = 0;
 
                 eventArticle.addEventListener('touchstart', (e) => {
-                    startX = e.touches[0].clientX;
-                    startY = e.touches[0].clientY;
-                    isDragging = true;
-                    isHorizontalScroll = false;
-                    row.style.transition = 'none';
-                    initialTransform = getTransformX(row);
+                    if (e.target.closest('.event-info')) {
+                        startX = e.touches[0].clientX;
+                        startY = e.touches[0].clientY;
+                        isDragging = true;
+                        isHorizontalScroll = false;
+                        row.style.transition = 'none';
+                    }
                 }, { passive: true });
 
                 eventArticle.addEventListener('touchmove', (e) => {
-                    if (!isDragging) return;
+                    if (!isDragging || !e.target.closest('.event-info')) return;
                     
                     const currentX = e.touches[0].clientX;
                     const currentY = e.touches[0].clientY;
-                    const diffX = currentX - startX;
-                    const diffY = currentY - startY;
+                    const diffX = startX - currentX;
+                    const diffY = startY - currentY;
                     
                     // Determine scroll direction on first significant movement
-                    if (!isHorizontalScroll && Math.abs(diffX) > 5 || Math.abs(diffY) > 5) {
+                    if (!isHorizontalScroll && (Math.abs(diffX) > 5 || Math.abs(diffY) > 5)) {
                         isHorizontalScroll = Math.abs(diffX) > Math.abs(diffY);
                         if (!isHorizontalScroll) {
                             isDragging = false;
@@ -394,36 +395,40 @@ function updateDisplay(data) {
                     
                     if (isHorizontalScroll) {
                         e.preventDefault();
-                        const newTransform = initialTransform + diffX;
-                        
-                        // Limit the transform with some resistance at the edges
-                        if (newTransform <= 10 && newTransform >= -(eventArticle.offsetWidth / 2 + 10)) {
-                            row.style.transform = `translateX(${newTransform}px)`;
+                        if (diffX > 0) { // Solo permitir deslizamiento hacia la izquierda
+                            const maxTranslate = eventArticle.offsetWidth / 2;
+                            const progress = Math.min(diffX / maxTranslate, 1);
+                            const transform = progress * maxTranslate;
+                            row.style.transform = `translateX(-${transform}px)`;
                         }
                     }
                 }, { passive: false });
 
-                eventArticle.addEventListener('touchend', () => {
+                eventArticle.addEventListener('touchend', (e) => {
                     if (!isDragging || !isHorizontalScroll) return;
                     isDragging = false;
                     
+                    const currentX = e.changedTouches[0].clientX;
+                    const diffX = startX - currentX;
                     row.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-                    const finalTransform = getTransformX(row);
                     
-                    // If dragged more than 15% of the width, snap to the new position
-                    if (Math.abs(finalTransform) > eventArticle.offsetWidth * 0.15) {
-                        if (finalTransform < -eventArticle.offsetWidth * 0.1) {
-                            row.style.transform = `translateX(${-eventArticle.offsetWidth / 2}px)`;
-                            eventArticle.classList.add('swiped');
-                        } else {
-                            row.style.transform = 'translateX(0)';
-                            eventArticle.classList.remove('swiped');
+                    // Si el deslizamiento es más del 15% del ancho, completar la transición
+                    if (diffX > eventArticle.offsetWidth * 0.15) {
+                        row.style.transform = `translateX(-${eventArticle.offsetWidth / 2}px)`;
+                        eventArticle.classList.add('swiped');
+                        // Ocultar la flecha del event-info
+                        const eventInfo = eventArticle.querySelector('.event-info');
+                        if (eventInfo) {
+                            eventInfo.style.opacity = '0.5';
                         }
                     } else {
-                        // Snap back to the closest position
-                        const isSwiped = eventArticle.classList.contains('swiped');
-                        row.style.transform = isSwiped ? 
-                            `translateX(${-eventArticle.offsetWidth / 2}px)` : 'translateX(0)';
+                        row.style.transform = 'translateX(0)';
+                        eventArticle.classList.remove('swiped');
+                        // Mostrar la flecha del event-info
+                        const eventInfo = eventArticle.querySelector('.event-info');
+                        if (eventInfo) {
+                            eventInfo.style.opacity = '1';
+                        }
                     }
                 }, { passive: true });
 
