@@ -349,11 +349,39 @@ function updateDisplay(data) {
         eventsContent.innerHTML = '';
         eventsContent.appendChild(fragment);
 
-        // Initialize article cards
+        // Initialize article cards and touch events
         document.querySelectorAll('.article-card').forEach(card => {
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');
         });
+        
+        // Initialize mobile swipe events
+        if (window.innerWidth <= 767) {
+            document.querySelectorAll('.event-articles').forEach(eventArticle => {
+                let startX;
+                let currentTranslate = 0;
+                
+                eventArticle.addEventListener('touchstart', e => {
+                    startX = e.touches[0].clientX;
+                }, { passive: true });
+                
+                eventArticle.addEventListener('touchmove', e => {
+                    if (!startX) return;
+                    
+                    const currentX = e.touches[0].clientX;
+                    const diff = startX - currentX;
+                    
+                    if (Math.abs(diff) > 50) {
+                        if (diff > 0 && !eventArticle.classList.contains('swiped')) {
+                            eventArticle.classList.add('swiped');
+                        } else if (diff < 0 && eventArticle.classList.contains('swiped')) {
+                            eventArticle.classList.remove('swiped');
+                        }
+                        startX = null;
+                    }
+                }, { passive: true });
+            });
+        }
         
         initializeCarousels();
         initializeScrollButtons();
