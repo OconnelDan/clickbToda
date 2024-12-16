@@ -275,16 +275,26 @@
         transition: transform 0.3s ease-in-out;
     }
 
-    .event-articles .col-md-3 {
+    .event-articles .col-md-3,
+    .event-articles .col-md-9 {
         width: 100%;
         padding: 1rem;
         flex: 0 0 100%;
     }
 
+    .event-articles .col-md-3 {
+        background: var(--bs-body-bg);
+    }
+
     .event-articles .col-md-9 {
+        background: var(--bs-body-bg);
+        display: flex;
+        align-items: flex-start;
+    }
+
+    .articles-carousel {
         width: 100%;
-        padding: 1rem;
-        flex: 0 0 100%;
+        padding: 0 1rem;
     }
 
     .event-info {

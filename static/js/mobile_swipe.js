@@ -7,18 +7,40 @@ function initializeEventSwipe() {
     
     eventArticles.forEach(container => {
         const row = container.querySelector('.row');
+        const eventInfo = container.querySelector('.event-info');
         let startX;
         let currentX;
         let isSliding = false;
+        let isDragging = false;
+        let startTranslateX = 0;
         
-        // Detectar dispositivo móvil
-        const isMobile = window.innerWidth <= 767;
-        if (!isMobile) return;
+        // Solo aplicar en móvil
+        if (window.innerWidth > 767) return;
 
+        function setTransform(translateX) {
+            row.style.transform = `translateX(${translateX}%)`;
+        }
+
+        function resetTransition() {
+            row.style.transition = 'transform 0.3s ease-out';
+        }
+
+        function snapToPosition(diff) {
+            resetTransition();
+            if (Math.abs(diff) > window.innerWidth * 0.2) {
+                setTransform(diff < 0 ? -100 : 0);
+            } else {
+                setTransform(0);
+            }
+        }
+
+        // Eventos táctiles
         container.addEventListener('touchstart', e => {
             startX = e.touches[0].clientX;
             currentX = startX;
             isSliding = true;
+            startTranslateX = row.style.transform ? 
+                parseInt(row.style.transform.match(/-?\d+/)[0]) : 0;
             row.style.transition = 'none';
         }, { passive: true });
 
@@ -26,47 +48,28 @@ function initializeEventSwipe() {
             if (!isSliding) return;
             
             currentX = e.touches[0].clientX;
-            const diff = currentX - startX;
-            const maxSlide = window.innerWidth;
+            const diff = ((currentX - startX) / window.innerWidth) * 100;
+            const newTranslate = Math.max(-100, Math.min(0, startTranslateX + diff));
             
-            // Limitar el deslizamiento
-            const slideX = Math.max(Math.min(diff, 0), -maxSlide);
-            row.style.transform = `translateX(${slideX}px)`;
+            setTransform(newTranslate);
         }, { passive: true });
 
         container.addEventListener('touchend', () => {
             if (!isSliding) return;
             
-            isSliding = false;
-            row.style.transition = 'transform 0.3s ease-out';
-            
             const diff = currentX - startX;
-            const threshold = window.innerWidth * 0.2; // 20% del ancho de la pantalla
-            
-            if (Math.abs(diff) > threshold) {
-                // Si el deslizamiento fue suficiente, mover a la siguiente vista
-                if (diff < 0) {
-                    // Deslizar a la izquierda para mostrar artículos
-                    row.style.transform = 'translateX(-100%)';
-                } else {
-                    // Deslizar a la derecha para volver al evento
-                    row.style.transform = 'translateX(0)';
-                }
-            } else {
-                // Si el deslizamiento no fue suficiente, volver a la posición original
-                row.style.transform = 'translateX(0)';
-            }
+            snapToPosition(diff);
+            isSliding = false;
         });
 
-        // Añadir manejador de clic para el indicador
-        const eventInfo = container.querySelector('.event-info');
+        // Click del evento
         eventInfo.addEventListener('click', () => {
-            row.style.transition = 'transform 0.3s ease-out';
+            resetTransition();
             const currentTransform = row.style.transform;
-            if (currentTransform === 'translateX(-100%)') {
-                row.style.transform = 'translateX(0)';
+            if (currentTransform.includes('-100')) {
+                setTransform(0);
             } else {
-                row.style.transform = 'translateX(-100%)';
+                setTransform(-100);
             }
         });
     });
