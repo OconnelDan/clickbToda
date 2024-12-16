@@ -248,43 +248,6 @@ function showError(message, error = null) {
     eventsContent.appendChild(errorDiv);
 }
 
-function initializeMobileSwipe() {
-    if (window.innerWidth > 767) return;
-
-    document.querySelectorAll('.event-articles').forEach(container => {
-        let touchStartX = 0;
-        let currentX = 0;
-        const row = container.querySelector('.row');
-
-        container.addEventListener('touchstart', e => {
-            touchStartX = e.touches[0].clientX;
-            currentX = row.getBoundingClientRect().left;
-            row.style.transition = 'none';
-        }, { passive: true });
-
-        container.addEventListener('touchmove', e => {
-            const diff = e.touches[0].clientX - touchStartX;
-            const newX = Math.max(Math.min(0, diff), -container.offsetWidth);
-            row.style.transform = `translateX(${newX}px)`;
-        }, { passive: true });
-
-        container.addEventListener('touchend', e => {
-            row.style.transition = 'transform 0.3s ease-out';
-            const diff = e.changedTouches[0].clientX - touchStartX;
-            
-            if (Math.abs(diff) > container.offsetWidth / 3) {
-                if (diff < 0) {
-                    row.style.transform = 'translateX(-50%)';
-                } else {
-                    row.style.transform = 'translateX(0)';
-                }
-            } else {
-                row.style.transform = 'translateX(0)';
-            }
-        });
-    });
-}
-
 function updateDisplay(data) {
     const eventsContent = document.getElementById('events-content');
     if (!eventsContent) return;
@@ -394,7 +357,6 @@ function updateDisplay(data) {
         
         initializeCarousels();
         initializeScrollButtons();
-        initializeMobileSwipe();
         
     } catch (error) {
         console.error('Error updating display:', error);
