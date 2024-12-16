@@ -370,14 +370,16 @@ function updateDisplay(data) {
                     
                     const currentX = e.touches[0].clientX;
                     const diff = startX - currentX;
+                    const row = eventArticle.querySelector('.row');
                     
-                    if (Math.abs(diff) > 50) {
+                    if (Math.abs(diff) > 20) {
                         if (diff > 0 && !eventArticle.classList.contains('swiped')) {
+                            row.style.transform = 'translateX(-50%)';
                             eventArticle.classList.add('swiped');
                         } else if (diff < 0 && eventArticle.classList.contains('swiped')) {
+                            row.style.transform = 'translateX(0)';
                             eventArticle.classList.remove('swiped');
                         }
-                        startX = null;
                     }
                 }, { passive: true });
             });

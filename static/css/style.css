@@ -262,6 +262,7 @@
         border-radius: 0.5rem;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         overflow: hidden;
+        position: relative;
     }
 
     .event-articles .row {
@@ -271,6 +272,7 @@
         padding: 0;
         position: relative;
         width: 200%;
+        transform: translateX(0);
         transition: transform 0.3s ease-in-out;
     }
 
@@ -279,7 +281,8 @@
         width: 50%;
         min-width: 50%;
         padding: 0.5rem;
-        flex: 0 0 auto;
+        flex: 0 0 50%;
+        background: var(--bs-body-bg);
     }
 
     .article-card {
