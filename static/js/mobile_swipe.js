@@ -44,11 +44,11 @@ function initializeSwipeReveal() {
             const diff = startX - currentX;
             const threshold = container.offsetWidth * 0.2; // 20% del ancho para activar
             
-            row.style.transition = 'transform 0.3s ease';
+            row.style.transition = 'transform 0.3s ease-out';
             
             if (diff > threshold) {
                 // Mostrar artículos
-                row.style.transform = 'translateX(-100%)';
+                row.style.transform = 'translateX(-50%)';
             } else {
                 // Volver a mostrar evento
                 row.style.transform = 'translateX(0)';
@@ -64,7 +64,7 @@ function initializeSwipeReveal() {
         container.addEventListener('touchcancel', () => {
             if (!isDragging) return;
             
-            row.style.transition = 'transform 0.3s ease';
+            row.style.transition = 'transform 0.3s ease-out';
             row.style.transform = 'translateX(0)';
             
             startX = null;
@@ -72,15 +72,15 @@ function initializeSwipeReveal() {
             isDragging = false;
         });
         
-        // Agregar capacidad de volver al evento deslizando hacia la derecha
+        // Deslizar hacia la derecha para volver al evento
         container.addEventListener('touchmove', e => {
             if (!isDragging || !startX) return;
             
-            const currentX = e.touches[0].clientX;
+            currentX = e.touches[0].clientX;
             const diff = currentX - startX;
             
-            if (diff > 0 && row.style.transform.includes('-100%')) {
-                const percentage = Math.max(0, 100 - (diff / container.offsetWidth) * 100);
+            if (diff > 0 && getComputedStyle(row).transform.includes('matrix')) {
+                const percentage = Math.max(0, 50 - (diff / container.offsetWidth) * 50);
                 row.style.transform = `translateX(-${percentage}%)`;
             }
         }, { passive: true });

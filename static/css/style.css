@@ -278,18 +278,19 @@
 
     .event-articles .col-md-3,
     .event-articles .col-md-9 {
-        width: 100%;
-        min-width: 100%;
+        width: 50%;
+        min-width: 50%;
         padding: 1rem;
-        flex: 0 0 100%;
+        flex: 0 0 50%;
     }
 
-    .event-articles .col-md-9 {
-        position: absolute;
-        left: 100%;
-        top: 0;
-        height: 100%;
-        background: var(--bs-body-bg);
+    .event-articles .row {
+        display: flex;
+        flex-wrap: nowrap;
+        margin: 0;
+        width: 200%;
+        transform: translateX(0);
+        transition: transform 0.3s ease-out;
     }
 
     .article-card {
