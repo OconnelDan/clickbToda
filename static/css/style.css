@@ -258,8 +258,11 @@
     }
 
     .event-articles {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
         overflow: hidden;
+        background: var(--bs-body-bg);
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
     .event-articles .row {
@@ -272,13 +275,14 @@
 
     .event-articles .col-md-3 {
         width: 50%;
-        padding: 0.5rem;
+        padding: 0.75rem;
         flex-shrink: 0;
+        position: relative;
     }
 
     .event-articles .col-md-9 {
         width: 50%;
-        padding: 0.5rem;
+        padding: 0.75rem;
         flex-shrink: 0;
     }
 
@@ -287,23 +291,54 @@
         margin-right: 0;
     }
 
-    /* Indicador de deslizamiento */
+    .event-info {
+        position: relative;
+        padding-right: 2rem;
+    }
+
+    /* Indicador de deslizamiento mejorado */
     .event-info::after {
         content: "›";
         position: absolute;
-        right: 10px;
+        right: 0;
         top: 50%;
         transform: translateY(-50%);
-        font-size: 24px;
+        font-size: 2rem;
+        font-weight: bold;
         color: var(--bs-primary);
-        animation: pulse 1.5s infinite;
+        animation: pulseAndSlide 2s infinite;
         pointer-events: none;
+        text-shadow: 0 0 8px rgba(var(--bs-primary-rgb), 0.3);
     }
 
-    @keyframes pulse {
-        0% { opacity: 0.5; }
-        50% { opacity: 1; }
-        100% { opacity: 0.5; }
+    @keyframes pulseAndSlide {
+        0% { 
+            opacity: 0.5;
+            transform: translateY(-50%) translateX(0);
+        }
+        50% { 
+            opacity: 1;
+            transform: translateY(-50%) translateX(5px);
+        }
+        100% { 
+            opacity: 0.5;
+            transform: translateY(-50%) translateX(0);
+        }
+    }
+
+    /* Ajustes de tamaño para móvil */
+    .event-title {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .event-description {
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .event-meta {
+        font-size: 0.8rem;
     }
 }
 
