@@ -358,54 +358,46 @@ function updateDisplay(data) {
         // Initialize mobile swipe events
         if (window.innerWidth <= 767) {
             document.querySelectorAll('.event-articles').forEach(eventArticle => {
-                const row = eventArticle.querySelector('.row');
                 let startX = 0;
-                let currentX = 0;
                 let isDragging = false;
-                let initialTransform = 0;
-
+                const threshold = 50; // minimum distance for swipe
+                
                 eventArticle.addEventListener('touchstart', (e) => {
                     startX = e.touches[0].clientX;
                     isDragging = true;
-                    row.style.transition = 'none';
-                    initialTransform = getTransformX(row);
-                });
+                }, { passive: true });
 
                 eventArticle.addEventListener('touchmove', (e) => {
                     if (!isDragging) return;
                     
-                    currentX = e.touches[0].clientX;
-                    const diffX = currentX - startX;
-                    const newTransform = initialTransform + diffX;
+                    const currentX = e.touches[0].clientX;
+                    const diffX = startX - currentX;
                     
-                    // Limit the transform to either 0 or -50%
-                    if (newTransform <= 0 && newTransform >= -eventArticle.offsetWidth / 2) {
-                        row.style.transform = `translateX(${newTransform}px)`;
+                    // Si el deslizamiento es significativo, prevenir el scroll vertical
+                    if (Math.abs(diffX) > 10) {
+                        e.preventDefault();
                     }
-                });
+                    
+                }, { passive: false });
 
-                eventArticle.addEventListener('touchend', () => {
+                eventArticle.addEventListener('touchend', (e) => {
                     if (!isDragging) return;
-                    isDragging = false;
                     
-                    row.style.transition = 'transform 0.3s ease-out';
-                    const finalTransform = getTransformX(row);
+                    const endX = e.changedTouches[0].clientX;
+                    const diffX = startX - endX;
                     
-                    // If dragged more than 20% of the width, snap to the new position
-                    if (Math.abs(finalTransform) > eventArticle.offsetWidth * 0.2) {
-                        if (finalTransform < -eventArticle.offsetWidth * 0.1) {
-                            row.style.transform = `translateX(${-eventArticle.offsetWidth / 2}px)`;
+                    if (Math.abs(diffX) > threshold) {
+                        if (diffX > 0 && !eventArticle.classList.contains('swiped')) {
+                            // Deslizamiento hacia la izquierda
                             eventArticle.classList.add('swiped');
-                        } else {
-                            row.style.transform = 'translateX(0)';
+                        } else if (diffX < 0 && eventArticle.classList.contains('swiped')) {
+                            // Deslizamiento hacia la derecha
                             eventArticle.classList.remove('swiped');
                         }
-                    } else {
-                        // Snap back to the closest position
-                        row.style.transform = finalTransform < -eventArticle.offsetWidth * 0.25 ? 
-                            `translateX(${-eventArticle.offsetWidth / 2}px)` : 'translateX(0)';
                     }
-                });
+                    
+                    isDragging = false;
+                }, { passive: true });
 
                 // Helper function to get current transform X value
                 function getTransformX(element) {
