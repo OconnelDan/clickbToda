@@ -257,81 +257,100 @@
     }
 
     .event-articles {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
+        background: var(--bs-light);
+        border-radius: 0.5rem;
+        padding: 0.5rem;
     }
 
     .event-articles .row {
         display: flex;
         flex-direction: row;
-        margin: 0 -0.5rem;
+        margin: 0;
+        gap: 0.5rem;
     }
 
     .event-articles .col-md-3 {
-        width: 50%;
-        padding: 0.5rem;
+        width: 40%;
+        padding: 0;
     }
 
     .event-articles .col-md-9 {
-        width: 50%;
-        padding: 0.5rem;
+        width: 60%;
+        padding: 0;
     }
 
     .article-card {
         width: 100%;
         margin-right: 0;
-        scroll-snap-align: start;
+        scroll-snap-align: center;
     }
 
     .article-card .card {
-        min-height: 120px;
+        min-height: 100px;
         margin: 0;
     }
 
     .article-title {
-        font-size: 0.85rem;
-        line-height: 1.3;
+        font-size: 0.8rem;
+        line-height: 1.2;
+        margin-bottom: 0;
     }
 
     .event-info {
         padding: 0.5rem;
-        background: var(--bs-light);
-        border-radius: 0.5rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        background: white;
+        border-radius: 0.25rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
     .event-info .event-title {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         margin-bottom: 0.25rem;
         font-weight: 500;
     }
 
     .event-info .event-description {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         margin-bottom: 0.25rem;
-        line-height: 1.4;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
     .carousel-wrapper {
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
         position: relative;
+        padding-bottom: 0.5rem;
     }
 
     .carousel-wrapper::after {
-        content: "";
+        content: "›";
         position: absolute;
         right: 0;
-        top: 0;
-        bottom: 0;
-        width: 30px;
-        background: linear-gradient(to right, transparent, rgba(255,255,255,0.8));
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        background: var(--bs-primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 1rem;
         pointer-events: none;
         z-index: 2;
     }
 
-
     .articles-carousel {
-        padding: 0 1rem;
+        padding: 0 0.5rem;
     }
 }
 
