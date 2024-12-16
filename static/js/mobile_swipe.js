@@ -1,76 +1,60 @@
 document.addEventListener('DOMContentLoaded', function() {
-    initializeEventSwipe();
+    initializeSwipeReveal();
 });
 
-function initializeEventSwipe() {
+function initializeSwipeReveal() {
     const eventArticles = document.querySelectorAll('.event-articles');
     
     eventArticles.forEach(container => {
-        const row = container.querySelector('.row');
-        const eventInfo = container.querySelector('.event-info');
         let startX;
         let currentX;
-        let isSliding = false;
-        let isDragging = false;
-        let startTranslateX = 0;
-        
-        // Solo aplicar en móvil
-        if (window.innerWidth > 767) return;
+        let isRevealed = false;
+        const row = container.querySelector('.row');
 
-        function setTransform(translateX) {
-            row.style.transform = `translateX(${translateX}%)`;
-        }
-
-        function resetTransition() {
-            row.style.transition = 'transform 0.3s ease-out';
-        }
-
-        function snapToPosition(diff) {
-            resetTransition();
-            if (Math.abs(diff) > window.innerWidth * 0.2) {
-                setTransform(diff < 0 ? -100 : 0);
-            } else {
-                setTransform(0);
-            }
-        }
-
-        // Eventos táctiles
         container.addEventListener('touchstart', e => {
             startX = e.touches[0].clientX;
-            currentX = startX;
-            isSliding = true;
-            startTranslateX = row.style.transform ? 
-                parseInt(row.style.transform.match(/-?\d+/)[0]) : 0;
             row.style.transition = 'none';
         }, { passive: true });
 
         container.addEventListener('touchmove', e => {
-            if (!isSliding) return;
+            if (!startX) return;
             
             currentX = e.touches[0].clientX;
-            const diff = ((currentX - startX) / window.innerWidth) * 100;
-            const newTranslate = Math.max(-100, Math.min(0, startTranslateX + diff));
+            const diff = startX - currentX;
+            const maxSwipe = container.offsetWidth / 2;
             
-            setTransform(newTranslate);
+            // Limitar el deslizamiento
+            const swipeAmount = Math.max(0, Math.min(diff, maxSwipe));
+            
+            if (!isRevealed) {
+                row.style.transform = `translateX(-${swipeAmount}px)`;
+            } else {
+                row.style.transform = `translateX(-${maxSwipe - swipeAmount}px)`;
+            }
         }, { passive: true });
 
-        container.addEventListener('touchend', () => {
-            if (!isSliding) return;
+        container.addEventListener('touchend', e => {
+            if (!startX || !currentX) return;
             
-            const diff = currentX - startX;
-            snapToPosition(diff);
-            isSliding = false;
-        });
+            const diff = startX - currentX;
+            const threshold = container.offsetWidth / 4;
+            row.style.transition = 'transform 0.3s ease-out';
 
-        // Click del evento
-        eventInfo.addEventListener('click', () => {
-            resetTransition();
-            const currentTransform = row.style.transform;
-            if (currentTransform.includes('-100')) {
-                setTransform(0);
+            if (!isRevealed && diff > threshold) {
+                // Revelar carrusel
+                row.style.transform = `translateX(-50%)`;
+                isRevealed = true;
+            } else if (isRevealed && diff < -threshold) {
+                // Ocultar carrusel
+                row.style.transform = 'translateX(0)';
+                isRevealed = false;
             } else {
-                setTransform(-100);
+                // Volver a la posición original
+                row.style.transform = isRevealed ? 'translateX(-50%)' : 'translateX(0)';
             }
+
+            startX = null;
+            currentX = null;
         });
     });
 }

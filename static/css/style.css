@@ -16,7 +16,6 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
     position: relative;
-    flex-direction: row-reverse;
 }
 
 .carousel-wrapper::-webkit-scrollbar {
@@ -259,131 +258,57 @@
     }
 
     .event-articles {
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
         overflow: hidden;
-        background: var(--bs-body-bg);
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .event-articles .row {
+        display: flex;
         position: relative;
-    }
-
-    .carousel-wrapper {
-        scroll-snap-type: x mandatory;
-        scroll-behavior: smooth;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .event-card,
-    .article-card {
-        flex: 0 0 100%;
-        width: 100%;
-        scroll-snap-align: start;
-        padding: 0.5rem;
-    }
-
-    .event-card .card,
-    .article-card .card {
-        height: 100%;
         margin: 0;
-    }
-
-    .event-title {
-        font-size: 1.25rem;
-        margin-bottom: 1rem;
-    }
-
-    .event-description {
-        font-size: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .event-meta {
-        font-size: 0.875rem;
+        transition: transform 0.3s ease-out;
+        width: 200%; /* Doble ancho para contener ambos paneles */
     }
 
     .event-articles .col-md-3 {
-        background: var(--bs-body-bg);
+        width: 50%;
+        padding: 0.5rem;
+        flex-shrink: 0;
     }
 
     .event-articles .col-md-9 {
-        background: var(--bs-body-bg);
-        display: flex;
-        align-items: flex-start;
-    }
-
-    .articles-carousel {
-        width: 100%;
-        padding: 0 1rem;
-    }
-
-    .event-info {
-        position: relative;
-        padding-right: 2rem;
-        cursor: pointer;
-    }
-
-    /* Indicador de deslizamiento */
-    .event-info::after {
-        content: "›";
-        position: absolute;
-        right: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 2rem;
-        font-weight: bold;
-        color: var(--bs-primary);
-        transition: transform 0.3s ease;
-    }
-
-    .event-info:hover::after {
-        animation: pulseAndSlide 1.5s infinite;
-    }
-
-    @keyframes pulseAndSlide {
-        0% { 
-            opacity: 0.5;
-            transform: translateY(-50%) translateX(0);
-        }
-        50% { 
-            opacity: 1;
-            transform: translateY(-50%) translateX(5px);
-        }
-        100% { 
-            opacity: 0.5;
-            transform: translateY(-50%) translateX(0);
-        }
-    }
-
-    .event-title {
-        font-size: 1.1rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .event-description {
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .event-meta {
-        font-size: 0.8rem;
+        width: 50%;
+        padding: 0.5rem;
+        flex-shrink: 0;
     }
 
     .article-card {
         width: 100%;
         margin-right: 0;
     }
+
+    /* Indicador de deslizamiento */
+    .event-info::after {
+        content: "›";
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 24px;
+        color: var(--bs-primary);
+        animation: pulse 1.5s infinite;
+        pointer-events: none;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 0.5; }
+        50% { opacity: 1; }
+        100% { opacity: 0.5; }
+    }
 }
 
 /* Desktop styles */
-@media (min-width: 768px) {
-    .article-card {
-        width: calc(33.333% - 1rem);
-    }
-    .article-card .card {
-        min-height: 200px;
-    }
-}
-
+    
 @media (min-width: 992px) {
     .article-card {
         width: calc(25% - 1rem);
@@ -435,3 +360,57 @@
     background: rgba(var(--bs-secondary-rgb), 0.1);
     border-radius: 0.25rem;
 }
+
+.article-modal-content {
+    border: 4px solid var(--bs-primary);
+    border-radius: 8px;
+}
+
+.postura-card .card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease-in-out;
+}
+
+.postura-card .card:hover {
+    transform: translateY(-2px);
+}
+
+.postura-card .card-header {
+    background-color: var(--bs-dark);
+    color: var(--bs-light);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    padding: 1rem;
+}
+
+.postura-card .card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.opinion-box {
+    background-color: rgba(var(--bs-dark-rgb), 0.05);
+    border-radius: 8px;
+    height: 100%;
+    transition: background-color 0.2s ease;
+}
+
+.opinion-box:hover {
+    background-color: rgba(var(--bs-dark-rgb), 0.08);
+}
+
+.articles-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: rgba(var(--bs-dark-rgb), 0.03);
+    border-radius: 6px;
+}
+
+.article-link {
+    padding: 0.375rem 0.75rem;
+    font-size: 
+        }

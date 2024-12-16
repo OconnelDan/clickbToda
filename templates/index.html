@@ -17,11 +17,24 @@
                         <div class="events-container">
                             {% for event in subcategory.events %}
                                 <div class="event-articles mb-4">
-                                    <div class="event-info">
-                                        <h4 class="event-title">{{ event.titulo }}</h4>
-                                        <p class="event-description">{{ event.descripcion }}</p>
-                                        <div class="event-meta">
-                                            <small class="text-muted">{{ event.fecha_evento }}</small>
+                                    <div class="row">
+                                        <div class="col-md-3 col-12">
+                                            <div class="event-info">
+                                                <h4 class="event-title">{{ event.titulo }}</h4>
+                                                <p class="event-description">{{ event.descripcion }}</p>
+                                                <div class="event-meta">
+                                                    <small class="text-muted">{{ event.fecha_evento }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-9 col-12">
+                                            <div class="articles-carousel">
+                                                <div class="carousel-wrapper">
+                                                    {% for article in event.articles %}
+                                                        {% include "components/article_card.html" %}
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
