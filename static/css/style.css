@@ -16,6 +16,7 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
     position: relative;
+    flex-direction: row-reverse;
 }
 
 .carousel-wrapper::-webkit-scrollbar {

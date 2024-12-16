@@ -303,17 +303,6 @@ function updateDisplay(data) {
                                             <div class="event-articles mb-4">
                                                     <div class="articles-carousel">
                                                         <div class="carousel-wrapper">
-                                                            <div class="event-card">
-                                                                <div class="card h-100">
-                                                                    <div class="card-body">
-                                                                        <h4 class="event-title">${event.titulo || 'Untitled Event'}</h4>
-                                                                        <p class="event-description">${event.descripcion || ''}</p>
-                                                                        <div class="event-meta">
-                                                                            <small class="text-muted">${event.fecha_evento || ''}</small>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
                                                             ${sortedArticles.map(article => `
                                                                 <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url || ''}" role="button">
                                                                     <div class="card h-100">
@@ -329,6 +318,17 @@ function updateDisplay(data) {
                                                                     </div>
                                                                 </div>
                                                             `).join('')}
+                                                            <div class="event-card">
+                                                                <div class="card h-100">
+                                                                    <div class="card-body">
+                                                                        <h4 class="event-title">${event.titulo || 'Untitled Event'}</h4>
+                                                                        <p class="event-description">${event.descripcion || ''}</p>
+                                                                        <div class="event-meta">
+                                                                            <small class="text-muted">${event.fecha_evento || ''}</small>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
