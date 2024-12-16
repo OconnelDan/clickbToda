@@ -359,41 +359,56 @@ function updateDisplay(data) {
         if (window.innerWidth <= 767) {
             document.querySelectorAll('.event-articles').forEach(eventArticle => {
                 let startX = 0;
+                let currentX = 0;
                 let isDragging = false;
+                const row = eventArticle.querySelector('.row');
                 const threshold = 50; // minimum distance for swipe
                 
                 eventArticle.addEventListener('touchstart', (e) => {
                     startX = e.touches[0].clientX;
+                    currentX = startX;
                     isDragging = true;
+                    row.style.transition = 'none';
                 }, { passive: true });
 
                 eventArticle.addEventListener('touchmove', (e) => {
                     if (!isDragging) return;
                     
-                    const currentX = e.touches[0].clientX;
-                    const diffX = startX - currentX;
+                    const touch = e.touches[0];
+                    const diff = touch.clientX - startX;
                     
                     // Si el deslizamiento es significativo, prevenir el scroll vertical
-                    if (Math.abs(diffX) > 10) {
+                    if (Math.abs(diff) > 10) {
                         e.preventDefault();
                     }
                     
+                    // Limitar el deslizamiento entre 0 y -100%
+                    const translateX = Math.max(-100, Math.min(0, diff));
+                    row.style.transform = `translateX(${translateX}%)`;
+                    currentX = touch.clientX;
+                    
                 }, { passive: false });
 
-                eventArticle.addEventListener('touchend', (e) => {
+                eventArticle.addEventListener('touchend', () => {
                     if (!isDragging) return;
                     
-                    const endX = e.changedTouches[0].clientX;
-                    const diffX = startX - endX;
+                    row.style.transition = 'transform 0.3s ease-out';
+                    const diff = currentX - startX;
                     
-                    if (Math.abs(diffX) > threshold) {
-                        if (diffX > 0 && !eventArticle.classList.contains('swiped')) {
+                    if (Math.abs(diff) > threshold) {
+                        if (diff < 0 && !eventArticle.classList.contains('swiped')) {
                             // Deslizamiento hacia la izquierda
+                            row.style.transform = 'translateX(-100%)';
                             eventArticle.classList.add('swiped');
-                        } else if (diffX < 0 && eventArticle.classList.contains('swiped')) {
+                        } else if (diff > 0 && eventArticle.classList.contains('swiped')) {
                             // Deslizamiento hacia la derecha
+                            row.style.transform = 'translateX(0)';
                             eventArticle.classList.remove('swiped');
                         }
+                    } else {
+                        // Volver a la posición original si el deslizamiento no fue suficiente
+                        row.style.transform = eventArticle.classList.contains('swiped') ? 
+                            'translateX(-100%)' : 'translateX(0)';
                     }
                     
                     isDragging = false;
