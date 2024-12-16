@@ -301,39 +301,37 @@ function updateDisplay(data) {
                                         
                                         return `
                                             <div class="event-articles mb-4">
-                                                <div class="row">
-                                                    <div class="col-md-3">
-                                                        <div class="event-info">
-                                                            <h4 class="event-title">${event.titulo || 'Untitled Event'}</h4>
-                                                            <p class="event-description">${event.descripcion || ''}</p>
-                                                            <div class="event-meta">
-                                                                <small class="text-muted">${event.fecha_evento || ''}</small>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-9">
-                                                        <div class="articles-carousel">
-                                                            <div class="carousel-wrapper">
-                                                                ${sortedArticles.map(article => `
-                                                                    <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url || ''}" role="button">
-                                                                        <div class="card h-100">
-                                                                            <div class="card-body">
-                                                                                <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
-                                                                                     class="newspaper-logo mb-2" alt="Newspaper logo">
-                                                                                <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
-                                                                                    ${article.titular || 'No Title'}
-                                                                                </h5>
-                                                                                ${article.gpt_opinion ? `<div class="article-opinion">${article.gpt_opinion}</div>` : ''}
-                                                                                ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
-                                                                            </div>
+                                                    <div class="articles-carousel">
+                                                        <div class="carousel-wrapper">
+                                                            <div class="event-card">
+                                                                <div class="card h-100">
+                                                                    <div class="card-body">
+                                                                        <h4 class="event-title">${event.titulo || 'Untitled Event'}</h4>
+                                                                        <p class="event-description">${event.descripcion || ''}</p>
+                                                                        <div class="event-meta">
+                                                                            <small class="text-muted">${event.fecha_evento || ''}</small>
                                                                         </div>
                                                                     </div>
-                                                                `).join('')}
+                                                                </div>
                                                             </div>
+                                                            ${sortedArticles.map(article => `
+                                                                <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url || ''}" role="button">
+                                                                    <div class="card h-100">
+                                                                        <div class="card-body">
+                                                                            <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
+                                                                                 class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                            <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
+                                                                                ${article.titular || 'No Title'}
+                                                                            </h5>
+                                                                            ${article.gpt_opinion ? `<div class="article-opinion">${article.gpt_opinion}</div>` : ''}
+                                                                            ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            `).join('')}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
                                         `;
                                     }).join('')}
                                 </div>

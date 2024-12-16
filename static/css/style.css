@@ -266,20 +266,38 @@
         position: relative;
     }
 
-    .event-articles .row {
-        display: flex;
-        flex-wrap: nowrap;
-        margin: 0;
-        width: 200%;
-        transform: translateX(0);
-        transition: transform 0.3s ease-in-out;
+    .carousel-wrapper {
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .event-articles .col-md-3,
-    .event-articles .col-md-9 {
-        width: 100%;
-        padding: 1rem;
+    .event-card,
+    .article-card {
         flex: 0 0 100%;
+        width: 100%;
+        scroll-snap-align: start;
+        padding: 0.5rem;
+    }
+
+    .event-card .card,
+    .article-card .card {
+        height: 100%;
+        margin: 0;
+    }
+
+    .event-title {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .event-description {
+        font-size: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .event-meta {
+        font-size: 0.875rem;
     }
 
     .event-articles .col-md-3 {
