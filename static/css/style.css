@@ -276,17 +276,20 @@
         transform: translateX(0);
     }
 
-    .event-articles .col-md-3 {
+    .event-articles .col-md-3,
+    .event-articles .col-md-9 {
+        width: 100%;
         min-width: 100%;
         padding: 1rem;
         flex: 0 0 100%;
-        position: relative;
     }
 
     .event-articles .col-md-9 {
-        min-width: 100%;
-        padding: 1rem;
-        flex: 0 0 100%;
+        position: absolute;
+        left: 100%;
+        top: 0;
+        height: 100%;
+        background: var(--bs-body-bg);
     }
 
     .article-card {
