@@ -17,8 +17,9 @@
                         <div class="events-container">
                             {% for event in subcategory.events %}
                                 <div class="event-articles mb-4">
-                                    <div class="row">
-                                        <div class="col-md-3 col-12">
+                                    <!-- Vista Desktop -->
+                                    <div class="row d-none d-md-flex">
+                                        <div class="col-md-3">
                                             <div class="event-info">
                                                 <h4 class="event-title">{{ event.titulo }}</h4>
                                                 <p class="event-description">{{ event.descripcion }}</p>
@@ -27,12 +28,44 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-9 col-12">
+                                        <div class="col-md-9">
                                             <div class="articles-carousel">
                                                 <div class="carousel-wrapper">
                                                     {% for article in event.articles %}
                                                         {% include "components/article_card.html" %}
                                                     {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Vista Mobile -->
+                                    <div class="mobile-view d-block d-md-none">
+                                        <div class="mobile-event-container">
+                                            <div id="mobile-event" class="mobile-event">
+                                                <div class="event-info">
+                                                    <h4 class="event-title">{{ event.titulo }}</h4>
+                                                    <p class="event-description">{{ event.descripcion }}</p>
+                                                    <div class="event-meta">
+                                                        <small class="text-muted">{{ event.fecha_evento }}</small>
+                                                    </div>
+                                                    <div class="swipe-indicator">
+                                                        <span class="arrow-icon">→</span>
+                                                        <span class="swipe-text">Desliza para ver artículos</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div id="mobile-carousel" class="mobile-carousel">
+                                                <div class="carousel-wrapper">
+                                                    {% for article in event.articles %}
+                                                        {% include "components/article_card.html" %}
+                                                    {% endfor %}
+                                                </div>
+                                                <div class="carousel-indicator right">
+                                                    <span class="arrow-icon">→</span>
+                                                </div>
+                                                <div class="carousel-indicator left">
+                                                    <span class="arrow-icon">←</span>
                                                 </div>
                                             </div>
                                         </div>
