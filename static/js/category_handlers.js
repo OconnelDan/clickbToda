@@ -385,27 +385,35 @@ function updateDisplay(data) {
                     const currentY = e.touches[0].clientY;
                     const diffX = currentX - startX;
                     const diffY = currentY - startY;
+                    const threshold = 10;
 
-                    // Determine scroll direction based on initial movement
-                    if (!isVerticalScroll && Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
-                        // If movement is more vertical, allow normal scrolling
-                        if (Math.abs(diffY) > Math.abs(diffX)) {
-                            isDragging = false;
-                            return;
-                        }
-                        
-                        // If movement is clearly horizontal
-                        if (Math.abs(diffX) > Math.abs(diffY)) {
-                            e.preventDefault();
+                    // Si aún no hemos determinado la dirección del scroll
+                    if (!isVerticalScroll && !e.target.closest('.carousel-wrapper')) {
+                        // Determinar la dirección del movimiento solo si supera el umbral
+                        if (Math.abs(diffX) > threshold || Math.abs(diffY) > threshold) {
+                            if (Math.abs(diffY) > Math.abs(diffX)) {
+                                // Es un movimiento vertical
+                                isDragging = false;
+                                isVerticalScroll = true;
+                                return;
+                            }
+                            
+                            // Es un movimiento horizontal
                             isVerticalScroll = false;
                         }
                     }
 
-                    // Only handle horizontal scroll if we're sure it's horizontal
-                    if (!isVerticalScroll && Math.abs(diffX) > Math.abs(diffY)) {
+                    // Si es scroll vertical o estamos dentro del carousel, permitir el comportamiento por defecto
+                    if (isVerticalScroll || e.target.closest('.carousel-wrapper')) {
+                        return;
+                    }
+
+                    // Solo manejar el scroll horizontal si estamos seguros que es horizontal
+                    if (!isVerticalScroll && Math.abs(diffX) > threshold) {
+                        e.preventDefault();
                         currentTranslate = prevTranslate + diffX;
 
-                        // Limit translation to container width
+                        // Limitar la traducción al ancho del contenedor
                         const maxTranslate = -eventArticle.offsetWidth;
                         currentTranslate = Math.max(maxTranslate, Math.min(0, currentTranslate));
 
