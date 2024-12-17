@@ -407,33 +407,24 @@ function updateDisplay(data) {
                     const diffY = currentY - startY;
                     const threshold = 10;
 
-                    // Si aún no hemos determinado la dirección del scroll
-                    if (!isVerticalScroll && !e.target.closest('.carousel-wrapper')) {
-                        // Determinar la dirección del movimiento solo si supera el umbral
-                        if (Math.abs(diffX) > threshold || Math.abs(diffY) > threshold) {
-                            if (Math.abs(diffY) > Math.abs(diffX)) {
-                                // Es un movimiento vertical
-                                isDragging = false;
-                                isVerticalScroll = true;
-                                return;
-                            }
-                            
-                            // Es un movimiento horizontal
-                            isVerticalScroll = false;
-                        }
-                    }
-
-                    // Si es scroll vertical o estamos dentro del carousel, permitir el comportamiento por defecto
-                    if (isVerticalScroll || e.target.closest('.carousel-wrapper')) {
+                    // Permitir scroll vertical por defecto
+                    if (!isVerticalScroll && Math.abs(diffY) > threshold && Math.abs(diffY) > Math.abs(diffX)) {
+                        isDragging = false;
+                        isVerticalScroll = true;
                         return;
                     }
 
-                    // Solo manejar el scroll horizontal si estamos seguros que es horizontal
-                    if (!isVerticalScroll && Math.abs(diffX) > threshold) {
+                    // Si estamos en el carrusel, permitir el comportamiento por defecto
+                    if (e.target.closest('.carousel-wrapper')) {
+                        return;
+                    }
+
+                    // Manejar el deslizamiento horizontal solo si el movimiento es más horizontal que vertical
+                    if (!isVerticalScroll && Math.abs(diffX) > threshold && Math.abs(diffX) > Math.abs(diffY)) {
                         e.preventDefault();
                         currentTranslate = prevTranslate + diffX;
 
-                        // Limitar la traducción al ancho del contenedor
+                        // Permitir deslizar de vuelta al evento
                         const maxTranslate = -eventArticle.offsetWidth;
                         currentTranslate = Math.max(maxTranslate, Math.min(0, currentTranslate));
 
@@ -445,6 +436,27 @@ function updateDisplay(data) {
                         }
                     }
                 }, { passive: false });
+
+                // Agregar un detector de doble toque para volver al evento
+                let lastTap = 0;
+                eventArticle.addEventListener('touchend', (e) => {
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTap;
+                    
+                    if (tapLength < 500 && tapLength > 0) {
+                        // Doble toque detectado
+                        if (currentIndex === 1) {
+                            // Si estamos en los artículos, volver al evento
+                            currentTranslate = 0;
+                            currentIndex = 0;
+                            row.style.transition = 'transform 0.3s ease';
+                            row.style.transform = `translateX(${currentTranslate}px)`;
+                            eventArticle.classList.remove('swiped');
+                            prevTranslate = currentTranslate;
+                        }
+                    }
+                    lastTap = currentTime;
+                });
 
                 eventArticle.addEventListener('touchend', () => {
                     if (!isDragging) return;
