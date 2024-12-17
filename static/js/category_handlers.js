@@ -43,6 +43,14 @@ function initializeTabNavigation() {
         categoryTabs.querySelectorAll('.nav-link').forEach(tab => tab.classList.remove('active'));
         tabButton.classList.add('active');
         
+        // Toggle subcategory nav visibility
+        const subcategoryNav = document.querySelector('.subcategory-nav');
+        if (categoryId === '0') {
+            subcategoryNav.classList.remove('show');
+        } else {
+            subcategoryNav.classList.add('show');
+        }
+        
         showLoadingState();
         loadCategoryContent(categoryId);
     });
@@ -396,7 +404,7 @@ function updateDisplay(data) {
                     if (isHorizontalScroll) {
                         e.preventDefault();
                         if (diffX > 0) { // Solo permitir deslizamiento hacia la izquierda
-                            const maxTranslate = eventArticle.offsetWidth / 2;
+                            const maxTranslate = eventArticle.offsetWidth / 3;
                             const progress = Math.min(diffX / maxTranslate, 1);
                             const transform = progress * maxTranslate;
                             row.style.transform = `translateX(-${transform}px)`;
@@ -412,9 +420,9 @@ function updateDisplay(data) {
                     const diffX = startX - currentX;
                     row.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
                     
-                    // Si el deslizamiento es más del 15% del ancho, completar la transición
-                    if (diffX > eventArticle.offsetWidth * 0.15) {
-                        row.style.transform = `translateX(-${eventArticle.offsetWidth / 2}px)`;
+                    // Si el deslizamiento es más del 10% del ancho, completar la transición
+                    if (diffX > eventArticle.offsetWidth * 0.10) {
+                        row.style.transform = `translateX(-${eventArticle.offsetWidth / 1.10}px)`;
                         eventArticle.classList.add('swiped');
                         // Ocultar la flecha del event-info
                         const eventInfo = eventArticle.querySelector('.event-info');

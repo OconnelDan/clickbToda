@@ -155,6 +155,11 @@
     padding: 0.25rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-top: 0.5rem;
+    display: none;
+}
+
+.subcategory-nav.show {
+    display: block;
 }
 
 /* Unified heading styles */
@@ -275,7 +280,7 @@
         width: 200%;
         transform: translateX(0);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        touch-action: pan-x;
+        touch-action: pan-y;
         will-change: transform;
     }
 
