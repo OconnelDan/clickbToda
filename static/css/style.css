@@ -259,113 +259,61 @@
         margin-bottom: 1rem;
     }
 
-    .mobile-view {
-        position: relative;
-        width: 100%;
-        height: 100%;
+    .event-articles {
+        margin-bottom: 1rem;
+        background: transparent;
         overflow: hidden;
+        position: relative;
     }
 
-    .mobile-event-container {
+    .event-articles .row {
+        display: flex;
+        flex-direction: row;
+        margin: 0;
+        padding: 0;
         position: relative;
         width: 200%;
-        height: 100%;
-        display: flex;
+        transform: translateX(0);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        touch-action: pan-x;
         will-change: transform;
     }
 
-    #mobile-event,
-    #mobile-carousel {
-        width: 50%;
-        min-width: 50%;
-        height: 100%;
-        position: relative;
+   
+
+    .event-articles .col-md-3,
+    .event-articles .col-md-9 {
+            flex: 0 0 100%;
+            max-width: 100%;
+            width: 50%;
+            padding: 0.5rem;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .mobile-event .event-info {
-        background: var(--bs-body-bg);
-        border-radius: 0.75rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        padding: 1.25rem;
-        height: 100%;
-        position: relative;
+    .event-articles.swiped .event-info::after {
+            opacity: 0;
     }
+        
+    .event-articles.swiped .row {
+            transform: translateX(-100%);
+    }
+    
 
-    .swipe-indicator {
-        position: absolute;
-        right: 1rem;
-        top: 50%;
-        transform: translateY(-50%);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--bs-primary);
+    .end-indicator {
         font-size: 0.9rem;
-        opacity: 0.8;
-    }
-
-    .arrow-icon {
-        font-size: 1.2rem;
-        animation: bounceHorizontal 1s infinite;
-    }
-
-    .mobile-carousel {
-        position: relative;
-        overflow: hidden;
-    }
-
-    .mobile-carousel .carousel-wrapper {
-        display: flex;
-        scroll-snap-type: x mandatory;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scroll-behavior: smooth;
-        gap: 1rem;
-        padding: 0.5rem;
-        width: 100%;
-        height: 100%;
-    }
-
-    .mobile-carousel .article-card {
-        scroll-snap-align: start;
-        flex: 0 0 90%;
-        max-width: 90%;
-    }
-
-    .carousel-indicator {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 2rem;
-        height: 2rem;
-        background: var(--bs-primary);
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0.8;
-        transition: opacity 0.3s ease;
-        z-index: 10;
-    }
-
-    .carousel-indicator.left {
-        left: 0.5rem;
-    }
-
-    .carousel-indicator.right {
-        right: 0.5rem;
-    }
-
-    .carousel-indicator.hidden {
-        opacity: 0;
+        font-weight: bold;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         pointer-events: none;
     }
 
-    @keyframes bounceHorizontal {
-        0%, 100% { transform: translateX(0); }
-        50% { transform: translateX(5px); }
+    .event-articles .col-md-3,
+    .event-articles .col-md-9 {
+        width: 50%;
+        min-width: 50%;
+        padding: 0.5rem;
+        flex: 0 0 50%;
+        background: var(--bs-body-bg);
     }
 
     .article-card {

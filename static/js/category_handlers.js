@@ -77,45 +77,25 @@ function updateNavigation() {
 
 function loadDefaultCategory() {
     try {
-        const categoryTabs = document.getElementById('categoryTabs');
-        if (!categoryTabs) {
-            console.error('Category tabs container not found');
-            return;
+        const categoryTabs = document.querySelectorAll('#categoryTabs .nav-link');
+        if (categoryTabs.length > 0) {
+            // Remove active class from any previously active tabs
+            categoryTabs.forEach(tab => tab.classList.remove('active'));
+            // Set the first category (All) as active
+            categoryTabs[0].classList.add('active');
+            // Load content for the All category
+            const categoryId = categoryTabs[0].dataset.categoryId;
+            if (categoryId) {
+                loadCategoryContent(categoryId);
+            } else {
+                throw new Error('No category ID found on first tab');
+            }
+        } else {
+            throw new Error('No categories available');
         }
-
-        const tabs = categoryTabs.querySelectorAll('.nav-link');
-        if (tabs.length === 0) {
-            console.log('Waiting for categories to load...');
-            // Retry after a short delay
-            setTimeout(loadDefaultCategory, 500);
-            return;
-        }
-
-        // Remove active class from any previously active tabs
-        tabs.forEach(tab => tab.classList.remove('active'));
-
-        // Set the first category as active
-        tabs[0].classList.add('active');
-
-        // Load content for the first category
-        const categoryId = tabs[0].dataset.categoryId;
-        if (!categoryId) {
-            console.error('No category ID found on first tab');
-            return;
-        }
-
-        loadCategoryContent(categoryId);
     } catch (error) {
         console.error('Error loading default category:', error);
-        const eventsContent = document.getElementById('events-content');
-        if (eventsContent) {
-            eventsContent.innerHTML = `
-                <div class="alert alert-danger">
-                    <h4 class="alert-heading">Error loading categories</h4>
-                    <p>Please try refreshing the page. If the problem persists, contact support.</p>
-                </div>
-            `;
-        }
+        showError('Failed to load initial content. Please refresh the page.');
     }
 }
 
@@ -146,24 +126,24 @@ function loadCategoryContent(categoryId) {
             return response.json();
         })
     ])
-        .then(([subcategories, articlesData]) => {
-            if (!articlesData || !articlesData.categories) {
-                throw new Error('Invalid response format');
-            }
+    .then(([subcategories, articlesData]) => {
+        if (!articlesData || !articlesData.categories) {
+            throw new Error('Invalid response format');
+        }
 
-            // Sort subcategories by article count
-            subcategories.sort((a, b) => (b.article_count || 0) - (a.article_count || 0));
+        // Sort subcategories by article count
+        subcategories.sort((a, b) => (b.article_count || 0) - (a.article_count || 0));
 
-            updateSubcategoryTabs(subcategories);
-            updateDisplay(articlesData);
-            hideLoadingState();
-            updateNavigation();
-        })
-        .catch(error => {
-            console.error('Error loading category content:', error);
-            showError(`Failed to load category content: ${error.message}`);
-            hideLoadingState();
-        });
+        updateSubcategoryTabs(subcategories);
+        updateDisplay(articlesData);
+        hideLoadingState();
+        updateNavigation();
+    })
+    .catch(error => {
+        console.error('Error loading category content:', error);
+        showError(`Failed to load category content: ${error.message}`);
+        hideLoadingState();
+    });
 }
 
 function updateSubcategoryTabs(subcategories) {
@@ -320,7 +300,7 @@ function updateDisplay(data) {
                                         });
 
                                         return `
-                                            <div class="event-articles mb-4 mobile-view">
+                                            <div class="event-articles mb-4">
                                                 <div class="row">
                                                     <div class="col-md-3">
                                                         <div class="event-info">
@@ -332,27 +312,23 @@ function updateDisplay(data) {
                                                         </div>
                                                     </div>
                                                     <div class="col-md-9">
-                                                        <div class="articles-carousel mobile-event-container">
-                                                            <div class="mobile-carousel">
-                                                                <div class="carousel-wrapper">
-                                                                    ${sortedArticles.map(article => `
-                                                                        <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url || ''}" role="button">
-                                                                            <div class="card h-100">
-                                                                                <div class="card-body">
-                                                                                    <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
-                                                                                         class="newspaper-logo mb-2" alt="Newspaper logo">
-                                                                                    <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
-                                                                                        ${article.titular || 'No Title'}
-                                                                                    </h5>
-                                                                                    ${article.gpt_opinion ? `<div class="article-opinion">${article.gpt_opinion}</div>` : ''}
-                                                                                    ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
-                                                                                </div>
+                                                        <div class="articles-carousel">
+                                                            <div class="carousel-wrapper">
+                                                                ${sortedArticles.map(article => `
+                                                                    <div class="article-card" data-article-id="${article.id}" data-article-url="${article.url || ''}" role="button">
+                                                                        <div class="card h-100">
+                                                                            <div class="card-body">
+                                                                                <img src="${article.periodico_logo || '/static/img/default-newspaper.svg'}" 
+                                                                                     class="newspaper-logo mb-2" alt="Newspaper logo">
+                                                                                <h5 class="card-title article-title ${article.paywall ? 'text-muted' : ''}">
+                                                                                    ${article.titular || 'No Title'}
+                                                                                </h5>
+                                                                                ${article.gpt_opinion ? `<div class="article-opinion">${article.gpt_opinion}</div>` : ''}
+                                                                                ${article.paywall ? '<span class="badge bg-secondary">Paywall</span>' : ''}
                                                                             </div>
                                                                         </div>
-                                                                    `).join('')}
-                                                                </div>
-                                                                <div class="carousel-indicator left hidden">&#10094;</div>
-                                                                <div class="carousel-indicator right">&#10095;</div>
+                                                                    </div>
+                                                                `).join('')}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -381,145 +357,118 @@ function updateDisplay(data) {
 
         // Initialize mobile swipe events
         if (window.innerWidth <= 767) {
-            document.querySelectorAll('.mobile-view').forEach(mobileView => {
-                const container = mobileView.querySelector('.mobile-event-container');
-                const carousel = mobileView.querySelector('.mobile-carousel');
-                const carouselWrapper = carousel.querySelector('.carousel-wrapper');
+            document.querySelectorAll('.event-articles').forEach(eventArticle => {
+                const row = eventArticle.querySelector('.row');
+                const carouselWrapper = eventArticle.querySelector('.carousel-wrapper');
                 const articles = carouselWrapper.querySelectorAll('.article-card');
-                const leftIndicator = carousel.querySelector('.carousel-indicator.left');
-                const rightIndicator = carousel.querySelector('.carousel-indicator.right');
-
                 let startX = 0, startY = 0;
                 let isDragging = false;
                 let isVerticalScroll = false;
                 let currentTranslate = 0;
                 let prevTranslate = 0;
                 let animationFrame = null;
-                let currentArticleIndex = 0;
-                let isShowingEvent = true;
+                let currentIndex = 0;
 
-
-                // Función para actualizar los indicadores
-                function updateIndicators() {
-                    leftIndicator.classList.toggle('hidden', currentArticleIndex === 0);
-                    rightIndicator.classList.toggle('hidden', currentArticleIndex === articles.length - 1);
-                    if (isShowingEvent) {
-                        leftIndicator.classList.add('hidden');
-                        rightIndicator.classList.remove('hidden');
-                    } else {
-                        leftIndicator.classList.remove('hidden');
-                        rightIndicator.classList.toggle('hidden', currentArticleIndex === articles.length - 1);
-                    }
-                }
-
-                // Inicializar indicadores
-                updateIndicators();
-
-                mobileView.addEventListener('touchstart', (e) => {
+                eventArticle.addEventListener('touchstart', (e) => {
                     startX = e.touches[0].clientX;
                     startY = e.touches[0].clientY;
                     isDragging = true;
                     isVerticalScroll = false;
                     cancelAnimationFrame(animationFrame);
-                    container.style.transition = 'none';
-                    carouselWrapper.style.transition = 'none';
+                    row.style.transition = 'none';
                 }, { passive: true });
 
-                mobileView.addEventListener('touchmove', (e) => {
+                eventArticle.addEventListener('touchmove', (e) => {
                     if (!isDragging) return;
 
                     const currentX = e.touches[0].clientX;
                     const currentY = e.touches[0].clientY;
                     const diffX = currentX - startX;
                     const diffY = currentY - startY;
-                    const threshold = 10;
 
-                    // Permitir scroll vertical por defecto
-                    if (!isVerticalScroll && Math.abs(diffY) > threshold && Math.abs(diffY) > Math.abs(diffX)) {
-                        isDragging = false;
-                        isVerticalScroll = true;
-                        return;
+                    // Si aún no hemos determinado la dirección del scroll
+                    if (!isVerticalScroll) {
+                        // Si el movimiento es más vertical que horizontal
+                        if (Math.abs(diffY) > Math.abs(diffX) * 1.2) { // 20% más vertical
+                            isDragging = false;
+                            return;
+                        }
+                        // Si el movimiento es claramente horizontal
+                        if (Math.abs(diffX) > Math.abs(diffY) * 1.2) { // 20% más horizontal
+                            isVerticalScroll = false;
+                            e.preventDefault();
+                        }
                     }
 
-                    // Manejar el deslizamiento horizontal
-                    if (!isVerticalScroll && Math.abs(diffX) > threshold && Math.abs(diffX) > Math.abs(diffY)) {
+                    // Si ya determinamos que es scroll horizontal
+                    if (!isVerticalScroll) {
                         e.preventDefault();
+                        currentTranslate = prevTranslate + diffX;
 
-                        if (isShowingEvent) {
-                            // Deslizar desde el evento al carrusel
-                            currentTranslate = Math.min(0, prevTranslate + diffX);
-                        } else {
-                            // Deslizar entre artículos
-                            const containerWidth = carouselWrapper.offsetWidth;
-                            const maxScroll = -(articles.length - 1) * containerWidth;
-                            currentTranslate = Math.max(maxScroll, Math.min(0, prevTranslate + diffX));
-                        }
+                        // Bloquear desplazamiento al llegar a los límites
+                        const maxTranslate = -eventArticle.offsetWidth;
+                        currentTranslate = Math.max(maxTranslate, Math.min(0, currentTranslate));
+
                         if (!animationFrame) {
                             animationFrame = requestAnimationFrame(() => {
-                                if (isShowingEvent) {
-                                    container.style.transform = `translateX(${currentTranslate}px)`;
-                                } else {
-                                    carouselWrapper.style.transform = `translateX(${currentTranslate}px)`;
-                                }
+                                row.style.transform = `translateX(${currentTranslate}px)`;
                                 animationFrame = null;
                             });
                         }
                     }
                 }, { passive: false });
 
-                mobileView.addEventListener('touchend', () => {
+                eventArticle.addEventListener('touchend', () => {
                     if (!isDragging) return;
                     isDragging = false;
-                    const threshold = carouselWrapper.offsetWidth / 3;
 
-                    if (isShowingEvent) {
-                        // Transición del evento al carrusel
-                        if (currentTranslate < -threshold) {
-                            currentTranslate = -mobileView.offsetWidth;
-                            isShowingEvent = false;
-                        } else {
-                            currentTranslate = 0;
-                        }
+                    const threshold = eventArticle.offsetWidth / 3; // 33% del ancho
+                    const maxTranslate = -eventArticle.offsetWidth;
 
-                        container.style.transition = 'transform 0.3s ease';
-                        container.style.transform = `translateX(${currentTranslate}px)`;
-                    } else {
-                        // Navegación entre artículos
-                        const containerWidth = carouselWrapper.offsetWidth;
-                        const snapPoint = Math.round(currentTranslate / containerWidth) * containerWidth;
-                        currentArticleIndex = Math.abs(Math.round(currentTranslate / containerWidth));
-
-                        carouselWrapper.style.transition = 'transform 0.3s ease';
-                        carouselWrapper.style.transform = `translateX(${snapPoint}px)`;
-                        currentTranslate = snapPoint;
-                        if (currentArticleIndex === 0) isShowingEvent = true;
+                    // Verificar el índice actual
+                    if (currentTranslate < -threshold) {
+                        currentTranslate = maxTranslate;
+                        currentIndex = 1; // Carrusel completo
+                        eventArticle.classList.add('swiped');
+                    } else if (currentTranslate > -threshold && currentIndex === 1) {
+                        currentTranslate = 0;
+                        currentIndex = 0; // Mostrar evento
+                        eventArticle.classList.remove('swiped');
                     }
 
+                    row.style.transition = 'transform 0.3s ease';
+                    row.style.transform = `translateX(${currentTranslate}px)`;
                     prevTranslate = currentTranslate;
-                    updateIndicators();
+                }, { passive: true });
+
+                // Bloquear movimiento adicional en el carrusel
+                carouselWrapper.addEventListener('scroll', () => {
+                    if (carouselWrapper.scrollLeft + carouselWrapper.clientWidth >= carouselWrapper.scrollWidth) {
+                        carouselWrapper.scrollLeft = carouselWrapper.scrollWidth - carouselWrapper.clientWidth;
+                        showEndIndicator(carouselWrapper);
+                    }
                 });
 
+                function showEndIndicator(wrapper) {
+                    if (!wrapper.querySelector('.end-indicator')) {
+                        const endIndicator = document.createElement('div');
+                        endIndicator.className = 'end-indicator';
+                        endIndicator.textContent = 'No hay más artículos';
+                        endIndicator.style.position = 'absolute';
+                        endIndicator.style.bottom = '10px';
+                        endIndicator.style.right = '10px';
+                        endIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
+                        endIndicator.style.color = '#fff';
+                        endIndicator.style.padding = '5px 10px';
+                        endIndicator.style.borderRadius = '5px';
+                        endIndicator.style.zIndex = '10';
+                        wrapper.appendChild(endIndicator);
 
-                leftIndicator.addEventListener('click', () => {
-                    currentArticleIndex = Math.max(0, currentArticleIndex - 1);
-                    currentTranslate = -currentArticleIndex * carouselWrapper.offsetWidth;
-                    carouselWrapper.style.transition = 'transform 0.3s ease';
-                    carouselWrapper.style.transform = `translateX(${currentTranslate}px)`;
-                    prevTranslate = currentTranslate;
-                    isShowingEvent = (currentArticleIndex === 0);
-                    updateIndicators();
-
-                });
-
-                rightIndicator.addEventListener('click', () => {
-                    currentArticleIndex = Math.min(articles.length - 1, currentArticleIndex + 1);
-                    currentTranslate = -currentArticleIndex * carouselWrapper.offsetWidth;
-                    carouselWrapper.style.transition = 'transform 0.3s ease';
-                    carouselWrapper.style.transform = `translateX(${currentTranslate}px)`;
-                    prevTranslate = currentTranslate;
-                    isShowingEvent = false;
-                    updateIndicators();
-                });
+                        setTimeout(() => {
+                            endIndicator.remove();
+                        }, 2000); // Elimina el mensaje después de 2 segundos
+                    }
+                }
             });
         }
 
@@ -531,13 +480,4 @@ function updateDisplay(data) {
         console.error('Error updating display:', error);
         showError('Failed to update display', error);
     }
-}
-
-// Placeholder functions -  Replace with your actual implementations
-function initializeCarousels() {
-    // Add your carousel initialization logic here if needed
-}
-
-function initializeScrollButtons() {
-    // Add your scroll button initialization logic here if needed.
 }
