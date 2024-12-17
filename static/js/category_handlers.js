@@ -386,26 +386,23 @@ function updateDisplay(data) {
                     const diffX = currentX - startX;
                     const diffY = currentY - startY;
 
-                    // Si aún no hemos determinado la dirección del scroll
-                    if (!isVerticalScroll) {
-                        // Si el movimiento es más vertical que horizontal
-                        if (Math.abs(diffY) > Math.abs(diffX) * 1.2) { // 20% más vertical
-                            isDragging = false;
-                            return;
-                        }
-                        // Si el movimiento es claramente horizontal
-                        if (Math.abs(diffX) > Math.abs(diffY) * 1.2) { // 20% más horizontal
-                            isVerticalScroll = false;
-                            e.preventDefault();
-                        }
+                    // Determinar la dirección del movimiento solo al inicio
+                    if (!isVerticalScroll && Math.abs(diffX) < 5 && Math.abs(diffY) < 5) {
+                        return; // Ignorar movimientos muy pequeños al inicio
                     }
 
-                    // Si ya determinamos que es scroll horizontal
-                    if (!isVerticalScroll) {
-                        e.preventDefault();
-                        currentTranslate = prevTranslate + diffX;
+                    // Si aún no hemos determinado la dirección
+                    if (!isVerticalScroll && Math.abs(diffY) > Math.abs(diffX) * 1.2) {
+                        isDragging = false;
+                        return; // Permitir scroll vertical
+                    }
 
-                        // Bloquear desplazamiento al llegar a los límites
+                    // Si el movimiento es claramente horizontal
+                    if (!isVerticalScroll && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
+                        isVerticalScroll = false;
+                        e.preventDefault(); // Prevenir scroll vertical solo si es horizontal
+
+                        currentTranslate = prevTranslate + diffX;
                         const maxTranslate = -eventArticle.offsetWidth;
                         currentTranslate = Math.max(maxTranslate, Math.min(0, currentTranslate));
 
