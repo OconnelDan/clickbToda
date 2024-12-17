@@ -262,23 +262,20 @@
     .event-articles {
         margin-bottom: 1rem;
         background: transparent;
-        /*overflow: hidden;*/
+        overflow: hidden;
         position: relative;
-        overflow-y: auto;
-        max-height: 200vh;
     }
 
     .event-articles .row {
         display: flex;
-        /*flex-direction: row;*/
+        flex-direction: row;
         margin: 0;
         padding: 0;
         position: relative;
-        width: 100%;
+        width: 200%;
         transform: translateX(0);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        touch-action: auto; /* Permitir desplazamiento en todas las direcciones */
-        overflow: hidden; /* Para evitar el scroll visual indeseado */
+        touch-action: pan-x;
         will-change: transform;
     }
 
@@ -286,11 +283,11 @@
 
     .event-articles .col-md-3,
     .event-articles .col-md-9 {
-            flex: 0 0 100%;
-            max-width: 100%;
+            flex: 0 0 50%;
+            max-width: 50%;
             width: 50%;
             padding: 0.5rem;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .event-articles.swiped .event-info::after {
@@ -298,17 +295,9 @@
     }
         
     .event-articles.swiped .row {
-            transform: translateX(-100%);
+            transform: translateX(-50%);
     }
     
-
-    .end-indicator {
-        font-size: 0.9rem;
-        font-weight: bold;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        pointer-events: none;
-    }
 
     .event-articles .col-md-3,
     .event-articles .col-md-9 {
@@ -323,8 +312,6 @@
         width: 100%;
         margin-right: 0;
         scroll-snap-align: start;
-        cursor: pointer; 
-        transition: transform 0.3s ease;
     }
 
     .article-card .card {
@@ -351,8 +338,6 @@
             flex-direction: column;
             position: relative;
             cursor: grab;
-            transition: transform 0.3s ease;
-            will-change: transform;
         }
         
     .event-info:active {
@@ -397,9 +382,6 @@
         -webkit-overflow-scrolling: touch;
         display: flex;
         gap: 0.5rem;
-        touch-action: auto; /* Permite scroll vertical */
-        overflow-x: hidden; /* Oculta el scroll horizontal */
-
     }
 
     .carousel-wrapper::after {
@@ -425,8 +407,6 @@
         padding: 0 0.5rem;
         width: 100%;
         overflow: hidden;
-        transition: transform 0.3s ease;
-        will-change: transform;
     }
 
     .event-articles.swiped .row {

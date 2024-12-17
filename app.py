@@ -289,7 +289,7 @@ def get_posturas():
         end_date = datetime.now()
         start_date = end_date - timedelta(hours=int(time_filter[:-1]))
 
-        # Query principal
+        # Modificar la query para incluir información del evento
         query = db.session.query(
             Evento,
             Subcategoria,
@@ -304,43 +304,35 @@ def get_posturas():
             Evento.gpt_desinformacion.isnot(None)
         )
 
-        # Filtrar por categoría o subcategoría
+        # Aplicar filtros de categoría
         if category_id:
-            if category_id != 0:  # Saltar la categoría "All"
+            if category_id != 0:  # Skip for "All" category
                 query = query.filter(Categoria.categoria_id == category_id)
+
         if subcategory_id:
             query = query.filter(Evento.subcategoria_id == subcategory_id)
 
-        # Procesar eventos
         eventos = query.order_by(desc(Evento.fecha_evento)).all()
-        eventos_data = []
 
+        eventos_data = []
         for evento, subcategoria, categoria in eventos:
             try:
-                # Validar y parsear el JSON de gpt_desinformacion
-                gpt_data = evento.gpt_desinformacion
-                if isinstance(gpt_data, str):
-                    gpt_data = gpt_data.replace('\"', '"').replace('\\', '')  # Normalizar
-                    if gpt_data.startswith('"') and gpt_data.endswith('"'):
-                        gpt_data = gpt_data[1:-1]
+                if evento.gpt_desinformacion:
+                    json_str = evento.gpt_desinformacion.replace('\"', '"').replace('\\', '')
+                    if json_str.startswith('"') and json_str.endswith('"'):
+                        json_str = json_str[1:-1]
 
-                desinformacion = json.loads(gpt_data)  # Parsear a JSON
+                    posturas = json.loads(json_str)
 
-                # Asegurarse de que el formato sea correcto
-                if not isinstance(disinformacion, dict):
-                    logger.warning(f"Evento {evento.evento_id} tiene formato inesperado en gpt_desinformacion.")
-                    continue
-
-                eventos_data.append({
-                    'evento_id': evento.evento_id,
-                    'titulo': evento.titulo,
-                    'descripcion': evento.descripcion,
-                    'fecha': evento.fecha_evento.strftime('%Y-%m-%d') if evento.fecha_evento else None,
-                    'categoria_nombre': categoria.nombre,
-                    'subcategoria_nombre': subcategoria.nombre,
-                    'posturas': desinformacion.get('incongruencias', []),
-                    'evento_actualizado': desinformacion.get('evento_actualizado', {})
-                })
+                    eventos_data.append({
+                        'evento_id': evento.evento_id,
+                        'titulo': evento.titulo,
+                        'descripcion': evento.descripcion,
+                        'fecha': evento.fecha_evento.strftime('%Y-%m-%d') if evento.fecha_evento else None,
+                        'categoria_nombre': categoria.nombre,
+                        'subcategoria_nombre': subcategoria.nombre,
+                        'posturas': posturas if isinstance(posturas, list) else [posturas]
+                    })
             except Exception as e:
                 logger.error(f"Error processing evento {evento.evento_id}: {str(e)}")
                 continue
@@ -349,8 +341,7 @@ def get_posturas():
 
     except Exception as e:
         logger.error(f"Error fetching posturas: {str(e)}")
-        return jsonify([])  # Devuelve una lista vacía en caso de error
-
+        return jsonify([])  # Return empty list instead of 500 error
 
 @app.route('/')
 def index():
