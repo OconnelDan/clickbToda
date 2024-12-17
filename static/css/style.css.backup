@@ -1,0 +1,9 @@
+/* Base mobile styles (up to 767px) */
+.articles-carousel {
+    position: relative;
+    overflow: hidden;
+    padding: 0 2.5rem;
+    height: 100%;
+}
+
+// ... [resto del contenido actual del archivo style.css]

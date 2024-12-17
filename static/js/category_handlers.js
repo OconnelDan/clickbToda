@@ -6,43 +6,43 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeTabNavigation() {
     const categoryTabs = document.getElementById('categoryTabs');
     const subcategoryTabs = document.getElementById('subcategoryTabs');
-    
+
     if (!categoryTabs || !subcategoryTabs) return;
-    
+
     // Add touch scrolling for navigation bars
     [categoryTabs, subcategoryTabs].forEach(container => {
         let touchStartX = 0;
         let startScrollLeft = 0;
-        
+
         container.addEventListener('touchstart', e => {
             touchStartX = e.touches[0].clientX;
             startScrollLeft = container.scrollLeft;
             container.style.scrollBehavior = 'auto';
         }, { passive: true });
-        
+
         container.addEventListener('touchmove', e => {
             const touchCurrentX = e.touches[0].clientX;
             const diff = touchStartX - touchCurrentX;
             container.scrollLeft = startScrollLeft + diff;
         }, { passive: true });
-        
+
         container.addEventListener('touchend', () => {
             container.style.scrollBehavior = 'smooth';
         });
     });
-    
+
     // Category tab click handler
     categoryTabs.addEventListener('click', function(e) {
         const tabButton = e.target.closest('[data-bs-toggle="tab"]');
         if (!tabButton) return;
-        
+
         const categoryId = tabButton.dataset.categoryId;
         if (!categoryId) return;
-        
+
         // Remove active class from all tabs and add to selected
         categoryTabs.querySelectorAll('.nav-link').forEach(tab => tab.classList.remove('active'));
         tabButton.classList.add('active');
-        
+
         showLoadingState();
         loadCategoryContent(categoryId);
     });
@@ -51,9 +51,9 @@ function initializeTabNavigation() {
 function updateNavigation() {
     const categoryTabs = document.getElementById('categoryTabs');
     const subcategoryTabs = document.getElementById('subcategoryTabs');
-    
+
     if (!categoryTabs || !subcategoryTabs) return;
-    
+
     // Update category tabs scroll position
     const activeCategoryTab = categoryTabs.querySelector('.nav-link.active');
     if (activeCategoryTab) {
@@ -63,7 +63,7 @@ function updateNavigation() {
             activeCategoryTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
     }
-    
+
     // Update subcategory tabs scroll position
     const activeSubcategoryTab = subcategoryTabs.querySelector('.nav-link.active');
     if (activeSubcategoryTab) {
@@ -108,13 +108,13 @@ function loadCategoryContent(categoryId) {
 
     const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
     const subcategoryTabs = document.getElementById('subcategoryTabs');
-    
+
     // Clear existing subcategories
     subcategoryTabs.innerHTML = '';
-    
+
     // Show loading state before fetching
     showLoadingState();
-    
+
     // Fetch subcategories and articles simultaneously
     Promise.all([
         fetch(`/api/subcategories?category_id=${categoryId}&time_filter=${timeFilter}`).then(response => {
@@ -130,10 +130,10 @@ function loadCategoryContent(categoryId) {
         if (!articlesData || !articlesData.categories) {
             throw new Error('Invalid response format');
         }
-        
+
         // Sort subcategories by article count
         subcategories.sort((a, b) => (b.article_count || 0) - (a.article_count || 0));
-        
+
         updateSubcategoryTabs(subcategories);
         updateDisplay(articlesData);
         hideLoadingState();
@@ -149,12 +149,12 @@ function loadCategoryContent(categoryId) {
 function updateSubcategoryTabs(subcategories) {
     const subcategoryTabs = document.getElementById('subcategoryTabs');
     if (!subcategoryTabs) return;
-    
+
     if (!Array.isArray(subcategories)) {
         console.error('Invalid subcategories data:', subcategories);
         return;
     }
-    
+
     subcategoryTabs.innerHTML = subcategories.map(subcat => `
         <li class="nav-item" role="presentation">
             <button class="nav-link" 
@@ -166,7 +166,7 @@ function updateSubcategoryTabs(subcategories) {
             </button>
         </li>
     `).join('');
-    
+
     // Initialize subcategory click handlers
     subcategoryTabs.querySelectorAll('[data-subcategory-id]').forEach(button => {
         button.addEventListener('click', function() {
@@ -174,12 +174,12 @@ function updateSubcategoryTabs(subcategories) {
             subcategoryTabs.querySelectorAll('.nav-link').forEach(tab => tab.classList.remove('active'));
             // Add active class to clicked tab
             this.classList.add('active');
-            
+
             const subcategoryId = this.dataset.subcategoryId;
             loadArticlesForSubcategory(subcategoryId);
         });
     });
-    
+
     updateNavigation();
 }
 
@@ -191,7 +191,7 @@ function loadArticlesForSubcategory(subcategoryId) {
 
     const timeFilter = document.querySelector('input[name="timeFilter"]:checked').value;
     showLoadingState();
-    
+
     fetch(`/api/articles?subcategory_id=${subcategoryId}&time_filter=${timeFilter}`)
         .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -212,7 +212,7 @@ function loadArticlesForSubcategory(subcategoryId) {
 function showLoadingState() {
     const eventsContent = document.getElementById('events-content');
     if (!eventsContent) return;
-    
+
     eventsContent.innerHTML = `
         <div class="text-center my-5">
             <div class="spinner-border text-primary" role="status">
@@ -243,7 +243,7 @@ function showError(message, error = null) {
         ${error ? `<p class="text-muted small">Technical details: ${error.message || error}</p>` : ''}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
+
     eventsContent.innerHTML = '';
     eventsContent.appendChild(errorDiv);
 }
@@ -256,7 +256,7 @@ function updateDisplay(data) {
         if (!data || !data.categories) {
             throw new Error('Invalid response format');
         }
-        
+
         if (data.categories.length === 0) {
             eventsContent.innerHTML = `
                 <div class="alert alert-info">
@@ -268,20 +268,20 @@ function updateDisplay(data) {
         }
 
         const fragment = document.createDocumentFragment();
-        
+
         data.categories.forEach(category => {
             const categorySection = document.createElement('div');
             categorySection.className = 'category-section mb-5';
             categorySection.dataset.categoryId = category.categoria_id || '';
             categorySection.dataset.loaded = 'true';
-            
+
             // Sort subcategories by article count (if available)
             const sortedSubcategories = (category.subcategories || []).sort((a, b) => {
                 const aCount = (a.events || []).reduce((sum, event) => sum + (event.articles || []).length, 0);
                 const bCount = (b.events || []).reduce((sum, event) => sum + (event.articles || []).length, 0);
                 return bCount - aCount;
             });
-            
+
             categorySection.innerHTML = `
                 <div class="category-content">
                     ${sortedSubcategories.map(subcategory => {
@@ -289,7 +289,7 @@ function updateDisplay(data) {
                         const sortedEvents = (subcategory.events || []).sort((a, b) => {
                             return (b.articles || []).length - (a.articles || []).length;
                         });
-                        
+
                         return `
                             <div class="subcategory-section mb-4">
                                 <div class="events-container">
@@ -298,7 +298,7 @@ function updateDisplay(data) {
                                         const sortedArticles = (event.articles || []).sort((a, b) => {
                                             return new Date(b.fecha_publicacion || 0) - new Date(a.fecha_publicacion || 0);
                                         });
-                                        
+
                                         return `
                                             <div class="event-articles mb-4">
                                                 <div class="row">
@@ -342,10 +342,10 @@ function updateDisplay(data) {
                     }).join('')}
                 </div>
             `;
-            
+
             fragment.appendChild(categorySection);
         });
-        
+
         eventsContent.innerHTML = '';
         eventsContent.appendChild(fragment);
 
@@ -354,100 +354,128 @@ function updateDisplay(data) {
             card.style.cursor = 'pointer';
             card.classList.add('article-card-clickable');
         });
-        
+
         // Initialize mobile swipe events
         if (window.innerWidth <= 767) {
             document.querySelectorAll('.event-articles').forEach(eventArticle => {
                 const row = eventArticle.querySelector('.row');
-                const eventInfo = eventArticle.querySelector('.event-info');
-                let startX = 0;
-                let startY = 0;
+                const carouselWrapper = eventArticle.querySelector('.carousel-wrapper');
+                const articles = carouselWrapper.querySelectorAll('.article-card');
+                let startX = 0, startY = 0;
                 let isDragging = false;
-                let isHorizontalScroll = false;
-                let initialTransform = 0;
+                let isVerticalScroll = false;
+                let currentTranslate = 0;
+                let prevTranslate = 0;
+                let animationFrame = null;
+                let currentIndex = 0;
 
                 eventArticle.addEventListener('touchstart', (e) => {
-                    if (e.target.closest('.event-info')) {
-                        startX = e.touches[0].clientX;
-                        startY = e.touches[0].clientY;
-                        isDragging = true;
-                        isHorizontalScroll = false;
-                        row.style.transition = 'none';
-                    }
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    isDragging = true;
+                    isVerticalScroll = false;
+                    cancelAnimationFrame(animationFrame);
+                    row.style.transition = 'none';
                 }, { passive: true });
 
                 eventArticle.addEventListener('touchmove', (e) => {
-                    if (!isDragging || !e.target.closest('.event-info')) return;
-                    
+                    if (!isDragging) return;
+
                     const currentX = e.touches[0].clientX;
                     const currentY = e.touches[0].clientY;
-                    const diffX = startX - currentX;
-                    const diffY = startY - currentY;
-                    
-                    // Determine scroll direction on first significant movement
-                    if (!isHorizontalScroll && (Math.abs(diffX) > 5 || Math.abs(diffY) > 5)) {
-                        isHorizontalScroll = Math.abs(diffX) > Math.abs(diffY);
-                        if (!isHorizontalScroll) {
+                    const diffX = currentX - startX;
+                    const diffY = currentY - startY;
+
+                    // Si aún no hemos determinado la dirección del scroll
+                    if (!isVerticalScroll) {
+                        // Si el movimiento es más vertical que horizontal
+                        if (Math.abs(diffY) > Math.abs(diffX) * 1.2) { // 20% más vertical
                             isDragging = false;
                             return;
                         }
+                        // Si el movimiento es claramente horizontal
+                        if (Math.abs(diffX) > Math.abs(diffY) * 1.2) { // 20% más horizontal
+                            isVerticalScroll = false;
+                            e.preventDefault();
+                        }
                     }
-                    
-                    if (isHorizontalScroll && diffX > 0) {
+
+                    // Si ya determinamos que es scroll horizontal
+                    if (!isVerticalScroll) {
                         e.preventDefault();
-                        const maxTranslate = eventArticle.offsetWidth / 2;
-                        const progress = Math.min(diffX / maxTranslate, 1);
-                        row.style.transform = `translateX(-${progress * 50}%)`;
-                        
-                        // Adjust opacity of event-info based on progress
-                        const eventInfo = eventArticle.querySelector('.event-info');
-                        if (eventInfo) {
-                            eventInfo.style.opacity = Math.max(0.5, 1 - progress);
+                        currentTranslate = prevTranslate + diffX;
+
+                        // Bloquear desplazamiento al llegar a los límites
+                        const maxTranslate = -eventArticle.offsetWidth;
+                        currentTranslate = Math.max(maxTranslate, Math.min(0, currentTranslate));
+
+                        if (!animationFrame) {
+                            animationFrame = requestAnimationFrame(() => {
+                                row.style.transform = `translateX(${currentTranslate}px)`;
+                                animationFrame = null;
+                            });
                         }
                     }
                 }, { passive: false });
 
-                eventArticle.addEventListener('touchend', (e) => {
-                    if (!isDragging || !isHorizontalScroll) return;
+                eventArticle.addEventListener('touchend', () => {
+                    if (!isDragging) return;
                     isDragging = false;
-                    isHorizontalScroll = false;
-                    
-                    const currentX = e.changedTouches[0].clientX;
-                    const diffX = startX - currentX;
-                    row.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-                    
-                    // Complete transition if swipe is more than 15% of width
-                    if (diffX > eventArticle.offsetWidth * 0.15) {
-                        row.style.transform = 'translateX(-50%)';
+
+                    const threshold = eventArticle.offsetWidth / 3; // 33% del ancho
+                    const maxTranslate = -eventArticle.offsetWidth;
+
+                    // Verificar el índice actual
+                    if (currentTranslate < -threshold) {
+                        currentTranslate = maxTranslate;
+                        currentIndex = 1; // Carrusel completo
                         eventArticle.classList.add('swiped');
-                        const eventInfo = eventArticle.querySelector('.event-info');
-                        if (eventInfo) {
-                            eventInfo.style.opacity = '0.5';
-                            eventInfo.style.transition = 'opacity 0.3s ease';
-                        }
-                    } else {
-                        row.style.transform = 'translateX(0)';
+                    } else if (currentTranslate > -threshold && currentIndex === 1) {
+                        currentTranslate = 0;
+                        currentIndex = 0; // Mostrar evento
                         eventArticle.classList.remove('swiped');
-                        const eventInfo = eventArticle.querySelector('.event-info');
-                        if (eventInfo) {
-                            eventInfo.style.opacity = '1';
-                            eventInfo.style.transition = 'opacity 0.3s ease';
-                        }
                     }
+
+                    row.style.transition = 'transform 0.3s ease';
+                    row.style.transform = `translateX(${currentTranslate}px)`;
+                    prevTranslate = currentTranslate;
                 }, { passive: true });
 
-                // Helper function to get current transform X value
-                function getTransformX(element) {
-                    const style = window.getComputedStyle(element);
-                    const matrix = new WebKitCSSMatrix(style.transform);
-                    return matrix.m41;
+                // Bloquear movimiento adicional en el carrusel
+                carouselWrapper.addEventListener('scroll', () => {
+                    if (carouselWrapper.scrollLeft + carouselWrapper.clientWidth >= carouselWrapper.scrollWidth) {
+                        carouselWrapper.scrollLeft = carouselWrapper.scrollWidth - carouselWrapper.clientWidth;
+                        showEndIndicator(carouselWrapper);
+                    }
+                });
+
+                function showEndIndicator(wrapper) {
+                    if (!wrapper.querySelector('.end-indicator')) {
+                        const endIndicator = document.createElement('div');
+                        endIndicator.className = 'end-indicator';
+                        endIndicator.textContent = 'No hay más artículos';
+                        endIndicator.style.position = 'absolute';
+                        endIndicator.style.bottom = '10px';
+                        endIndicator.style.right = '10px';
+                        endIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
+                        endIndicator.style.color = '#fff';
+                        endIndicator.style.padding = '5px 10px';
+                        endIndicator.style.borderRadius = '5px';
+                        endIndicator.style.zIndex = '10';
+                        wrapper.appendChild(endIndicator);
+
+                        setTimeout(() => {
+                            endIndicator.remove();
+                        }, 2000); // Elimina el mensaje después de 2 segundos
+                    }
                 }
             });
         }
-        
+
+
         initializeCarousels();
         initializeScrollButtons();
-        
+
     } catch (error) {
         console.error('Error updating display:', error);
         showError('Failed to update display', error);

@@ -277,18 +277,17 @@
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         touch-action: pan-x;
         will-change: transform;
-        background-color: var(--bs-body-bg);
     }
 
    
 
     .event-articles .col-md-3,
     .event-articles .col-md-9 {
-            flex: 0 0 50%;
-            max-width: 50%;
+            flex: 0 0 100%;
+            max-width: 100%;
             width: 50%;
             padding: 0.5rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .event-articles.swiped .event-info::after {
@@ -296,9 +295,17 @@
     }
         
     .event-articles.swiped .row {
-            transform: translateX(-50%);
+            transform: translateX(-100%);
     }
     
+
+    .end-indicator {
+        font-size: 0.9rem;
+        font-weight: bold;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        pointer-events: none;
+    }
 
     .event-articles .col-md-3,
     .event-articles .col-md-9 {
@@ -339,6 +346,8 @@
             flex-direction: column;
             position: relative;
             cursor: grab;
+            transition: transform 0.3s ease;
+            will-change: transform;
         }
         
     .event-info:active {
@@ -408,6 +417,8 @@
         padding: 0 0.5rem;
         width: 100%;
         overflow: hidden;
+        transition: transform 0.3s ease;
+        will-change: transform;
     }
 
     .event-articles.swiped .row {

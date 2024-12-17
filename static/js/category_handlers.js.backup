@@ -1,0 +1,6 @@
+document.addEventListener('DOMContentLoaded', function() {
+    initializeTabNavigation();
+    loadDefaultCategory();
+});
+
+// ... [resto del contenido actual del archivo category_handlers.js]
