@@ -356,118 +356,92 @@ function updateDisplay(data) {
         });
 
         // Initialize mobile swipe events
-        if (window.innerWidth <= 767) {
-            document.querySelectorAll('.event-articles').forEach(eventArticle => {
-                const row = eventArticle.querySelector('.row');
-                const carouselWrapper = eventArticle.querySelector('.carousel-wrapper');
-                const articles = carouselWrapper.querySelectorAll('.article-card');
-                let startX = 0, startY = 0;
-                let isDragging = false;
-                let isVerticalScroll = false;
-                let currentTranslate = 0;
-                let prevTranslate = 0;
-                let animationFrame = null;
-                let currentIndex = 0;
+if (window.innerWidth <= 767) {
+    document.querySelectorAll('.event-articles').forEach(eventArticle => {
+        const row = eventArticle.querySelector('.row');
+        const carouselWrapper = eventArticle.querySelector('.carousel-wrapper');
+        const articles = carouselWrapper.querySelectorAll('.article-card');
+        let startX = 0, startY = 0;
+        let isDragging = false;
+        let currentTranslate = 0, prevTranslate = 0;
+        let animationFrame = null;
 
-                eventArticle.addEventListener('touchstart', (e) => {
-                    startX = e.touches[0].clientX;
-                    startY = e.touches[0].clientY;
-                    isDragging = true;
-                    isVerticalScroll = false;
-                    cancelAnimationFrame(animationFrame);
-                    row.style.transition = 'none';
-                }, { passive: true });
+        // Touch start event
+        eventArticle.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            cancelAnimationFrame(animationFrame);
+            row.style.transition = 'none';
+        }, { passive: true });
 
-                eventArticle.addEventListener('touchmove', (e) => {
-                    if (!isDragging) return;
+        // Touch move event
+        eventArticle.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const diffX = currentX - startX;
+            const diffY = currentY - startY;
 
-                    const currentX = e.touches[0].clientX;
-                    const currentY = e.touches[0].clientY;
-                    const diffX = currentX - startX;
-                    const diffY = currentY - startY;
+            // Detectar si el movimiento es vertical
+            if (Math.abs(diffY) > Math.abs(diffX)) {
+                isDragging = false; // Dejar el scroll vertical funcionar nativamente
+                return;
+            }
 
-                    // Determinar la dirección del movimiento solo al inicio
-                    if (!isVerticalScroll && Math.abs(diffX) < 5 && Math.abs(diffY) < 5) {
-                        return; // Ignorar movimientos muy pequeños al inicio
-                    }
+            // Si el movimiento es horizontal, manejar el carrusel
+            e.preventDefault(); // Bloquear solo el desplazamiento horizontal
+            currentTranslate = prevTranslate + diffX;
+            const maxTranslate = -eventArticle.offsetWidth;
+            currentTranslate = Math.max(maxTranslate, Math.min(0, currentTranslate));
+            requestAnimationFrame(() => {
+                row.style.transform = `translateX(${currentTranslate}px)`;
+            });
+        }, { passive: false });
 
-                    // Si aún no hemos determinado la dirección
-                    if (!isVerticalScroll && Math.abs(diffY) > Math.abs(diffX) * 1.2) {
-                        isDragging = false;
-                        return; // Permitir scroll vertical
-                    }
+        // Touch end event
+        eventArticle.addEventListener('touchend', () => {
+            isDragging = false;
+            prevTranslate = currentTranslate;
+            // Agregar transición suave al final del gesto
+            row.style.transition = 'transform 0.3s ease';
+            row.style.transform = `translateX(${currentTranslate}px)`;
+        });
 
-                    // Si el movimiento es claramente horizontal
-                    if (!isVerticalScroll && Math.abs(diffX) > Math.abs(diffY) * 1.2) {
-                        isVerticalScroll = false;
-                        e.preventDefault(); // Prevenir scroll vertical solo si es horizontal
+        // Bloquear movimiento adicional en el carrusel
+        carouselWrapper.addEventListener('scroll', () => {
+            if (carouselWrapper.scrollLeft + carouselWrapper.clientWidth >= carouselWrapper.scrollWidth) {
+                carouselWrapper.scrollLeft = carouselWrapper.scrollWidth - carouselWrapper.clientWidth;
+                showEndIndicator(carouselWrapper);
+            }
+        });
 
-                        currentTranslate = prevTranslate + diffX;
-                        const maxTranslate = -eventArticle.offsetWidth;
-                        currentTranslate = Math.max(maxTranslate, Math.min(0, currentTranslate));
-
-                        if (!animationFrame) {
-                            animationFrame = requestAnimationFrame(() => {
-                                row.style.transform = `translateX(${currentTranslate}px)`;
-                                animationFrame = null;
-                            });
-                        }
-                    }
-                }, { passive: false });
-
-                eventArticle.addEventListener('touchend', () => {
-                    if (!isDragging) return;
-                    isDragging = false;
-
-                    const threshold = eventArticle.offsetWidth / 3; // 33% del ancho
-                    const maxTranslate = -eventArticle.offsetWidth;
-
-                    // Verificar el índice actual
-                    if (currentTranslate < -threshold) {
-                        currentTranslate = maxTranslate;
-                        currentIndex = 1; // Carrusel completo
-                        eventArticle.classList.add('swiped');
-                    } else if (currentTranslate > -threshold && currentIndex === 1) {
-                        currentTranslate = 0;
-                        currentIndex = 0; // Mostrar evento
-                        eventArticle.classList.remove('swiped');
-                    }
-
-                    row.style.transition = 'transform 0.3s ease';
-                    row.style.transform = `translateX(${currentTranslate}px)`;
-                    prevTranslate = currentTranslate;
-                }, { passive: true });
-
-                // Bloquear movimiento adicional en el carrusel
-                carouselWrapper.addEventListener('scroll', () => {
-                    if (carouselWrapper.scrollLeft + carouselWrapper.clientWidth >= carouselWrapper.scrollWidth) {
-                        carouselWrapper.scrollLeft = carouselWrapper.scrollWidth - carouselWrapper.clientWidth;
-                        showEndIndicator(carouselWrapper);
-                    }
+        // Mostrar el indicador de fin de carrusel
+        function showEndIndicator(wrapper) {
+            if (!wrapper.querySelector('.end-indicator')) {
+                const endIndicator = document.createElement('div');
+                endIndicator.className = 'end-indicator';
+                endIndicator.textContent = 'No hay más artículos';
+                Object.assign(endIndicator.style, {
+                    position: 'absolute',
+                    bottom: '10px',
+                    right: '10px',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    color: '#fff',
+                    padding: '5px 10px',
+                    borderRadius: '5px',
+                    zIndex: '10'
                 });
 
-                function showEndIndicator(wrapper) {
-                    if (!wrapper.querySelector('.end-indicator')) {
-                        const endIndicator = document.createElement('div');
-                        endIndicator.className = 'end-indicator';
-                        endIndicator.textContent = 'No hay más artículos';
-                        endIndicator.style.position = 'absolute';
-                        endIndicator.style.bottom = '10px';
-                        endIndicator.style.right = '10px';
-                        endIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
-                        endIndicator.style.color = '#fff';
-                        endIndicator.style.padding = '5px 10px';
-                        endIndicator.style.borderRadius = '5px';
-                        endIndicator.style.zIndex = '10';
-                        wrapper.appendChild(endIndicator);
+                wrapper.appendChild(endIndicator);
 
-                        setTimeout(() => {
-                            endIndicator.remove();
-                        }, 2000); // Elimina el mensaje después de 2 segundos
-                    }
-                }
-            });
+                setTimeout(() => {
+                    endIndicator.remove();
+                }, 2000); // Elimina el mensaje después de 2 segundos
+            }
         }
+    });
+}
 
 
         initializeCarousels();

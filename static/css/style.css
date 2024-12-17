@@ -262,20 +262,23 @@
     .event-articles {
         margin-bottom: 1rem;
         background: transparent;
-        overflow: hidden;
+        /*overflow: hidden;*/
         position: relative;
+        overflow-y: auto;
+        max-height: 200vh;
     }
 
     .event-articles .row {
         display: flex;
-        flex-direction: row;
+        /*flex-direction: row;*/
         margin: 0;
         padding: 0;
         position: relative;
-        width: 200%;
+        width: 100%;
         transform: translateX(0);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        touch-action: pan-x;
+        touch-action: auto; /* Permitir desplazamiento en todas las direcciones */
+        overflow: hidden; /* Para evitar el scroll visual indeseado */
         will-change: transform;
     }
 
@@ -320,6 +323,8 @@
         width: 100%;
         margin-right: 0;
         scroll-snap-align: start;
+        cursor: pointer; 
+        transition: transform 0.3s ease;
     }
 
     .article-card .card {
@@ -392,6 +397,9 @@
         -webkit-overflow-scrolling: touch;
         display: flex;
         gap: 0.5rem;
+        touch-action: auto; /* Permite scroll vertical */
+        overflow-x: hidden; /* Oculta el scroll horizontal */
+
     }
 
     .carousel-wrapper::after {
