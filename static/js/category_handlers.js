@@ -77,25 +77,45 @@ function updateNavigation() {
 
 function loadDefaultCategory() {
     try {
-        const categoryTabs = document.querySelectorAll('#categoryTabs .nav-link');
-        if (categoryTabs.length > 0) {
-            // Remove active class from any previously active tabs
-            categoryTabs.forEach(tab => tab.classList.remove('active'));
-            // Set the first category (All) as active
-            categoryTabs[0].classList.add('active');
-            // Load content for the All category
-            const categoryId = categoryTabs[0].dataset.categoryId;
-            if (categoryId) {
-                loadCategoryContent(categoryId);
-            } else {
-                throw new Error('No category ID found on first tab');
-            }
-        } else {
-            throw new Error('No categories available');
+        const categoryTabs = document.getElementById('categoryTabs');
+        if (!categoryTabs) {
+            console.error('Category tabs container not found');
+            return;
         }
+
+        const tabs = categoryTabs.querySelectorAll('.nav-link');
+        if (tabs.length === 0) {
+            console.log('Waiting for categories to load...');
+            // Retry after a short delay
+            setTimeout(loadDefaultCategory, 500);
+            return;
+        }
+
+        // Remove active class from any previously active tabs
+        tabs.forEach(tab => tab.classList.remove('active'));
+        
+        // Set the first category as active
+        tabs[0].classList.add('active');
+        
+        // Load content for the first category
+        const categoryId = tabs[0].dataset.categoryId;
+        if (!categoryId) {
+            console.error('No category ID found on first tab');
+            return;
+        }
+
+        loadCategoryContent(categoryId);
     } catch (error) {
         console.error('Error loading default category:', error);
-        showError('Failed to load initial content. Please refresh the page.');
+        const eventsContent = document.getElementById('events-content');
+        if (eventsContent) {
+            eventsContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <h4 class="alert-heading">Error loading categories</h4>
+                    <p>Please try refreshing the page. If the problem persists, contact support.</p>
+                </div>
+            `;
+        }
     }
 }
 
