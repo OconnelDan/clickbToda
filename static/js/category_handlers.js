@@ -386,26 +386,26 @@ function updateDisplay(data) {
                     const diffX = currentX - startX;
                     const diffY = currentY - startY;
 
-                    // Si aún no hemos determinado la dirección del scroll
-                    if (!isVerticalScroll) {
-                        // Si el movimiento es más vertical que horizontal
-                        if (Math.abs(diffY) > Math.abs(diffX) * 1.2) { // 20% más vertical
+                    // Determine scroll direction based on initial movement
+                    if (!isVerticalScroll && Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+                        // If movement is more vertical, allow normal scrolling
+                        if (Math.abs(diffY) > Math.abs(diffX)) {
                             isDragging = false;
                             return;
                         }
-                        // Si el movimiento es claramente horizontal
-                        if (Math.abs(diffX) > Math.abs(diffY) * 1.2) { // 20% más horizontal
-                            isVerticalScroll = false;
+                        
+                        // If movement is clearly horizontal
+                        if (Math.abs(diffX) > Math.abs(diffY)) {
                             e.preventDefault();
+                            isVerticalScroll = false;
                         }
                     }
 
-                    // Si ya determinamos que es scroll horizontal
-                    if (!isVerticalScroll) {
-                        e.preventDefault();
+                    // Only handle horizontal scroll if we're sure it's horizontal
+                    if (!isVerticalScroll && Math.abs(diffX) > Math.abs(diffY)) {
                         currentTranslate = prevTranslate + diffX;
 
-                        // Bloquear desplazamiento al llegar a los límites
+                        // Limit translation to container width
                         const maxTranslate = -eventArticle.offsetWidth;
                         currentTranslate = Math.max(maxTranslate, Math.min(0, currentTranslate));
 
