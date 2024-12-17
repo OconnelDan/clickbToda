@@ -6,4 +6,18 @@
     height: 100%;
 }
 
-// ... [resto del contenido actual del archivo style.css]
+.carousel-wrapper {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    position: relative;
+    height: 100%;
+}
+
+/* Rest of the current style.css content */
