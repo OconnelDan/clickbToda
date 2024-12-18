@@ -43,12 +43,12 @@ function initializeTabNavigation() {
         categoryTabs.querySelectorAll('.nav-link').forEach(tab => tab.classList.remove('active'));
         tabButton.classList.add('active');
         
-        // Toggle subcategory nav visibility
+        // Toggle subcategory nav visibility based on category
         const subcategoryNav = document.querySelector('.subcategory-nav');
         if (categoryId === '0') {
-            subcategoryNav.classList.remove('show');
+            subcategoryNav.style.display = 'none';
         } else {
-            subcategoryNav.classList.add('show');
+            subcategoryNav.style.display = 'block';
         }
         
         showLoadingState();
