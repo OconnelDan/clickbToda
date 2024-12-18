@@ -1,3 +1,31 @@
+
+/* Mobile view styles */
+@media (max-width: 767px) {
+    .mobile-event-card {
+        width: 100%;
+        flex: 0 0 100%;
+        scroll-snap-align: start;
+        margin-bottom: 1rem;
+    }
+
+    .mobile-event-card .event-info {
+        background: var(--bs-body-bg);
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .mobile-event-card .article-card {
+        width: calc(100% - 1rem);
+        margin-right: 1rem;
+    }
+
+    .mobile-event-card:last-child {
+        margin-right: 0;
+    }
+}
+
 /* Base mobile styles (up to 767px) */
 .articles-carousel {
     position: relative;

@@ -1,0 +1,49 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+{% include "components/category_selectors.html" %}
+
+<div id="events-content">
+    {% if initial_data and initial_data.categories %}
+        {% for category in initial_data.categories %}
+        <div class="category-section mb-5" data-category-id="{{ category.categoria_id }}" data-loaded="true">
+            <div class="category-content">
+                {% for subcategory in category.subcategories %}
+                    <div class="subcategory-section mb-4">
+                        <div class="events-container">
+                            <div class="articles-carousel">
+                                <div class="carousel-wrapper">
+                                    {% for event in subcategory.events %}
+                                        <div class="event-card mobile-event-card">
+                                            <div class="event-info">
+                                                <h4 class="event-title">{{ event.titulo }}</h4>
+                                                <p class="event-description">{{ event.descripcion }}</p>
+                                                <div class="event-meta">
+                                                    <small class="text-muted">{{ event.fecha_evento }}</small>
+                                                </div>
+                                            </div>
+                                            {% for article in event.articles %}
+                                                {% include "components/article_card.html" %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+{% include "components/article_modal.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/category_handlers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/carousel.js') }}"></script>
+<script src="{{ url_for('static', filename='js/article_modal.js') }}"></script>
+{% endblock %}
