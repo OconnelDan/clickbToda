@@ -1,0 +1,1 @@
+{"version":2,"languages":{"python3-uv":{"specfileHash":"cb135553a9a2cdaacc77e17fff92b5d4","lockfileHash":"f5131b623c9edfdafee3236007f3705e","guessedImports":["Flask-WTF","Flask-Login","Flask","Flask-Caching","Flask-SQLAlchemy","pandas","Flask-APScheduler","Werkzeug","SQLAlchemy","numpy","plotly","scikit-learn"],"guessedImportsHash":"fd27aa6bc7f11aeba6ada470737945d3"}}}
